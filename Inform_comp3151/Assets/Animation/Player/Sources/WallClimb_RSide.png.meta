@@ -1,19 +1,10 @@
 fileFormatVersion: 2
-guid: 659d48e4c104fc842b534b4bb683af77
+guid: 3e0f207640ba6804aa41ec9cde05a465
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7196450760869446319
-    second: Idle_R.psd_0
-  - first:
-      213: 8543420122586679154
-    second: Idle_R.psd_1
-  - first:
-      213: -4109246761883473875
-    second: Idle_R.psd_2
-  - first:
-      213: -6935794562219059210
-    second: Idle_R.psd_3
+      213: 4575207885017030587
+    second: WallClimb_RSide_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -135,89 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Idle_R.psd_0
+      name: WallClimb_RSide_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 32
-        height: 32
+        x: 12
+        y: 2
+        width: 18
+        height: 28
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fa2863da6ddeed360800000000000000
-      internalID: 7196450760869446319
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Idle_R.psd_1
-      rect:
-        serializedVersion: 2
-        x: 32
-        y: 0
-        width: 32
-        height: 32
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 27704b52653509670800000000000000
-      internalID: 8543420122586679154
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Idle_R.psd_2
-      rect:
-        serializedVersion: 2
-        x: 64
-        y: 0
-        width: 32
-        height: 32
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d28e28f77d509f6c0800000000000000
-      internalID: -4109246761883473875
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Idle_R.psd_3
-      rect:
-        serializedVersion: 2
-        x: 96
-        y: 0
-        width: 32
-        height: 32
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 6f7d8d3d79b1fbf90800000000000000
-      internalID: -6935794562219059210
+      spriteID: bbf9108b4576e7f30800000000000000
+      internalID: 4575207885017030587
       vertices: []
       indices: 
       edges: []
@@ -226,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 3be5bbb4b60215f4988be32de3523c41
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -234,14 +159,9 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries:
-      - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":32.0,"y":32.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":1,"keepEmptyRects":false,"isAlternate":false}'
+      entries: []
     nameFileIdTable:
-      Idle_R.psd_0: 7196450760869446319
-      Idle_R.psd_1: 8543420122586679154
-      Idle_R.psd_2: -4109246761883473875
-      Idle_R.psd_3: -6935794562219059210
+      WallClimb_RSide_0: 4575207885017030587
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
