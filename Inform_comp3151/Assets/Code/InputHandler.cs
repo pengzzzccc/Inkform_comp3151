@@ -24,8 +24,6 @@ namespace Inkform.Input
         // Get player
         [SerializeField] private PlayerHandler player;
 
-
-
         /// <summary>
         /// awake all input system and setting before the game life loop start.
         /// </summary>
@@ -56,7 +54,6 @@ namespace Inkform.Input
 
         private void OnJumpPerformed(InputAction.CallbackContext ctx)
         {
-            // player.playerJumping();
             player.RequestJump();
         }
 
