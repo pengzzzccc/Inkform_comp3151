@@ -1046,7 +1046,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 187834089383587721, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.25
+      value: 0.03
       objectReference: {fileID: 0}
     - target: {fileID: 187834089383587721, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1054,7 +1054,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1208995721875728481, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.25
+      value: -0.03
       objectReference: {fileID: 0}
     - target: {fileID: 1208995721875728481, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1063,6 +1063,10 @@ PrefabInstance:
     - target: {fileID: 3780543705610343857, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 7099724744160094467, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
+      propertyPath: jumpTimes
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8747597000814489108, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.x
