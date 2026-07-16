@@ -62,6 +62,16 @@ namespace Inkform.Input
             player.playerFalling();
         }
 
+        private void OnAttackPreformed(InputAction.CallbackContext ctx)
+        {
+            player.playerAttack();
+        }
+
+        private void OnAttackCancel(InputAction.CallbackContext ctx)
+        {
+            player.playerAttackCancel();
+        }
+
         void OnEnable()
         {
             // enable player input.
@@ -79,6 +89,8 @@ namespace Inkform.Input
             // jump input callback
             jump.performed += OnJumpPerformed;
             jump.canceled += OnJumpCancel;
+            attack.performed += OnAttackPreformed;
+            attack.canceled += OnAttackCancel;
 
         }
 
@@ -99,6 +111,8 @@ namespace Inkform.Input
             // jump input callback
             jump.performed -= OnJumpPerformed;
             jump.canceled -= OnJumpCancel;
+            attack.performed -= OnAttackPreformed;
+            attack.canceled -= OnAttackCancel;
 
         }
     }

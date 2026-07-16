@@ -44,6 +44,7 @@ GameObject:
   - component: {fileID: 7099724744160094467}
   - component: {fileID: 2846290267072033032}
   - component: {fileID: 3527788610966020256}
+  - component: {fileID: 7876590005240165724}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -146,8 +147,12 @@ MonoBehaviour:
   fallCutmultiper: 0.12
   Gravity: 4
   fallGravityMultiper: 2.2
-  OnWallGravityMultiper: 0.1
-  coyoteTime: 0.1
+  OnWallGravityMultiper: 0.2
+  jumpTimes: 1
+  wallJumpTime: 0.15
+  wallKickMultiper: 0.3
+  attackMultiper: 2
+  attackTime: 0.1
   groundCheck: {fileID: 8569766163812240374}
   LeftWallCheck: {fileID: 1208995721875728481}
   RightWallCheck: {fileID: 187834089383587721}
@@ -156,7 +161,7 @@ MonoBehaviour:
   mask:
     serializedVersion: 2
     m_Bits: 64
-  jumpBuffer: 0.1
+  jumpBuffer: 0.15
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5
@@ -230,6 +235,28 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!95 &7876590005240165724
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: fd6dce8b8b88a864fb520b5e9929f02c, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &5765958816110314823
 GameObject:
   m_ObjectHideFlags: 0

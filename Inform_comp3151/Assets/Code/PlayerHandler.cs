@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.Collections.Generic;
 
 namespace Inkform.player
 {
@@ -14,8 +15,7 @@ namespace Inkform.player
         private FaceDirection faceDirection;
 
         // player event
-        public event Action<FaceDirection> OnDirection;
-        public event Action<PlayerState> OnPlayerAction;
+        public event Action<PlayerState, FaceDirection> OnPlayerAction;
 
         // player controller
         private Rigidbody2D controller;
@@ -24,7 +24,8 @@ namespace Inkform.player
         private bool OnRightWall = false;
         private bool OnCeiling = false;
         private bool jumpCutquest = false;
-        private Timer coyTimer;
+        private Timer WallJumpBuffer;
+        private Timer AttackTimer;
 
 
         [Header("Player setting")]
@@ -33,10 +34,14 @@ namespace Inkform.player
         [SerializeField][Range(0, 1)] private float fallCutmultiper = 0.1f;
         [SerializeField] private float Gravity = 4f;
         [SerializeField] private float fallGravityMultiper = 2.2f;
-        [SerializeField][Range(0, 1)] private float OnWallGravityMultiper = 0.1f;
-        [SerializeField] private float coyoteTime = 0.1f;
-        [SerializeField] private int jumpTimes = 2;
+        [SerializeField][Range(0, 1)] private float OnWallGravityMultiper = 0.2f;
+        [SerializeField] private int jumpTimes = 1;
+        [SerializeField] private float wallJumpTime = 0.3f;
+        [SerializeField][Range(0, 1)] private float wallKickMultiper = 0.3f;
+        [SerializeField][Range(1, 2)] private float attackMultiper = 1.3f;
+        [SerializeField] private float attackTime = 0.6f;
         private int jumpLeft = 0;
+
         [Header("Ground Check")]
         [SerializeField] private Transform groundCheck;
         [SerializeField] private Transform LeftWallCheck;
@@ -47,10 +52,11 @@ namespace Inkform.player
 
 
         // jumpBuffer
-        [SerializeField] private float jumpBuffer = 0.3f;
+        [SerializeField] private float jumpBuffer = 0.2f;
         private float requestTime = -999f;
-
         private Timer updateBuffer;
+        private PlayerState lastState;
+        private FaceDirection lastFace;
 
         void Awake()
         {
@@ -63,11 +69,11 @@ namespace Inkform.player
 
         void Update()
         {
+
             ContactCheck();
 
             ActiveNoneLinerGrivay();
             playerJumping();
-
 
         }
 
@@ -94,6 +100,8 @@ namespace Inkform.player
 
         public void playerMoving(Vector2 input)
         {
+            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning) return;
+
             if (input.x > 0.01f)
             {
                 SetFace(FaceDirection.R);
@@ -106,7 +114,7 @@ namespace Inkform.player
             }
             else if (input.x == 0)
             {
-                SetFace(faceDirection);
+                // SetFace(faceDirection);
                 SetState(PlayerState.Idle);
             }
 
@@ -116,10 +124,33 @@ namespace Inkform.player
         public void RequestJump()
         {
             requestTime = Time.time;
-
+            if ((OnLeftWall || OnRightWall) && jumpLeft == 0 && !WallJumpBuffer.IsRunning)
+            {
+                jumpLeft++;
+                WallJumpBuffer.Set(wallJumpTime);
+            }
         }
 
-        public void playerJumping()
+        public void playerFalling()
+        {
+            jumpCutquest = true;
+        }
+
+        public void playerAttack()
+        {
+            SetState(PlayerState.Attack);
+
+            float dir = faceDirection == FaceDirection.R ? 1f : -1f;
+            controller.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, controller.linearVelocityY);
+            AttackTimer.Set(attackTime);
+        }
+
+        public void playerAttackCancel()
+        {
+            SetState(PlayerState.Idle);
+        }
+
+        private void playerJumping()
         {
             if (jumpCutquest && controller.linearVelocityY > 0f)
             {
@@ -137,9 +168,18 @@ namespace Inkform.player
             {
 
                 SetState(PlayerState.Jump);
+                if (OnLeftWall && !OnGround)
+                {
+                    controller.linearVelocity = new Vector2(jumpSpeed * wallKickMultiper, jumpSpeed);
+                    WallJumpBuffer.Set(wallJumpTime);
+                }
+                else if (OnRightWall && !OnGround)
+                {
+                    controller.linearVelocity = new Vector2(-jumpSpeed * wallKickMultiper, jumpSpeed);
+                    WallJumpBuffer.Set(wallJumpTime);
+                }
                 controller.linearVelocityY = jumpSpeed;
                 requestTime = -999f;
-                coyTimer.Clear();
                 jumpLeft--;
                 if(OnGround)
                 {
@@ -150,21 +190,31 @@ namespace Inkform.player
             if (OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
         }
 
-        public void playerFalling()
-        {
-            jumpCutquest = true;
-        }
-
         private void SetState(PlayerState state)
         {
             playerState = state;
-            OnPlayerAction?.Invoke(state);
+            if (state != lastState)
+            {
+                lastState = state;
+                OnPlayerAction?.Invoke(state, faceDirection);
+
+                Debug.Log("PlayerState: " + playerState);
+            }
+
+            
         }
 
         private void SetFace(FaceDirection face)
         {
             faceDirection = face;
-            OnDirection?.Invoke(face);
+            if (face != lastFace)
+            {
+                lastFace = face;
+                OnPlayerAction?.Invoke(playerState, face);
+                Debug.Log("FaceDirection: " + faceDirection);
+            }
+
+            
         }
 
         void OnDrawGizmosSelected()

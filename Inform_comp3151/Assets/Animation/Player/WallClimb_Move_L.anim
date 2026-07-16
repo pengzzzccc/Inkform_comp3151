@@ -6,7 +6,7 @@ AnimationClip:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: WallClimb_MoveL
+  m_Name: WallClimb_Move_L
   serializedVersion: 7
   m_Legacy: 0
   m_Compressed: 0
