@@ -1,24 +1,30 @@
 using Inkform.player;
+using Inkform.Bus;
 using UnityEngine;
 
 public class AniHandler : MonoBehaviour
 {
     [SerializeField] private Animator animations;
-    [SerializeField] private PlayerHandler player;
 
     void OnEnable()
     {
-        player.OnPlayerAction += HandleAction;
+        PlayerBus.StateChanged += OnState;
+        PlayerBus.FaceChanged += OnFace;
+        Refresh();                       // 用快照做首次同步
     }
 
     void OnDisable()
     {
-        player.OnPlayerAction -= HandleAction;
+        PlayerBus.StateChanged -= OnState;
+        PlayerBus.FaceChanged -= OnFace;
     }
 
-    private void HandleAction(PlayerState state, FaceDirection face)
+    private void OnState(PlayerState state) => Refresh();
+    private void OnFace(FaceDirection face) => Refresh();
+
+    private void Refresh()
     {
-        string baseName = state switch
+        string baseName = PlayerBus.State switch
         {
             PlayerState.Idle         => "Idle",
             PlayerState.Move         => "Move",
@@ -36,7 +42,7 @@ public class AniHandler : MonoBehaviour
             _                        => "Idle"
         };
 
-        string suffix = face == FaceDirection.R ? "_R" : "_L";
+        string suffix = PlayerBus.Face == FaceDirection.R ? "_R" : "_L";
         PlaySafely(baseName + suffix, baseName);
     }
 

@@ -1,4 +1,5 @@
 using Inkform.player;
+using Inkform.Bus;
 using UnityEngine;
 
 /// <summary>
@@ -16,22 +17,22 @@ public class ColliderHandler : MonoBehaviour
     }
 
     [SerializeField] private BoxCollider2D body;
-    [SerializeField] private PlayerHandler player;
     [SerializeField] private Vector2 defaultSize = Vector2.one;
     [SerializeField] private Vector2 defaultOffset = Vector2.zero;
     [SerializeField] private StateCollider[] overrides;
 
     void OnEnable()
     {
-        player.OnPlayerAction += HandleAction;
+        PlayerBus.StateChanged += HandleState;
+        HandleState(PlayerBus.State);    // 用快照做首次同步
     }
 
     void OnDisable()
     {
-        player.OnPlayerAction -= HandleAction;
+        PlayerBus.StateChanged -= HandleState;
     }
 
-    private void HandleAction(PlayerState state, FaceDirection face)
+    private void HandleState(PlayerState state)
     {
         if (body == null) return;
 

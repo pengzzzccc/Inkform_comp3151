@@ -1,11 +1,12 @@
 using UnityEngine;
-using System;
 using System.Collections.Generic;
+using Inkform.Bus;
 
 namespace Inkform.player
 {
     /// <summary>
     /// this class is made for handling player, it contain's OnGrand check, player mti-FSM, player state publisher.
+    /// 状态变化通过 PlayerBus 广播，订阅方不需要持有本对象的引用。
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerHandler : MonoBehaviour
@@ -13,9 +14,6 @@ namespace Inkform.player
         // PlayerState
         private PlayerState playerState;
         private FaceDirection faceDirection;
-
-        // player event
-        public event Action<PlayerState, FaceDirection> OnPlayerAction;
 
         // player controller
         private Rigidbody2D controller;
@@ -69,14 +67,10 @@ namespace Inkform.player
         [SerializeField] private float CheckRadius = 0.5f;
         private ContactPoint2D[] contacts;
         
-
-
         // jumpBuffer
         [SerializeField] private float jumpBuffer = 0.2f;
         private float requestTime = -999f;
         private Timer updateBuffer;
-        private PlayerState lastState;
-        private FaceDirection lastFace;
 
         void Awake()
         {
@@ -85,6 +79,19 @@ namespace Inkform.player
 
             jumpLeft = jumpTimes;
 
+            // 初始广播一次，让总线快照从一开始就是正确的
+            PlayerBus.RaiseState(playerState);
+            PlayerBus.RaiseFace(faceDirection);
+        }
+
+        void OnEnable()
+        {
+            ItemBus.ItemEaten += OnItemEaten;
+        }
+
+        void OnDisable()
+        {
+            ItemBus.ItemEaten -= OnItemEaten;
         }
 
         void Update()
@@ -185,8 +192,8 @@ namespace Inkform.player
             // 让 Eat/Release 在 AttackTimer 时长内完整播放，到期后由 UpdateAnimationState 恢复移动动画
         }
 
-        // 由 Bomb 等物品在被吃下时调用：只有真实吃到才进入叼着物品状态
-        public void OnItemEaten()
+        // 由 ItemBus 在物品被吃下时回调：只有真实吃到才进入叼着物品状态
+        private void OnItemEaten(ItemSuper item)
         {
             holdingItem = true;
         }
@@ -263,10 +270,11 @@ namespace Inkform.player
                 return;
             }
 
+            bool onTop = controller.linearVelocityY < 0.1f | controller.linearVelocityY > -0.1f; // 准备加入到顶的顶点动画
             if (!OnGround)
             {
-                if (JumpUpTimer.IsRunning) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
-                else SetState(controller.linearVelocityY > 0.01f
+                if (JumpUpTimer.IsRunning && (controller.linearVelocityX > 0.3 | controller.linearVelocityX < -0.3)) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
+                else SetState(controller.linearVelocityY > 0.1f
                     ? PlayerState.Rise               // 上升
                     : PlayerState.Fall);             // 下落
                 return;
@@ -279,31 +287,17 @@ namespace Inkform.player
                 : PlayerState.Idle);
         }
 
+        // 去重（只在变化时广播）由 PlayerBus 负责，这里直接 Raise 即可
         private void SetState(PlayerState state)
         {
             playerState = state;
-            if (state != lastState)
-            {
-                lastState = state;
-                OnPlayerAction?.Invoke(state, faceDirection);
-
-                // Debug.Log("PlayerState: " + playerState);
-            }
-
-            
+            PlayerBus.RaiseState(state);
         }
 
         private void SetFace(FaceDirection face)
         {
             faceDirection = face;
-            if (face != lastFace)
-            {
-                lastFace = face;
-                OnPlayerAction?.Invoke(playerState, face);
-                // Debug.Log("FaceDirection: " + faceDirection);
-            }
-
-            
+            PlayerBus.RaiseFace(face);
         }
 
         void OnDrawGizmosSelected()

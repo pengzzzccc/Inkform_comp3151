@@ -1,40 +1,32 @@
 using UnityEngine;
 using Inkform.player;
-using System;
+using Inkform.Bus;
 
-public class Bomb : MonoBehaviour
+public class Bomb : ItemSuper
 {
-    [SerializeField] private PlayerHandler player;
     private bool isAttacking = false;
-    public event Action OnPlayerEatBomb;
 
     void OnEnable()
     {
-        player.OnPlayerAction += HandleAction;
+        PlayerBus.StateChanged += OnState;
+        OnState(PlayerBus.State);   // 用快照做首次同步
     }
 
     void OnDisable()
     {
-        player.OnPlayerAction -= HandleAction;
+        PlayerBus.StateChanged -= OnState;
     }
 
-    void HandleAction(PlayerState state, FaceDirection face)
+    void OnState(PlayerState state)
     {
-        if (state == PlayerState.Eat)
-            isAttacking = true;
-        else
-            isAttacking = false;
-
+        isAttacking = state == PlayerState.Eat;
     }
 
     void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.gameObject.CompareTag("Player") && isAttacking)
-        {
-            player.OnItemEaten();
-            OnPlayerEatBomb?.Invoke();
-            Destroy(this.gameObject);
-        }
-    }
+        if (!collision.gameObject.CompareTag("Player") || !isAttacking) return;
 
+        ItemBus.RaiseItemEaten(this);
+        Destroy(this.gameObject);
+    }
 }
