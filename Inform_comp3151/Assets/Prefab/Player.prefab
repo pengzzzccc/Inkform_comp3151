@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 2380530086633995488}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.03, y: 0, z: 0}
+  m_LocalPosition: {x: -0.25, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -45,6 +45,7 @@ GameObject:
   - component: {fileID: 2846290267072033032}
   - component: {fileID: 3527788610966020256}
   - component: {fileID: 7876590005240165724}
+  - component: {fileID: 5555555555555555555}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -120,15 +121,15 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.25594923, g: 0, b: 0.27223712, a: 1}
+  m_Sprite: {fileID: -1363347163, guid: 1e7ad1fd2f526b940a9dc39285b27453, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
   m_Size: {x: 1, y: 1}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
 --- !u!114 &7099724744160094467
 MonoBehaviour:
@@ -143,7 +144,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.player.PlayerHandler
   movingSpeed: 10
-  jumpSpeed: 20.5
+  jumpSpeed: 15
   fallCutmultiper: 0.12
   Gravity: 4
   fallGravityMultiper: 2.2
@@ -152,15 +153,26 @@ MonoBehaviour:
   wallJumpTime: 0.15
   wallKickMultiper: 0.3
   attackMultiper: 2
-  attackTime: 0.1
+  attackTime: 0.17
+  attackAnimTime: 0.55
+  landAnimTime: 1
+  jumpUpAnimTime: 0.3
+  ceilingAttachTime: 0.25
+  CeilingStickTime: 0.5
   groundCheck: {fileID: 8569766163812240374}
-  LeftWallCheck: {fileID: 1208995721875728481}
-  RightWallCheck: {fileID: 187834089383587721}
-  CeilingCheck: {fileID: 2554766400171842085}
-  CheckRadius: 0.5
-  mask:
+  groundmask:
     serializedVersion: 2
     m_Bits: 64
+  LeftWallCheck: {fileID: 1208995721875728481}
+  RightWallCheck: {fileID: 187834089383587721}
+  Wallmask:
+    serializedVersion: 2
+    m_Bits: 512
+  CeilingCheck: {fileID: 2554766400171842085}
+  Ceilingmask:
+    serializedVersion: 2
+    m_Bits: 1024
+  CheckRadius: 0.1
   jumpBuffer: 0.15
 --- !u!50 &2846290267072033032
 Rigidbody2D:
@@ -233,7 +245,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.6, y: 0.6}
   m_EdgeRadius: 0
 --- !u!95 &7876590005240165724
 Animator:
@@ -257,6 +269,29 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5555555555555555555
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d7e9f1a2b4c46d88e0a5c1f6b3d9e72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  body: {fileID: 3527788610966020256}
+  player: {fileID: 7099724744160094467}
+  defaultSize: {x: 0.6, y: 0.6}
+  defaultOffset: {x: 0, y: 0}
+  overrides:
+  - state: 10
+    size: {x: 0.5625, y: 0.875}
+    offset: {x: 0, y: 0}
+  - state: 11
+    size: {x: 0.5625, y: 0.875}
+    offset: {x: 0, y: 0}
 --- !u!1 &5765958816110314823
 GameObject:
   m_ObjectHideFlags: 0
@@ -282,7 +317,7 @@ Transform:
   m_GameObject: {fileID: 5765958816110314823}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.03, z: 0}
+  m_LocalPosition: {x: 0, y: -0.25, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -313,7 +348,7 @@ Transform:
   m_GameObject: {fileID: 5818954200450137673}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.03, z: 0}
+  m_LocalPosition: {x: 0, y: 0.25, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -344,7 +379,7 @@ Transform:
   m_GameObject: {fileID: 8250675458875371217}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.03, y: 0, z: 0}
+  m_LocalPosition: {x: 0.25, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

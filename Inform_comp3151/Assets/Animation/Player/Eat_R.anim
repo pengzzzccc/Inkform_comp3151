@@ -6,7 +6,7 @@ AnimationClip:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Eat_R
+  m_Name: 
   serializedVersion: 7
   m_Legacy: 0
   m_Compressed: 0
@@ -55,29 +55,8 @@ AnimationClip:
     m_Center: {x: 0, y: 0, z: 0}
     m_Extent: {x: 0, y: 0, z: 0}
   m_ClipBindingConstant:
-    genericBindings:
-    - serializedVersion: 2
-      path: 0
-      attribute: 0
-      script: {fileID: 0}
-      typeID: 212
-      customType: 23
-      isPPtrCurve: 1
-      isIntCurve: 0
-      isSerializeReferenceCurve: 0
-    pptrCurveMapping:
-    - {fileID: -2836523487582949161, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: 7345213687047894846, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -4405519467724844074, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: 2629236354293376752, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -4513202554830022183, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: 5979160078387150583, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -3580905880085678446, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -884880276776935753, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: 3040884428076900622, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: 8758638770757713257, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -5413680413112098724, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
-    - {fileID: -1316531170913693835, guid: a0f0708b5fd915143ab63147146c376d, type: 3}
+    genericBindings: []
+    pptrCurveMapping: []
   m_AnimationClipSettings:
     serializedVersion: 2
     m_AdditiveReferencePoseClip: {fileID: 0}
@@ -88,7 +67,7 @@ AnimationClip:
     m_Level: 0
     m_CycleOffset: 0
     m_HasAdditiveReferencePose: 0
-    m_LoopTime: 1
+    m_LoopTime: 0
     m_LoopBlend: 0
     m_LoopBlendOrientation: 0
     m_LoopBlendPositionY: 0

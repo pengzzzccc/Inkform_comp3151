@@ -20,7 +20,7 @@ public class Bomb : MonoBehaviour
 
     void HandleAction(PlayerState state, FaceDirection face)
     {
-        if (state == PlayerState.Attack)
+        if (state == PlayerState.Eat)
             isAttacking = true;
         else
             isAttacking = false;
@@ -31,6 +31,7 @@ public class Bomb : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Player") && isAttacking)
         {
+            player.OnItemEaten();
             OnPlayerEatBomb?.Invoke();
             Destroy(this.gameObject);
         }

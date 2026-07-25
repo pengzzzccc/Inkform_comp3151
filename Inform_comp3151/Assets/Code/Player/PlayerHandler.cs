@@ -27,6 +27,15 @@ namespace Inkform.player
         private Timer WallJumpBuffer;
         private Timer AttackTimer;
 
+        // animation driving
+        private Vector2 moveInput;
+        private bool holdingItem = false;
+        private bool prevOnGround = false;
+        private bool prevOnCeiling = false;
+        private Timer LandAnimTimer;   // 落地瞬间的一次性动画
+        private Timer JumpUpTimer;     // 起跳瞬间的一次性动画（JumpUp，之后转 Rise）
+        private Timer CeilingAttachTimer;  // 刚贴上天花板的附着一次性动画
+
 
         [Header("Player setting")]
         [SerializeField] private float movingSpeed = 7f;
@@ -40,15 +49,26 @@ namespace Inkform.player
         [SerializeField][Range(0, 1)] private float wallKickMultiper = 0.3f;
         [SerializeField][Range(1, 2)] private float attackMultiper = 1.3f;
         [SerializeField] private float attackTime = 0.6f;
+        [SerializeField] private float attackAnimTime = 0.4f;   // Eat/Release 动画保持时长（与冲刺时长解耦）
+        private Timer AttackAnimTimer;
+        [SerializeField] private float landAnimTime = 0.25f;
+        [SerializeField] private float jumpUpAnimTime = 0.3f;   // JumpUp 起跳一次性动画时长
+        [SerializeField] private float ceilingAttachTime = 0.25f;  // 天花板附着一次性动画时长
+        [SerializeField] private float CeilingStickTime = 0.5f;
+        private Timer CeilingStickTimer;
         private int jumpLeft = 0;
 
         [Header("Ground Check")]
         [SerializeField] private Transform groundCheck;
+        [SerializeField] private LayerMask groundmask;
         [SerializeField] private Transform LeftWallCheck;
         [SerializeField] private Transform RightWallCheck;
+        [SerializeField] private LayerMask Wallmask;
         [SerializeField] private Transform CeilingCheck;
+        [SerializeField] private LayerMask Ceilingmask;
         [SerializeField] private float CheckRadius = 0.5f;
-        [SerializeField] private LayerMask mask;
+        private ContactPoint2D[] contacts;
+        
 
 
         // jumpBuffer
@@ -75,14 +95,21 @@ namespace Inkform.player
             ActiveNoneLinerGrivay();
             playerJumping();
 
+            UpdateAnimationState();
+
+
         }
 
         private void ContactCheck()
         {
-            OnGround = Physics2D.OverlapCircle(groundCheck.position, CheckRadius, mask);
-            OnLeftWall = Physics2D.OverlapCircle(LeftWallCheck.position, CheckRadius, mask);
-            OnRightWall = Physics2D.OverlapCircle(RightWallCheck.position, CheckRadius, mask);
-            OnCeiling = Physics2D.OverlapCircle(CeilingCheck.position, CheckRadius, mask);
+            OnGround = Physics2D.OverlapCircle(groundCheck.position, CheckRadius, groundmask);
+            OnLeftWall = Physics2D.OverlapCircle(LeftWallCheck.position, CheckRadius, Wallmask | Ceilingmask);
+            OnRightWall = Physics2D.OverlapCircle(RightWallCheck.position, CheckRadius, Wallmask | Ceilingmask);
+            OnCeiling = Physics2D.OverlapCircle(CeilingCheck.position, CheckRadius, Ceilingmask);
+
+            if (OnCeiling && OnLeftWall) OnCeiling = false;
+            if (OnCeiling && OnRightWall) OnCeiling = false;
+            if (!OnCeiling) CeilingStickTimer.Set(CeilingStickTime);
         }
 
         private void ActiveNoneLinerGrivay()
@@ -90,7 +117,11 @@ namespace Inkform.player
             bool onWall = OnLeftWall || OnRightWall;
             bool wallSliding = onWall && !OnGround && controller.linearVelocityY < 0f;
 
-            if (wallSliding)
+            if (OnCeiling && CeilingStickTimer.IsRunning)
+                controller.gravityScale = -5;
+            else if(!CeilingStickTimer.IsRunning)
+                controller.gravityScale = Gravity;
+            else if (wallSliding)
                 controller.gravityScale = Gravity * OnWallGravityMultiper;
             else if (controller.linearVelocityY < 0f)
                 controller.gravityScale = Gravity * fallGravityMultiper;
@@ -102,20 +133,15 @@ namespace Inkform.player
         {
             if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning) return;
 
+            moveInput = input;
+
             if (input.x > 0.01f)
             {
                 SetFace(FaceDirection.R);
-                SetState(PlayerState.moving);
             }
             else if (input.x < -0.01f)
             {
                 SetFace(FaceDirection.L);
-                SetState(PlayerState.moving);
-            }
-            else if (input.x == 0)
-            {
-                // SetFace(faceDirection);
-                SetState(PlayerState.Idle);
             }
 
             controller.linearVelocityX = input.x * movingSpeed;
@@ -138,16 +164,31 @@ namespace Inkform.player
 
         public void playerAttack()
         {
-            SetState(PlayerState.Attack);
+            if (holdingItem)
+            {
+                holdingItem = false;
+                SetState(PlayerState.Release);   // 吐出叼着的物品
+            }
+            else
+            {
+                SetState(PlayerState.Eat);       // 吃 / Eat
+            }
 
             float dir = faceDirection == FaceDirection.R ? 1f : -1f;
             controller.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, controller.linearVelocityY);
-            AttackTimer.Set(attackTime);
+            AttackTimer.Set(attackTime);          // 冲刺 / 移动锁定
+            AttackAnimTimer.Set(attackAnimTime);  // Eat/Release 动画保持
         }
 
         public void playerAttackCancel()
         {
-            SetState(PlayerState.Idle);
+            // 让 Eat/Release 在 AttackTimer 时长内完整播放，到期后由 UpdateAnimationState 恢复移动动画
+        }
+
+        // 由 Bomb 等物品在被吃下时调用：只有真实吃到才进入叼着物品状态
+        public void OnItemEaten()
+        {
+            holdingItem = true;
         }
 
         private void playerJumping()
@@ -163,11 +204,10 @@ namespace Inkform.player
             }
 
             bool canJump = (Time.time - requestTime) < jumpBuffer;
-            Debug.Log(jumpLeft);
+            // Debug.Log(jumpLeft);
             if (canJump && jumpLeft > 0)
             {
 
-                SetState(PlayerState.Jump);
                 if (OnLeftWall && !OnGround)
                 {
                     controller.linearVelocity = new Vector2(jumpSpeed * wallKickMultiper, jumpSpeed);
@@ -181,6 +221,7 @@ namespace Inkform.player
                 controller.linearVelocityY = jumpSpeed;
                 requestTime = -999f;
                 jumpLeft--;
+                JumpUpTimer.Set(jumpUpAnimTime);   // 起跳一次性动画（含地面跳/二段跳/墙跳）
                 if(OnGround)
                 {
                     updateBuffer.Set(0.1f);
@@ -188,6 +229,54 @@ namespace Inkform.player
             }
 
             if (OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+        }
+
+        // 集中式动画状态机：每帧按优先级决定当前动画状态
+        // 落地一次性检测 > 吃/吐 > 天花板(动/静) > 墙侧下滑 > 空中(JumpUp一次性→Rise/Fall) > 地面(Move/Idle)
+        private void UpdateAnimationState()
+        {
+            // 落地/贴顶瞬间的一次性动画（起跳一次性在 playerJumping 里触发）
+            if (!prevOnGround && OnGround) LandAnimTimer.Set(landAnimTime);
+            prevOnGround = OnGround;
+            if (!prevOnCeiling && OnCeiling) CeilingAttachTimer.Set(ceilingAttachTime);
+            prevOnCeiling = OnCeiling;
+
+            if (AttackAnimTimer.IsRunning) return;   // Eat/Release 动画保持期间不打断
+
+            if (OnCeiling)
+            {
+                if (CeilingAttachTimer.IsRunning)
+                    SetState(PlayerState.CeilingStick);              // 刚贴上：附着一次性
+                else if (Mathf.Abs(moveInput.x) > 0.01f)
+                    SetState(PlayerState.CeilingMove);               // 天花板移动
+                else
+                    SetState(PlayerState.CeilingIdle);               // 静止 = 上下翻转的 Idle
+                return;
+            }
+
+            bool onWall = OnLeftWall || OnRightWall;
+            if (onWall && !OnGround && controller.linearVelocityY < 0f)
+            {
+                SetState(faceDirection == FaceDirection.L
+                    ? PlayerState.WallSlideL        // 贴左墙下滑
+                    : PlayerState.WallSlideR);      // 贴右墙下滑
+                return;
+            }
+
+            if (!OnGround)
+            {
+                if (JumpUpTimer.IsRunning) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
+                else SetState(controller.linearVelocityY > 0.01f
+                    ? PlayerState.Rise               // 上升
+                    : PlayerState.Fall);             // 下落
+                return;
+            }
+
+            if (LandAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // 落地瞬间
+
+            SetState(Mathf.Abs(moveInput.x) > 0.01f
+                ? PlayerState.Move
+                : PlayerState.Idle);
         }
 
         private void SetState(PlayerState state)
@@ -198,7 +287,7 @@ namespace Inkform.player
                 lastState = state;
                 OnPlayerAction?.Invoke(state, faceDirection);
 
-                Debug.Log("PlayerState: " + playerState);
+                // Debug.Log("PlayerState: " + playerState);
             }
 
             
@@ -211,7 +300,7 @@ namespace Inkform.player
             {
                 lastFace = face;
                 OnPlayerAction?.Invoke(playerState, face);
-                Debug.Log("FaceDirection: " + faceDirection);
+                // Debug.Log("FaceDirection: " + faceDirection);
             }
 
             
