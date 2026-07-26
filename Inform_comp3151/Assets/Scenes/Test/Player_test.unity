@@ -495,6 +495,10 @@ PrefabInstance:
       propertyPath: overrides.Array.data[1].size.y
       value: 0.5
       objectReference: {fileID: 0}
+    - target: {fileID: 7099724744160094467, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
+      propertyPath: attackMultiper
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8747597000814489108, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
       propertyPath: m_LocalPosition.x
       value: -3.0275145
@@ -1137,62 +1141,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
---- !u!1 &1808235240 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
-  m_PrefabInstance: {fileID: 6732788752910225187}
-  m_PrefabAsset: {fileID: 0}
---- !u!58 &1808235243
-CircleCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1808235240}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 1
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
---- !u!114 &1808235244
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1808235240}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8825d4c801b2ed54fba3594525f06ff0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Bomb
-  itemID: Bomb
-  lifeCount: 1
-  eatAble: 1
 --- !u!1 &1995878786
 GameObject:
   m_ObjectHideFlags: 0
@@ -1523,13 +1471,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1808235244}
-    - targetCorrespondingSourceObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1808235243}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

@@ -27,7 +27,7 @@ namespace Inkform.player
 
         // animation driving
         private Vector2 moveInput;
-        private bool holdingItem = false;
+        private ItemSuper heldItem;    // 叼在嘴里的物品（null = 没叼东西）
         private bool prevOnGround = false;
         private bool prevOnCeiling = false;
         private Timer LandAnimTimer;   // 落地瞬间的一次性动画
@@ -72,6 +72,14 @@ namespace Inkform.player
         private float requestTime = -999f;
         private Timer updateBuffer;
 
+        [Header("Item / Knockback")]
+        // x 都会按朝向取反；spitOffset.x 必须大于「玩家碰撞体半宽 + 物品半径」，否则出生就重叠、会被物理弹开
+        [SerializeField] private Vector2 spitOffset = new Vector2(0.9f, 0.15f);
+        // spitSpeed.x 必须大于冲刺速度（movingSpeed * attackMultiper），否则吐出去就被自己追上、免疫期一过原地自爆
+        [SerializeField] private Vector2 spitSpeed = new Vector2(24f, 6f);
+        [SerializeField] private float knockbackTime = 0.35f;   // 被炸飞后锁住移动输入的时长
+        private Timer KnockbackTimer;
+
         void Awake()
         {
             controller = GetComponent<Rigidbody2D>();
@@ -87,11 +95,13 @@ namespace Inkform.player
         void OnEnable()
         {
             ItemBus.ItemEaten += OnItemEaten;
+            HazardBus.Exploded += OnExploded;
         }
 
         void OnDisable()
         {
             ItemBus.ItemEaten -= OnItemEaten;
+            HazardBus.Exploded -= OnExploded;
         }
 
         void Update()
@@ -138,7 +148,8 @@ namespace Inkform.player
 
         public void playerMoving(Vector2 input)
         {
-            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning) return;
+            // 被炸飞期间也不接受移动输入，否则下一帧就把击退速度抹掉了
+            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning || KnockbackTimer.IsRunning) return;
 
             moveInput = input;
 
@@ -171,17 +182,20 @@ namespace Inkform.player
 
         public void playerAttack()
         {
-            if (holdingItem)
+            float dir = faceDirection == FaceDirection.R ? 1f : -1f;
+
+            if (heldItem != null)
             {
-                holdingItem = false;
                 SetState(PlayerState.Release);   // 吐出叼着的物品
+                Vector2 mouth = (Vector2)transform.position + new Vector2(dir * spitOffset.x, spitOffset.y);
+                ItemBus.RaiseItemReleased(heldItem, mouth, new Vector2(dir * spitSpeed.x, spitSpeed.y));
+                heldItem = null;
             }
             else
             {
                 SetState(PlayerState.Eat);       // 吃 / Eat
             }
 
-            float dir = faceDirection == FaceDirection.R ? 1f : -1f;
             controller.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, controller.linearVelocityY);
             AttackTimer.Set(attackTime);          // 冲刺 / 移动锁定
             AttackAnimTimer.Set(attackAnimTime);  // Eat/Release 动画保持
@@ -195,7 +209,16 @@ namespace Inkform.player
         // 由 ItemBus 在物品被吃下时回调：只有真实吃到才进入叼着物品状态
         private void OnItemEaten(ItemSuper item)
         {
-            holdingItem = true;
+            heldItem = item;
+        }
+
+        // 由 HazardBus 在爆炸时回调：沿「爆心 → 自己」的 8 向之一弹开，并锁一小段移动输入
+        private void OnExploded(GameObject victim, Vector2 center, float force)
+        {
+            if (victim != gameObject) return;
+
+            controller.linearVelocity = Dir8.Snap((Vector2)transform.position - center) * force;
+            KnockbackTimer.Set(knockbackTime);
         }
 
         private void playerJumping()

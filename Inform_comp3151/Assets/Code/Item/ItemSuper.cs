@@ -29,5 +29,6 @@ public class ItemSuper : MonoBehaviour
         if (_visible == visible) return;
         _visible = visible;
         if (sprite != null) sprite.enabled = visible;
+        
     }
 }

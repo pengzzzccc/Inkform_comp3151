@@ -174,6 +174,9 @@ MonoBehaviour:
     m_Bits: 1024
   CheckRadius: 0.1
   jumpBuffer: 0.15
+  spitOffset: {x: 0.9, y: 0.15}
+  spitSpeed: {x: 24, y: 6}
+  knockbackTime: 0.35
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5
