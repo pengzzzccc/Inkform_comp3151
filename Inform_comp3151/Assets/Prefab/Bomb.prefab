@@ -169,8 +169,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8825d4c801b2ed54fba3594525f06ff0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bomb
-  itemID: Bomb
-  lifeCount: 1
   eatAble: 1
   fuseTime: 1.5
   armTime: 0.3
@@ -178,5 +176,10 @@ MonoBehaviour:
   blastForce: 18
   blastMask:
     serializedVersion: 2
-    m_Bits: 1
+    m_Bits: 2049
   frontEpsilon: 0.05
+  bombFragment: {fileID: 4307302687437123413, guid: d7a20d6e5585c3e479258fcca3224ae8, type: 3}
+  fragmentsX: 2
+  fragmentsY: 3
+  forceMultiper: 0.6
+  spinSpeed: 180

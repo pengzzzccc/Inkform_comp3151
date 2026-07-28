@@ -9,7 +9,7 @@ namespace Inkform.Bus
     /// </summary>
     public static class ItemBus
     {
-        /// <summary>玩家吃下某个物品。参数是被吃掉的物品本身，听众可按 ItemID 区分种类。</summary>
+        /// <summary>玩家吃下某个物品。参数是被吃掉的物品本身，听众可按具体子类型区分种类。</summary>
         public static event Action<ItemSuper> ItemEaten;
 
         /// <summary>玩家吐出叼着的物品。pos = 出生点（嘴边），velocity = 初速度。</summary>

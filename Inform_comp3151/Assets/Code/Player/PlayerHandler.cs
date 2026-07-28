@@ -65,8 +65,7 @@ namespace Inkform.player
         [SerializeField] private Transform CeilingCheck;
         [SerializeField] private LayerMask Ceilingmask;
         [SerializeField] private float CheckRadius = 0.5f;
-        private ContactPoint2D[] contacts;
-        
+
         // jumpBuffer
         [SerializeField] private float jumpBuffer = 0.2f;
         private float requestTime = -999f;
@@ -198,12 +197,8 @@ namespace Inkform.player
 
             controller.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, controller.linearVelocityY);
             AttackTimer.Set(attackTime);          // 冲刺 / 移动锁定
-            AttackAnimTimer.Set(attackAnimTime);  // Eat/Release 动画保持
-        }
-
-        public void playerAttackCancel()
-        {
-            // 让 Eat/Release 在 AttackTimer 时长内完整播放，到期后由 UpdateAnimationState 恢复移动动画
+            // Eat/Release 动画保持：松键不打断，到期后由 UpdateAnimationState 恢复移动动画
+            AttackAnimTimer.Set(attackAnimTime);
         }
 
         // 由 ItemBus 在物品被吃下时回调：只有真实吃到才进入叼着物品状态
@@ -234,7 +229,6 @@ namespace Inkform.player
             }
 
             bool canJump = (Time.time - requestTime) < jumpBuffer;
-            // Debug.Log(jumpLeft);
             if (canJump && jumpLeft > 0)
             {
 
@@ -293,7 +287,6 @@ namespace Inkform.player
                 return;
             }
 
-            bool onTop = controller.linearVelocityY < 0.1f | controller.linearVelocityY > -0.1f; // 准备加入到顶的顶点动画
             if (!OnGround)
             {
                 if (JumpUpTimer.IsRunning && (controller.linearVelocityX > 0.3 | controller.linearVelocityX < -0.3)) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）

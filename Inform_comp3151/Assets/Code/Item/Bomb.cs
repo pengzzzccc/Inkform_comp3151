@@ -20,7 +20,15 @@ public class Bomb : ItemSuper
     [SerializeField] private LayerMask blastMask;
     [SerializeField] private float frontEpsilon = 0.05f;    // 正前方判定容差：几乎重合时算正面
 
+    [Header("Break setting")]
+    [SerializeField] private GameObject bombFragment;
+    [SerializeField] private int fragmentsX = 2;            // 横向切几块
+    [SerializeField] private int fragmentsY = 3;            // 纵向切几块
+    [SerializeField][Range(0f, 2f)] private float forceMultiper = 0.6f;   // 碎块速度 = 爆炸推力 × 本系数
+    [SerializeField] private float spinSpeed = 180f;        // 碎块随机自转的角速度上限
+
     private BombPhase phase = BombPhase.Idle;
+    private bool exploded = false;      // 引信到期那一帧玩家正贴着时，物理回调和 Update 会各炸一次，防重入
     private Rigidbody2D body;
     private CircleCollider2D hitBox;
     private Timer FuseTimer;
@@ -75,6 +83,7 @@ public class Bomb : ItemSuper
         }
     }
 
+
     // 以玩家为原点，看炸弹是不是在玩家朝向的那一侧
     private bool IsInFront(Transform player)
     {
@@ -120,6 +129,10 @@ public class Bomb : ItemSuper
 
     private void Explode()
     {
+        // Destroy 要到帧末才生效，拦不住同一帧内的第二次调用；不挡的话抖屏、击退、碎块全是双份
+        if (exploded) return;
+        exploded = true;
+
         Vector2 center = transform.position;
 
         Collider2D[] hits = Physics2D.OverlapCircleAll(center, blastRadius, blastMask);
@@ -129,7 +142,28 @@ public class Bomb : ItemSuper
             HazardBus.RaiseExploded(h.gameObject, center, blastForce);
         }
 
-        // TODO: 爆炸特效 / 音效（工程里目前没有任何粒子和音频资源）
+        playExplode();      // 无论炸到什么（哪怕一个都没炸到）都要销毁自己
+    }
+
+    private void playExplode()
+    {
+        // 必须赶在关掉碰撞体之前取包围盒：Collider2D 一 disabled，
+        // 物理形状就被移除，bounds 会退化成原点上的零尺寸
+        Bounds bounds = hitBox.bounds;
+
+        // 整体爆炸信号：每次爆炸恰好一次，屏幕抖动等特效靠它驱动
+        // （不能用 Exploded —— 那个在 foreach 里逐受害者发，炸到 N 个就发 N 次）
+        HazardBus.RaiseBlast(transform.position, blastRadius, blastForce);
+
+        // Destroy 要等到帧末才生效，这期间本体还在渲染，不关的话本体和碎块会重叠显示一帧
+        hitBox.enabled = false;
+        SetVisible(false);
+
+        // 炸弹自身碎成小块从爆心向四周弹开，和可破坏墙同一套表现
+        Shatter.Burst(bombFragment, bounds, fragmentsX, fragmentsY,
+                      transform.position, blastForce, forceMultiper, spinSpeed);
+
+        // TODO: 爆炸音效（工程里目前没有音频资源）
         Destroy(gameObject);
     }
 
@@ -137,5 +171,13 @@ public class Bomb : ItemSuper
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, blastRadius);
+
+        // 黄色网格 = 碎块怎么切，方便调 fragmentsX / fragmentsY
+        // 这里不能用 hitBox：编辑器下 Awake 没跑过，缓存还是空的
+        CircleCollider2D box = GetComponent<CircleCollider2D>();
+        if (box == null) return;
+
+        Gizmos.color = Color.yellow;
+        Shatter.DrawGrid(box.bounds, fragmentsX, fragmentsY);
     }
 }

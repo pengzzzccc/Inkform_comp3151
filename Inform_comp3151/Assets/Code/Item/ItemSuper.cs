@@ -7,16 +7,12 @@ using UnityEngine;
 public class ItemSuper : MonoBehaviour
 {
     //Item data
-    [SerializeField] private string itemID;
-    [SerializeField] private int lifeCount;
     [SerializeField] private bool eatAble = true;
     private bool _visible = true;
 
     //Item component
     private SpriteRenderer sprite;
 
-    public string ItemID => itemID;
-    public int LifeCount => lifeCount;
     public bool EatAble => eatAble;
 
     protected virtual void Awake()

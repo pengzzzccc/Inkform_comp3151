@@ -121,7 +121,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -5666052560258612609, guid: 90b5bbee4e708aa4e9e1ceaa23c9f77b, type: 3}
+  m_Sprite: {fileID: 7237126120167279753, guid: 90b5bbee4e708aa4e9e1ceaa23c9f77b, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -162,12 +162,12 @@ MonoBehaviour:
   groundCheck: {fileID: 8569766163812240374}
   groundmask:
     serializedVersion: 2
-    m_Bits: 64
+    m_Bits: 2112
   LeftWallCheck: {fileID: 1208995721875728481}
   RightWallCheck: {fileID: 187834089383587721}
   Wallmask:
     serializedVersion: 2
-    m_Bits: 512
+    m_Bits: 2560
   CeilingCheck: {fileID: 2554766400171842085}
   Ceilingmask:
     serializedVersion: 2
@@ -285,7 +285,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   body: {fileID: 3527788610966020256}
-  player: {fileID: 7099724744160094467}
   defaultSize: {x: 0.6, y: 0.6}
   defaultOffset: {x: 0, y: 0}
   overrides:

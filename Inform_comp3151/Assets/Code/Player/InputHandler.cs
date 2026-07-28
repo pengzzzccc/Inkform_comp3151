@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Inkform.player;
@@ -13,13 +12,6 @@ namespace Inkform.Input
         private InputAction movment;
         private InputAction jump;
         private InputAction attack;
-        private InputAction interact;
-
-        // UI inputAction init
-        private InputAction submit;
-        private InputAction cancel;
-        private InputAction navigate;
-        private InputAction click;
 
         // Get player
         [SerializeField] private PlayerHandler player;
@@ -35,14 +27,6 @@ namespace Inkform.Input
             movment = playerInput.Player.Move;
             jump = playerInput.Player.Jump;
             attack = playerInput.Player.Attack;
-            interact = playerInput.Player.Interact;
-
-            // UI input setup
-            submit = playerInput.UI.Submit;
-            cancel = playerInput.UI.Cancel;
-            navigate = playerInput.UI.Navigate;
-            click = playerInput.UI.Click;
-
         }
 
         void Update()
@@ -67,30 +51,17 @@ namespace Inkform.Input
             player.playerAttack();
         }
 
-        private void OnAttackCancel(InputAction.CallbackContext ctx)
-        {
-            player.playerAttackCancel();
-        }
-
         void OnEnable()
         {
             // enable player input.
             movment.Enable();
             jump.Enable();
             attack.Enable();
-            interact.Enable();
-
-            // enable UI input.
-            submit.Enable();
-            cancel.Enable();
-            navigate.Enable();
-            click.Enable();
 
             // jump input callback
             jump.performed += OnJumpPerformed;
             jump.canceled += OnJumpCancel;
             attack.performed += OnAttackPreformed;
-            attack.canceled += OnAttackCancel;
 
         }
 
@@ -100,19 +71,11 @@ namespace Inkform.Input
             movment.Disable();
             jump.Disable();
             attack.Disable();
-            interact.Disable();
-
-            // enable UI input.
-            submit.Disable();
-            cancel.Disable();
-            navigate.Disable();
-            click.Disable();
 
             // jump input callback
             jump.performed -= OnJumpPerformed;
             jump.canceled -= OnJumpCancel;
             attack.performed -= OnAttackPreformed;
-            attack.canceled -= OnAttackCancel;
 
         }
     }
