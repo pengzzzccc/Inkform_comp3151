@@ -15,13 +15,20 @@ namespace Inkform.Bus
         /// <summary>玩家吐出叼着的物品。pos = 出生点（嘴边），velocity = 初速度。</summary>
         public static event Action<ItemSuper, Vector2, Vector2> ItemReleased;
 
+        /// <summary>当前叼在嘴里的物品（null = 没叼东西）。
+        /// 快照必须在 Invoke 之前更新：同一物理步里多个物品依次回调，
+        /// 后面那个要能立刻看到前面那个已经被吃下。</summary>
+        public static ItemSuper Held { get; private set; }
+
         public static void RaiseItemEaten(ItemSuper item)
         {
+            Held = item;
             ItemEaten?.Invoke(item);
         }
 
         public static void RaiseItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity)
         {
+            if (Held == item) Held = null;      // 只有吐的确实是叼着的那个才清快照
             ItemReleased?.Invoke(item, pos, velocity);
         }
 
@@ -31,6 +38,7 @@ namespace Inkform.Bus
         {
             ItemEaten = null;
             ItemReleased = null;
+            Held = null;
         }
     }
 }

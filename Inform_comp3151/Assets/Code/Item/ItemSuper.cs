@@ -9,6 +9,7 @@ public class ItemSuper : MonoBehaviour
     //Item data
     [SerializeField] private bool eatAble = true;
     private bool _visible = true;
+    private Sprite _current;
 
     //Item component
     private SpriteRenderer sprite;
@@ -25,6 +26,14 @@ public class ItemSuper : MonoBehaviour
         if (_visible == visible) return;
         _visible = visible;
         if (sprite != null) sprite.enabled = visible;
-        
+
+    }
+
+    // 和 SetVisible 一样自带去重：逐帧驱动的动画每帧都会调进来，但大多数帧是同一张图
+    protected void SetSprite(Sprite s)
+    {
+        if (_current == s) return;
+        _current = s;
+        if (sprite != null) sprite.sprite = s;
     }
 }

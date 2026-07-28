@@ -17,6 +17,14 @@ namespace Inkform.Bus
         /// 所以「一次爆炸抖一次屏」这类整体反馈只能听 Blast。</summary>
         public static event Action<Vector2, float, float> Blast;
 
+        /// <summary>可破坏物被炸碎（每碎一个发一次）：center = 被炸碎物体的中心。
+        /// 与 Blast 区分 —— Blast 是「发生了一次爆炸」，这个是「有东西被炸碎了」。</summary>
+        public static event Action<Vector2> Broken;
+
+        /// <summary>危险物的警戒帧推进了一格：pos = 位置，step = 新帧序号，total = 总帧数。
+        /// 逼近预警和引信倒计时共用这一个信号 —— 两者都是「离炸还有多近」的离散推进。</summary>
+        public static event Action<Vector2, int, int> Ticked;
+
         public static void RaiseExploded(GameObject victim, Vector2 center, float force)
         {
             Exploded?.Invoke(victim, center, force);
@@ -27,12 +35,24 @@ namespace Inkform.Bus
             Blast?.Invoke(center, radius, force);
         }
 
+        public static void RaiseBroken(Vector2 center)
+        {
+            Broken?.Invoke(center);
+        }
+
+        public static void RaiseTicked(Vector2 pos, int step, int total)
+        {
+            Ticked?.Invoke(pos, step, total);
+        }
+
         // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             Exploded = null;
             Blast = null;
+            Broken = null;
+            Ticked = null;
         }
     }
 }

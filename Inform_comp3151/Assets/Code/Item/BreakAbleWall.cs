@@ -55,6 +55,11 @@ public class BreakAbleWall : MonoBehaviour
         // bounds 在关碰撞体之前就取好了，这里传的是那份快照
         Shatter.Burst(fragmentPrefab, bounds, fragmentsX, fragmentsY,
                       center, force, forceMultiper, spinSpeed);
+
+        // 碎裂信号：音效等表现靠它驱动。用 bounds.center 而不是 transform.position ——
+        // bounds 是关碰撞体之前取的快照，才是这面墙真正的几何中心
+        HazardBus.RaiseBroken(bounds.center);
+
         Destroy(gameObject);
     }
 
