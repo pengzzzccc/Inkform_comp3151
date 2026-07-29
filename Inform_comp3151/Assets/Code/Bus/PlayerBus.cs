@@ -37,7 +37,7 @@ namespace Inkform.Bus
         {
             StateChanged = null;
             FaceChanged = null;
-            // 与 PlayerHandler 的字段默认值保持一致（枚举默认值 Idle / L），避免启动时多广播一次
+            // 与 PlayerHandler 的字段默认值保持一致（Idle / R），避免启动时多广播一次
             State = PlayerState.Idle;
             Face = FaceDirection.R;
         }

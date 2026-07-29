@@ -13,7 +13,7 @@ namespace Inkform.player
     {
         // PlayerState
         private PlayerState playerState;
-        private FaceDirection faceDirection;
+        private FaceDirection faceDirection = FaceDirection.R;   // 与 PlayerBus 快照默认值一致，否则开局白广播一次 L
 
         // player controller
         private Rigidbody2D controller;
@@ -112,8 +112,7 @@ namespace Inkform.player
             playerJumping();
 
             UpdateAnimationState();
-
-
+            
         }
 
         private void ContactCheck()
@@ -147,11 +146,7 @@ namespace Inkform.player
 
         public void playerMoving(Vector2 input)
         {
-            // 被炸飞期间也不接受移动输入，否则下一帧就把击退速度抹掉了
-            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning || KnockbackTimer.IsRunning) return;
-
-            moveInput = input;
-
+            // 朝向：输入永远最高优先级（移动锁定期间也生效）；无输入则保持当前朝向
             if (input.x > 0.01f)
             {
                 SetFace(FaceDirection.R);
@@ -160,6 +155,11 @@ namespace Inkform.player
             {
                 SetFace(FaceDirection.L);
             }
+
+            moveInput = input;   // 只驱动动画不参与物理，锁定期间也要跟着输入走，否则落地会错放 Move
+
+            // 被炸飞期间也不接受移动输入，否则下一帧就把击退速度抹掉了
+            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning || KnockbackTimer.IsRunning) return;
 
             controller.linearVelocityX = input.x * movingSpeed;
         }
@@ -278,17 +278,18 @@ namespace Inkform.player
                 return;
             }
 
-            bool onWall = OnLeftWall || OnRightWall;
-            if (onWall && !OnGround && controller.linearVelocityY < 0f)
+            // bool onWall = OnLeftWall || OnRightWall;
+            if ((OnLeftWall || OnRightWall) && !OnGround && controller.linearVelocityY < 1f)
             {
-                SetState(faceDirection == FaceDirection.L
-                    ? PlayerState.WallSlideL        // 贴左墙下滑
-                    : PlayerState.WallSlideR);      // 贴右墙下滑
+                if(OnLeftWall) SetState(PlayerState.WallSlideL );
+                if(OnRightWall) SetState(PlayerState.WallSlideR);
                 return;
             }
 
+
             if (!OnGround)
             {
+
                 if (JumpUpTimer.IsRunning && (controller.linearVelocityX > 0.3 | controller.linearVelocityX < -0.3)) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
                 else SetState(controller.linearVelocityY > 0.1f
                     ? PlayerState.Rise               // 上升
@@ -298,7 +299,7 @@ namespace Inkform.player
 
             if (LandAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // 落地瞬间
 
-            SetState(Mathf.Abs(moveInput.x) > 0.01f
+            SetState(Mathf.Abs(moveInput.x) > 0.2f
                 ? PlayerState.Move
                 : PlayerState.Idle);
         }
