@@ -186,8 +186,4 @@ MonoBehaviour:
   - {fileID: -8756790491359087728, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: -3034200899849956086, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   proximityRadius: 3.5
-  bombFragment: {fileID: 4307302687437123413, guid: d7a20d6e5585c3e479258fcca3224ae8, type: 3}
-  fragmentsX: 2
-  fragmentsY: 3
-  forceMultiper: 0.6
-  spinSpeed: 180
+  breakCue: {fileID: 11400000, guid: b7d92e04a1c5f8439e26d7b0a3c14f85, type: 2}

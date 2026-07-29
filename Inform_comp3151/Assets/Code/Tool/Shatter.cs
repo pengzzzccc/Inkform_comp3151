@@ -2,7 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// 网格碎裂：把一个包围盒按 cellsX × cellsY 切成小块，每块沿「爆心 → 块中心」的 8 向弹开。
-/// 可破坏墙和炸弹共用同一套碎裂表现，自己不持有任何状态，参数全由调用方给。
+/// 可破坏墙和炸弹共用同一套碎裂表现，自己不持有任何状态 ——
+/// 切几块、弹多快、长什么样全写在调用方给的 FragmentCue 里。
 /// </summary>
 public static class Shatter
 {
@@ -10,40 +11,42 @@ public static class Shatter
     /// 沿网格生成碎块。bounds 必须由调用方在关掉碰撞体之前取好 ——
     /// Collider2D 一 disabled，物理形状就被移除，bounds 会退化成原点上的零尺寸。
     /// </summary>
-    public static void Burst(GameObject prefab, Bounds bounds, int cellsX, int cellsY,
-                             Vector2 center, float force, float forceMultiper, float spinSpeed)
+    public static void Burst(FragmentCue cue, Bounds bounds, Vector2 center, float force)
     {
-        if (prefab == null) return;
-        if (cellsX < 1 || cellsY < 1) return;
+        if (cue == null || cue.prefab == null) return;      // 槽位没配，静默跳过
+        if (cue.cellsX < 1 || cue.cellsY < 1) return;
 
-        Vector2 cell = new Vector2(bounds.size.x / cellsX, bounds.size.y / cellsY);
+        Vector2 cell = new Vector2(bounds.size.x / cue.cellsX, bounds.size.y / cue.cellsY);
 
-        for (int ix = 0; ix < cellsX; ix++)
+        for (int ix = 0; ix < cue.cellsX; ix++)
         {
-            for (int iy = 0; iy < cellsY; iy++)
+            for (int iy = 0; iy < cue.cellsY; iy++)
             {
                 // 格中心 = 包围盒左下角 + (格号 + 0.5) × 格尺寸
                 Vector2 pos = new Vector2(
                     bounds.min.x + (ix + 0.5f) * cell.x,
                     bounds.min.y + (iy + 0.5f) * cell.y);
 
-                SpawnFragment(prefab, pos, cell, center, force, forceMultiper, spinSpeed);
+                SpawnFragment(cue, pos, cell, center, force);
             }
         }
     }
 
-    private static void SpawnFragment(GameObject prefab, Vector2 pos, Vector2 size,
-                                      Vector2 center, float force, float forceMultiper, float spinSpeed)
+    private static void SpawnFragment(FragmentCue cue, Vector2 pos, Vector2 cell,
+                                      Vector2 center, float force)
     {
-        GameObject frag = Object.Instantiate(prefab, pos, Quaternion.identity);
-        frag.transform.localScale = size;       // 碎块预制体按 1×1 做，格尺寸直接当缩放
+        GameObject frag = Object.Instantiate(cue.prefab, pos, Quaternion.identity);
+
+        // 外观和缩放交给 Fragment 自己按 Cue 定：只有它知道最终随机取到的是哪张图、原始尺寸多大
+        if (frag.TryGetComponent(out Fragment fragment)) fragment.Apply(cue, cell);
+        else frag.transform.localScale = cell;      // 预制体上没挂 Fragment 时，退回「格尺寸即缩放」
 
         if (!frag.TryGetComponent(out Rigidbody2D body)) return;
 
         // 工程里 m_AutoSyncTransforms = 0，改完 transform 顺手同步刚体，和 Bomb.OnItemReleased 一个理由
         body.position = pos;
-        body.linearVelocity = Dir8.Snap(pos - center) * (force * forceMultiper);
-        body.angularVelocity = Random.Range(-spinSpeed, spinSpeed);
+        body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiper);
+        body.angularVelocity = Random.Range(-cue.spinSpeed, cue.spinSpeed);
     }
 
     /// <summary>在 Scene 视图里画出切分网格，方便调块数。调用方负责先设好 Gizmos.color。</summary>

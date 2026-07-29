@@ -10,11 +10,7 @@ using UnityEngine;
 public class BreakAbleWall : MonoBehaviour
 {
     [Header("Break setting")]
-    [SerializeField] private GameObject fragmentPrefab;
-    [SerializeField] private int fragmentsX = 2;            // 横向切几块
-    [SerializeField] private int fragmentsY = 3;            // 纵向切几块
-    [SerializeField][Range(0f, 2f)] private float forceMultiper = 0.6f;   // 碎块速度 = 爆炸推力 × 本系数
-    [SerializeField] private float spinSpeed = 180f;        // 碎块随机自转的角速度上限
+    [SerializeField] private FragmentCue breakCue;          // 碎成什么样全写在这份资产里
 
     private Collider2D box;
     private SpriteRenderer sprite;
@@ -53,8 +49,7 @@ public class BreakAbleWall : MonoBehaviour
         sprite.enabled = false;
 
         // bounds 在关碰撞体之前就取好了，这里传的是那份快照
-        Shatter.Burst(fragmentPrefab, bounds, fragmentsX, fragmentsY,
-                      center, force, forceMultiper, spinSpeed);
+        Shatter.Burst(breakCue, bounds, center, force);
 
         // 碎裂信号：音效等表现靠它驱动。用 bounds.center 而不是 transform.position ——
         // bounds 是关碰撞体之前取的快照，才是这面墙真正的几何中心
@@ -63,13 +58,13 @@ public class BreakAbleWall : MonoBehaviour
         Destroy(gameObject);
     }
 
-    // 在 Scene 视图里画出切分网格，方便调 fragmentsX / fragmentsY
+    // 在 Scene 视图里画出切分网格，方便调 Cue 里的 cellsX / cellsY
     void OnDrawGizmosSelected()
     {
         Collider2D c = GetComponent<Collider2D>();
-        if (c == null) return;
+        if (c == null || breakCue == null) return;
 
         Gizmos.color = Color.yellow;
-        Shatter.DrawGrid(c.bounds, fragmentsX, fragmentsY);
+        Shatter.DrawGrid(c.bounds, breakCue.cellsX, breakCue.cellsY);
     }
 }

@@ -26,11 +26,7 @@ public class Bomb : ItemSuper
     [SerializeField] private float proximityRadius = 3.5f;  // 逼近预警半径，独立于 blastRadius
 
     [Header("Break setting")]
-    [SerializeField] private GameObject bombFragment;
-    [SerializeField] private int fragmentsX = 2;            // 横向切几块
-    [SerializeField] private int fragmentsY = 3;            // 纵向切几块
-    [SerializeField][Range(0f, 2f)] private float forceMultiper = 0.6f;   // 碎块速度 = 爆炸推力 × 本系数
-    [SerializeField] private float spinSpeed = 180f;        // 碎块随机自转的角速度上限
+    [SerializeField] private FragmentCue breakCue;          // 碎成什么样全写在这份资产里
 
     private BombPhase phase = BombPhase.Idle;
     private bool exploded = false;      // 引信到期那一帧玩家正贴着时，物理回调和 Update 会各炸一次，防重入
@@ -266,8 +262,7 @@ public class Bomb : ItemSuper
         SetVisible(false);
 
         // 炸弹自身碎成小块从爆心向四周弹开，和可破坏墙同一套表现
-        Shatter.Burst(bombFragment, bounds, fragmentsX, fragmentsY,
-                      transform.position, blastForce, forceMultiper, spinSpeed);
+        Shatter.Burst(breakCue, bounds, transform.position, blastForce);
 
         // 爆炸音效由 AudioDirector 订阅上面那条 Blast 播放，本类不碰音频
         Destroy(gameObject);
@@ -282,12 +277,12 @@ public class Bomb : ItemSuper
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, proximityRadius);
 
-        // 黄色网格 = 碎块怎么切，方便调 fragmentsX / fragmentsY
+        // 黄色网格 = 碎块怎么切，方便调 Cue 里的 cellsX / cellsY
         // 这里不能用 hitBox：编辑器下 Awake 没跑过，缓存还是空的
         CircleCollider2D box = GetComponent<CircleCollider2D>();
-        if (box == null) return;
+        if (box == null || breakCue == null) return;
 
         Gizmos.color = Color.yellow;
-        Shatter.DrawGrid(box.bounds, fragmentsX, fragmentsY);
+        Shatter.DrawGrid(box.bounds, breakCue.cellsX, breakCue.cellsY);
     }
 }

@@ -105,11 +105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 46de82177e4568048aa64ff993cc9914, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BreakAbleWall
-  fragmentPrefab: {fileID: 4307302687437123413, guid: d7a20d6e5585c3e479258fcca3224ae8, type: 3}
-  fragmentsX: 2
-  fragmentsY: 3
-  forceMultiper: 0.6
-  spinSpeed: 180
+  breakCue: {fileID: 11400000, guid: c81e5a3f96d2b7448ae03f21c65d9b7e, type: 2}
 --- !u!61 &2095472166306448520
 BoxCollider2D:
   m_ObjectHideFlags: 0
