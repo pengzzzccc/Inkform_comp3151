@@ -46,6 +46,7 @@ GameObject:
   - component: {fileID: 7876590005240165724}
   - component: {fileID: 5555555555555555555}
   - component: {fileID: 6890259264682127336}
+  - component: {fileID: 3049182736450917364}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -160,18 +161,12 @@ MonoBehaviour:
   ceilingAttachTime: 0.25
   CeilingStickTime: 0.5
   groundCheck: {fileID: 8569766163812240374}
-  groundmask:
-    serializedVersion: 2
-    m_Bits: 2112
   LeftWallCheck: {fileID: 1208995721875728481}
   RightWallCheck: {fileID: 187834089383587721}
-  Wallmask:
-    serializedVersion: 2
-    m_Bits: 2560
   CeilingCheck: {fileID: 2554766400171842085}
-  Ceilingmask:
+  terrainMask:
     serializedVersion: 2
-    m_Bits: 1024
+    m_Bits: 2112
   CheckRadius: 0.1
   jumpBuffer: 0.15
   spitOffset: {x: 0.9, y: 0.15}
@@ -378,3 +373,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8747597000814489108}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3049182736450917364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e011a9acdbcd3e4abf98cd3e4986369, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerDeathFx
+  deathPieces: {fileID: 11400000, guid: 43f2338f6f4b0a24ca724e3b1a535373, type: 2}
+  burstForce: 14

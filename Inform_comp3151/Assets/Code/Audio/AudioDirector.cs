@@ -24,6 +24,11 @@ public class AudioDirector : MonoBehaviour
     [SerializeField] private SoundCue jump;
     [SerializeField] private SoundCue land;
 
+    [Header("Life")]
+    [SerializeField] private SoundCue death;        // 死亡
+    [SerializeField] private SoundCue respawn;      // 在检查点复活
+    [SerializeField] private SoundCue checkpoint;   // 踩到检查点
+
     void OnEnable()
     {
         HazardBus.Blast += OnBlast;
@@ -32,6 +37,9 @@ public class AudioDirector : MonoBehaviour
         ItemBus.ItemEaten += OnItemEaten;
         ItemBus.ItemReleased += OnItemReleased;
         PlayerBus.StateChanged += OnPlayerState;
+        LifeBus.Died += OnDied;
+        LifeBus.Respawned += OnRespawned;
+        LifeBus.CheckpointSet += OnCheckpointSet;
     }
 
     void OnDisable()
@@ -42,6 +50,9 @@ public class AudioDirector : MonoBehaviour
         ItemBus.ItemEaten -= OnItemEaten;
         ItemBus.ItemReleased -= OnItemReleased;
         PlayerBus.StateChanged -= OnPlayerState;
+        LifeBus.Died -= OnDied;
+        LifeBus.Respawned -= OnRespawned;
+        LifeBus.CheckpointSet -= OnCheckpointSet;
     }
 
     // 爆炸只能听 Blast —— Exploded 是在 foreach 里逐受害者发的，炸到 N 个就响 N 声
@@ -54,6 +65,14 @@ public class AudioDirector : MonoBehaviour
     private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
 
     private void OnItemEaten(ItemSuper item) => Play(itemEaten);
+
+    // 这三条都是「玩家自己的声音」，恒在镜头中心，所以和 attack/jump/land 一样不传位置。
+    // 对应的 Cue 资产里 spatial 应保持关闭 —— 见 SoundCue.cs 里那条 Tooltip
+    private void OnDied(GameObject victim, Vector2 from) => Play(death);
+
+    private void OnRespawned(GameObject victim, Vector2 pos) => Play(respawn);
+
+    private void OnCheckpointSet(Vector2 pos) => Play(checkpoint);
 
     // 吐出点恒在玩家身上 ≈ 镜头中心，衰减系数必然接近 1，传位置纯粹是为了
     // 「有位置就传下去」的一致性，实际听感和不传一样

@@ -52,7 +52,8 @@ public class AudioManager : MonoBehaviour
         {
             if (listenerCache == null)
             {
-                AudioListener l = FindFirstObjectByType<AudioListener>();
+                // 用 Any 而不是 First：场景里本来就只该有一个启用的 AudioListener，没有「第几个」可言
+                AudioListener l = FindAnyObjectByType<AudioListener>();
                 listenerCache = l != null ? l.transform : null;
             }
             return listenerCache;

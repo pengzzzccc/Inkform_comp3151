@@ -1,43 +1,37 @@
 fileFormatVersion: 2
-guid: 90b5bbee4e708aa4e9e1ceaa23c9f77b
+guid: 4afd06ca60635104eb009413df7977a4
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -5666052560258612609
-    second: Eat_L_0
+      213: 8618291256218218969
+    second: BreakableTile_Pieces_0
   - first:
-      213: 5560399001186187705
-    second: Eat_L_1
+      213: 1921591972071962348
+    second: BreakableTile_Pieces_1
   - first:
-      213: 3587525006272502459
-    second: Eat_L_2
+      213: -8970347446256885500
+    second: BreakableTile_Pieces_2
   - first:
-      213: 7971204745659840505
-    second: Eat_L_3
+      213: -6425991619555185930
+    second: BreakableTile_Pieces_3
   - first:
-      213: -8250996776731344767
-    second: Eat_L_4
+      213: -1622707177624112125
+    second: BreakableTile_Pieces_4
   - first:
-      213: 5552954646188896575
-    second: Eat_L_5
+      213: 6618493159444790752
+    second: BreakableTile_Pieces_5
   - first:
-      213: -2313969272498833058
-    second: Eat_L_6
+      213: -2787489820789427856
+    second: BreakableTile_Pieces_6
   - first:
-      213: -4666669463911625072
-    second: Eat_L_7
+      213: -1196667552880116314
+    second: BreakableTile_Pieces_7
   - first:
-      213: 7780041836372035800
-    second: Eat_L_8
+      213: -3178569215981753215
+    second: BreakableTile_Pieces_8
   - first:
-      213: -4015484315090062042
-    second: Eat_L_9
-  - first:
-      213: -8388326218162587608
-    second: Eat_L_10
-  - first:
-      213: 7237126120167279753
-    second: Eat_L_11
+      213: 6054793063058078290
+    second: BreakableTile_Pieces_9
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -159,243 +153,221 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Eat_L_1
+      name: BreakableTile_Pieces_0
       rect:
         serializedVersion: 2
-        x: 34
-        y: 8
-        width: 28
-        height: 14
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9b9b32b6e618a2d40800000000000000
-      internalID: 5560399001186187705
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_2
-      rect:
-        serializedVersion: 2
-        x: 65
-        y: 8
-        width: 30
-        height: 10
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: bba14b55cf279c130800000000000000
-      internalID: 3587525006272502459
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_3
-      rect:
-        serializedVersion: 2
-        x: 102
-        y: 8
-        width: 25
-        height: 23
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 9f776f0ab786f9e60800000000000000
-      internalID: 7971204745659840505
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_4
-      rect:
-        serializedVersion: 2
-        x: 128
-        y: 8
-        width: 32
+        x: 2
+        y: 64
+        width: 19
         height: 24
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1800900b5229e7d80800000000000000
-      internalID: -8250996776731344767
+      spriteID: 9d1fdb16c325a9770800000000000000
+      internalID: 8618291256218218969
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Eat_L_5
+      name: BreakableTile_Pieces_1
       rect:
         serializedVersion: 2
-        x: 161
-        y: 8
-        width: 30
-        height: 24
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: f31b1f374de001d40800000000000000
-      internalID: 5552954646188896575
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_6
-      rect:
-        serializedVersion: 2
-        x: 193
-        y: 8
-        width: 30
-        height: 23
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e59b983e43123efd0800000000000000
-      internalID: -2313969272498833058
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_7
-      rect:
-        serializedVersion: 2
-        x: 226
-        y: 8
-        width: 28
-        height: 23
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 09e826ff8d8ac3fb0800000000000000
-      internalID: -4666669463911625072
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_8
-      rect:
-        serializedVersion: 2
-        x: 258
-        y: 8
-        width: 28
-        height: 23
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 8d802aa64d248fb60800000000000000
-      internalID: 7780041836372035800
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_9
-      rect:
-        serializedVersion: 2
-        x: 290
-        y: 8
-        width: 28
-        height: 21
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 62577e55a422648c0800000000000000
-      internalID: -4015484315090062042
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Eat_L_10
-      rect:
-        serializedVersion: 2
-        x: 324
-        y: 8
+        x: 33
+        y: 63
         width: 24
-        height: 16
+        height: 22
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 828b2527fbda69b80800000000000000
-      internalID: -8388326218162587608
+      spriteID: ce67792b7bddaaa10800000000000000
+      internalID: 1921591972071962348
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Eat_L_11
+      name: BreakableTile_Pieces_2
       rect:
         serializedVersion: 2
-        x: 355
-        y: 8
-        width: 26
-        height: 16
+        x: 69
+        y: 66
+        width: 15
+        height: 22
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 98c8543ccdf6f6460800000000000000
-      internalID: 7237126120167279753
+      spriteID: 401a60a468ce28380800000000000000
+      internalID: -8970347446256885500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 32
+        width: 26
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6faa6ca1baa42d6a0800000000000000
+      internalID: -6425991619555185930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_4
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 32
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 304fc3f5b6cfa79e0800000000000000
+      internalID: -1622707177624112125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_5
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 40
+        width: 13
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ed3f05567c99db50800000000000000
+      internalID: 6618493159444790752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_6
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 33
+        width: 26
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07134d8d6c8d059d0800000000000000
+      internalID: -2787489820789427856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_7
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 2
+        width: 25
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ad385c6335946fe0800000000000000
+      internalID: -1196667552880116314
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_8
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 0
+        width: 19
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18c6a6b832473e3d0800000000000000
+      internalID: -3178569215981753215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: BreakableTile_Pieces_9
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 4
+        width: 26
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25a73101632f60450800000000000000
+      internalID: 6054793063058078290
       vertices: []
       indices: 
       edges: []
@@ -404,7 +376,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 27caac1160298eb4ba8f63fe14314d37
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -412,22 +384,18 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries:
-      - key: SpriteEditor.SliceSettings
-        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":32.0,"y":32.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+      entries: []
     nameFileIdTable:
-      Eat_L_0: -5666052560258612609
-      Eat_L_1: 5560399001186187705
-      Eat_L_10: -8388326218162587608
-      Eat_L_11: 7237126120167279753
-      Eat_L_2: 3587525006272502459
-      Eat_L_3: 7971204745659840505
-      Eat_L_4: -8250996776731344767
-      Eat_L_5: 5552954646188896575
-      Eat_L_6: -2313969272498833058
-      Eat_L_7: -4666669463911625072
-      Eat_L_8: 7780041836372035800
-      Eat_L_9: -4015484315090062042
+      BreakableTile_Pieces_0: 8618291256218218969
+      BreakableTile_Pieces_1: 1921591972071962348
+      BreakableTile_Pieces_2: -8970347446256885500
+      BreakableTile_Pieces_3: -6425991619555185930
+      BreakableTile_Pieces_4: -1622707177624112125
+      BreakableTile_Pieces_5: 6618493159444790752
+      BreakableTile_Pieces_6: -2787489820789427856
+      BreakableTile_Pieces_7: -1196667552880116314
+      BreakableTile_Pieces_8: -3178569215981753215
+      BreakableTile_Pieces_9: 6054793063058078290
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8232150284752385224}
   - component: {fileID: 3644243482193096029}
   - component: {fileID: 1644368403275166719}
+  - component: {fileID: 6602841937450123776}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -81,6 +82,9 @@ MonoBehaviour:
   attack: {fileID: 0}
   jump: {fileID: 0}
   land: {fileID: 0}
+  death: {fileID: 0}
+  respawn: {fileID: 0}
+  checkpoint: {fileID: 0}
 --- !u!114 &1644368403275166719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95,3 +99,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   poolSize: 24
   reverbTiers: []
+--- !u!114 &6602841937450123776
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174349163457537239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 028f6d9ec0efe2840ad38782b1f4ce73, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::RespawnDirector
+  respawnDelay: 0.9

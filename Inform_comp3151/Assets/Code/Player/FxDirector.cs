@@ -23,14 +23,35 @@ public class FxDirector : MonoBehaviour
     [SerializeField] private float blastPunch = 0.5f;
     [SerializeField] private float blastPunchTime = 0.3f;
 
+    // 死亡是全场最强的一次反馈，所以每项都比爆炸更重。
+    // 这里不做距离衰减：死亡恒发生在玩家身上 ≈ 镜头中心，算出来的系数必然是 1
+    [Header("Death FX")]
+    [SerializeField] private float deathTrauma = 0.7f;
+    [SerializeField] private float deathHitStop = 0.12f;     // ScreenFx.maxHitStop 是 0.25，别超
+    [SerializeField] private float deathZoom = -0.5f;        // 负值 = 推近
+    [SerializeField] private float deathZoomTime = 0.4f;
+    [SerializeField] private Color deathFlashColor = new Color(1f, 1f, 1f, 0.7f);
+    [SerializeField] private float deathFlashTime = 0.18f;
+    [SerializeField] private float deathPunch = 0.8f;
+    [SerializeField] private float deathPunchTime = 0.5f;
+
+    // 踩到检查点只需要一点点视觉确认，别喧宾夺主
+    [Header("Checkpoint FX")]
+    [SerializeField] private Color checkpointFlashColor = new Color(0.6f, 1f, 0.8f, 0.25f);
+    [SerializeField] private float checkpointFlashTime = 0.2f;
+
     void OnEnable()
     {
         HazardBus.Blast += OnBlast;
+        LifeBus.Died += OnDied;
+        LifeBus.CheckpointSet += OnCheckpointSet;
     }
 
     void OnDisable()
     {
         HazardBus.Blast -= OnBlast;
+        LifeBus.Died -= OnDied;
+        LifeBus.CheckpointSet -= OnCheckpointSet;
     }
 
     private void OnBlast(Vector2 center, float radius, float force)
@@ -52,6 +73,21 @@ public class FxDirector : MonoBehaviour
             c.a *= k;
             FxBus.RaiseFlash(c, blastFlashTime);
         }
+    }
+
+    // 每项都能在 Inspector 里单独调 0 关掉，和 OnBlast 一个写法
+    private void OnDied(GameObject victim, Vector2 from)
+    {
+        if (deathTrauma > 0f) FxBus.RaiseShake(deathTrauma);
+        if (deathHitStop > 0f) FxBus.RaiseHitStop(deathHitStop);
+        if (deathZoom != 0f) FxBus.RaiseZoom(deathZoom, deathZoomTime);
+        if (deathPunch > 0f) FxBus.RaisePunch(deathPunch, deathPunchTime);
+        if (deathFlashColor.a > 0f) FxBus.RaiseFlash(deathFlashColor, deathFlashTime);
+    }
+
+    private void OnCheckpointSet(Vector2 pos)
+    {
+        if (checkpointFlashColor.a > 0f) FxBus.RaiseFlash(checkpointFlashColor, checkpointFlashTime);
     }
 
     void OnDrawGizmosSelected()

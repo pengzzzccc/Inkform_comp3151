@@ -25,6 +25,10 @@ namespace Inkform.Bus
         /// <summary>后处理 punch：amount = 暗角/色差的强度增量（0~1），duration = 回落时长。</summary>
         public static event Action<float, float> PunchRequested;
 
+        /// <summary>相机立刻吸附到目标身上，不做平滑。玩家被瞬移（复活）之后必须发一次，
+        /// 否则相机会拖着跟随惯性从旧位置一路滑过去。</summary>
+        public static event Action SnapRequested;
+
         public static void RaiseShake(float amount)
         {
             ShakeRequested?.Invoke(amount);
@@ -50,6 +54,11 @@ namespace Inkform.Bus
             PunchRequested?.Invoke(amount, duration);
         }
 
+        public static void RaiseSnap()
+        {
+            SnapRequested?.Invoke();
+        }
+
         // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -59,6 +68,7 @@ namespace Inkform.Bus
             ZoomRequested = null;
             FlashRequested = null;
             PunchRequested = null;
+            SnapRequested = null;
         }
     }
 }

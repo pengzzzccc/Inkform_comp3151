@@ -1,0 +1,86 @@
+using Inkform.Bus;
+using UnityEngine;
+
+/// <summary>
+/// 重生导演：记住当前检查点，死亡后停顿一小会儿再把死者放回去。
+/// 只用瞬移不重载场景 —— 于是不依赖 Build Settings，AudioManager 那类跨场景单例也不用重建。
+/// 挂在 GameManager 上（那里已经是 InputHandler / AudioDirector / AudioManager 的宿主）。
+/// </summary>
+public class RespawnDirector : MonoBehaviour
+{
+    [Header("Respawn")]
+    [SerializeField] private float respawnDelay = 0.9f;     // 死亡到复活的停顿，蔚蓝大概 1 秒
+
+    private Vector2 checkpoint;
+    private GameObject pending;         // 正在等复活的死者，null = 现在没人在等
+
+    // 必须用非缩放计时：死亡当帧 FxDirector 就会请求 hitstop 把 timeScale 压到 0，
+    // 普通 Timer 的 Time.time 那时是冻住的，等它到期等于永远等不到
+    private UnscaledTimer respawnTimer;
+
+    void OnEnable()
+    {
+        LifeBus.Died += OnDied;
+        LifeBus.CheckpointSet += OnCheckpointSet;
+    }
+
+    void OnDisable()
+    {
+        LifeBus.Died -= OnDied;
+        LifeBus.CheckpointSet -= OnCheckpointSet;
+    }
+
+    void Start()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player == null) return;
+
+        // 开局的复活点：优先用勾了 isStartPoint 的检查点并把玩家放过去；
+        // 一个都没勾也能正常玩 —— 退回「玩家在场景里被摆在哪」
+        Checkpoint start = FindStartPoint();
+        if (start == null)
+        {
+            checkpoint = player.transform.position;
+            return;
+        }
+
+        checkpoint = start.SpawnPos;
+        LifeBus.RaiseRespawned(player, checkpoint);   // 复用同一条复活路径，省得瞬移逻辑写两份
+        FxBus.RaiseSnap();
+    }
+
+    void Update()
+    {
+        if (pending == null) return;
+        if (respawnTimer.IsRunning) return;
+
+        LifeBus.RaiseRespawned(pending, checkpoint);
+        pending = null;
+
+        // 玩家刚被瞬移走，不切一下的话相机会拖着惯性从死亡点一路滑过来
+        FxBus.RaiseSnap();
+    }
+
+    private void OnCheckpointSet(Vector2 pos)
+    {
+        checkpoint = pos;
+    }
+
+    private void OnDied(GameObject victim, Vector2 from)
+    {
+        pending = victim;
+        respawnTimer.Set(respawnDelay);
+    }
+
+    // 用不带排序参数的重载：带 FindObjectsSortMode 的那个也已经过时了，
+    // 理由和 AudioManager 那边一样 —— instance ID 的顺序本来就不保证稳定，这里也不关心顺序
+    private Checkpoint FindStartPoint()
+    {
+        Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
+        foreach (Checkpoint c in all)
+        {
+            if (c.IsStartPoint) return c;
+        }
+        return null;
+    }
+}

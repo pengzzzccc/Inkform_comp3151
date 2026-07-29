@@ -56,14 +56,12 @@ namespace Inkform.player
         private Timer CeilingStickTimer;
         private int jumpLeft = 0;
 
-        [Header("Ground Check")]
+        [Header("Terrain Check")]
         [SerializeField] private Transform groundCheck;
-        [SerializeField] private LayerMask groundmask;
         [SerializeField] private Transform LeftWallCheck;
         [SerializeField] private Transform RightWallCheck;
-        [SerializeField] private LayerMask Wallmask;
         [SerializeField] private Transform CeilingCheck;
-        [SerializeField] private LayerMask Ceilingmask;
+        [SerializeField] private LayerMask terrainMask;   // 四向接触检测统一层：Terrain | Breakable
         [SerializeField] private float CheckRadius = 0.5f;
 
         // jumpBuffer
@@ -95,16 +93,21 @@ namespace Inkform.player
         {
             ItemBus.ItemEaten += OnItemEaten;
             HazardBus.Exploded += OnExploded;
+            LifeBus.Died += OnDied;
+            LifeBus.Respawned += OnRespawned;
         }
 
         void OnDisable()
         {
             ItemBus.ItemEaten -= OnItemEaten;
             HazardBus.Exploded -= OnExploded;
+            LifeBus.Died -= OnDied;
+            LifeBus.Respawned -= OnRespawned;
         }
 
         void Update()
         {
+            if (LifeBus.IsDead) return;     // 死亡期间彻底停摆：接触检测、重力、跳跃、动画全停
 
             ContactCheck();
 
@@ -117,10 +120,11 @@ namespace Inkform.player
 
         private void ContactCheck()
         {
-            OnGround = Physics2D.OverlapCircle(groundCheck.position, CheckRadius, groundmask);
-            OnLeftWall = Physics2D.OverlapCircle(LeftWallCheck.position, CheckRadius, Wallmask | Ceilingmask);
-            OnRightWall = Physics2D.OverlapCircle(RightWallCheck.position, CheckRadius, Wallmask | Ceilingmask);
-            OnCeiling = Physics2D.OverlapCircle(CeilingCheck.position, CheckRadius, Ceilingmask);
+            // 四个方向统一用 terrainMask：覆盖原 groundmask/Wallmask/Ceilingmask 的全部检测对象
+            OnGround = Physics2D.OverlapCircle(groundCheck.position, CheckRadius, terrainMask);
+            OnLeftWall = Physics2D.OverlapCircle(LeftWallCheck.position, CheckRadius, terrainMask);
+            OnRightWall = Physics2D.OverlapCircle(RightWallCheck.position, CheckRadius, terrainMask);
+            OnCeiling = Physics2D.OverlapCircle(CeilingCheck.position, CheckRadius, terrainMask);
 
             if (OnCeiling && OnLeftWall) OnCeiling = false;
             if (OnCeiling && OnRightWall) OnCeiling = false;
@@ -146,6 +150,8 @@ namespace Inkform.player
 
         public void playerMoving(Vector2 input)
         {
+            if (LifeBus.IsDead) return;     // 死了不改朝向也不给速度
+
             // 朝向：输入永远最高优先级（移动锁定期间也生效）；无输入则保持当前朝向
             if (input.x > 0.01f)
             {
@@ -166,6 +172,8 @@ namespace Inkform.player
 
         public void RequestJump()
         {
+            if (LifeBus.IsDead) return;
+
             requestTime = Time.time;
             if ((OnLeftWall || OnRightWall) && jumpLeft == 0 && !WallJumpBuffer.IsRunning)
             {
@@ -176,11 +184,15 @@ namespace Inkform.player
 
         public void playerFalling()
         {
+            if (LifeBus.IsDead) return;
+
             jumpCutquest = true;
         }
 
         public void playerAttack()
         {
+            if (LifeBus.IsDead) return;
+
             float dir = faceDirection == FaceDirection.R ? 1f : -1f;
 
             if (heldItem != null)
@@ -214,6 +226,43 @@ namespace Inkform.player
 
             controller.linearVelocity = Dir8.Snap((Vector2)transform.position - center) * force;
             KnockbackTimer.Set(knockbackTime);
+        }
+
+        // 由 LifeBus 在自己死掉时回调：只停玩法，本体消失和碎块爆裂归 PlayerDeathFx 管
+        private void OnDied(GameObject victim, Vector2 from)
+        {
+            if (victim != gameObject) return;
+
+            controller.linearVelocity = Vector2.zero;
+            // 停物理即停掉一切碰撞回调，尸体不会再被刺反复判定。
+            // 不能 SetActive(false) —— OnDisable 会退订总线，就再也收不到「复活」了
+            controller.simulated = false;
+        }
+
+        // 由 LifeBus 在复活时回调：放回检查点并把所有瞬时状态归零
+        private void OnRespawned(GameObject victim, Vector2 pos)
+        {
+            if (victim != gameObject) return;
+
+            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            transform.position = pos;
+            controller.position = pos;
+            controller.simulated = true;
+            controller.linearVelocity = Vector2.zero;
+
+            // 死前攒下的锁定和跳跃次数不能带到下一条命里
+            jumpLeft = jumpTimes;
+            jumpCutquest = false;
+            requestTime = -999f;
+            WallJumpBuffer.Clear();
+            AttackTimer.Clear();
+            AttackAnimTimer.Clear();
+            KnockbackTimer.Clear();
+
+            // 先探一次地面再对齐 prev*：不然复活在地上会被判成「刚落地」，白播一次 Land 动画和落地音
+            ContactCheck();
+            prevOnGround = OnGround;
+            prevOnCeiling = OnCeiling;
         }
 
         private void playerJumping()

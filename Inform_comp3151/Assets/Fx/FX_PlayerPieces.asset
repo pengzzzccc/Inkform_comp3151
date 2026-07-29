@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a1c8e5d24b7940a8e6b3c9d5f21807, type: 3}
+  m_Name: FX_PlayerPieces
+  m_EditorClassIdentifier: Assembly-CSharp::FragmentCue
+  prefab: {fileID: 4307302687437123413, guid: d7a20d6e5585c3e479258fcca3224ae8, type: 3}
+  sprites:
+  - {fileID: -2239569193409416609, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 8200830699271171154, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -8667705805543249154, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 2418039495477766478, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 8687198666486397682, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -5737079374768291210, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -6286083358125451522, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -5657835375701749159, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 8791441972010485647, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 1058952098923383387, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 5595697333477320251, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -4922449636404632851, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: -3177242842786947658, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  - {fileID: 7449072289081512868, guid: fad172efcd9350c498942a7b01c82f56, type: 3}
+  scaleRange: {x: 0.7, y: 1}
+  randomFlip: 1
+  tint: {r: 1, g: 1, b: 1, a: 1}
+  cellsX: 3
+  cellsY: 3
+  forceMultiper: 0.75
+  spinSpeed: 240
+  lifeTime: 1.6
+  fadeTime: 0.9

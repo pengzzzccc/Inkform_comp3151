@@ -51,20 +51,34 @@ public class CamHandler : MonoBehaviour
     {
         FxBus.ShakeRequested += OnShake;
         FxBus.ZoomRequested += OnZoom;
+        FxBus.SnapRequested += SnapToTarget;
     }
 
     void OnDisable()
     {
         FxBus.ShakeRequested -= OnShake;
         FxBus.ZoomRequested -= OnZoom;
+        FxBus.SnapRequested -= SnapToTarget;
     }
 
     void Start()
     {
         // 开局直接吸附到位，免得从 (0,0) 缓缓滑过去
+        SnapToTarget();
+    }
+
+    /// <summary>立刻吸附到目标身上。开局和玩家被瞬移（复活）后共用这一条路径。</summary>
+    private void SnapToTarget()
+    {
         if (target == null) return;
 
-        Vector2 want = (Vector2)target.position + followOffset;
+        // 三个速度都必须归零：SmoothDamp 的速度是存在字段里的，不清的话
+        // 吸附完这一帧就被残留惯性带着冲过头，看起来像「切过去又弹了一下」
+        followVel = Vector2.zero;
+        lookAheadVel = 0f;
+        lookAheadNow = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
+
+        Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
         transform.position = new Vector3(want.x, want.y, baseZ);
     }
 
