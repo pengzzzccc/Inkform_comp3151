@@ -56,16 +56,6 @@ namespace Inkform.player
         private Timer CeilingStickTimer;
         private int jumpLeft = 0;
 
-        // 动画状态机的抖动抑制。都是「进」和「出」两条不同的线（迟滞），
-        // 单阈值的话值卡在线上时会每帧来回切，动画看起来在抽搐
-        [Header("Anim smoothing")]
-        [SerializeField] private float riseEnter = 0.5f;        // 垂直速度高于此才算上升
-        [SerializeField] private float fallEnter = -0.5f;       // 低于此才算下落，中间保持原状态
-        [SerializeField] private float moveEnter = 0.3f;        // 输入大于此才进 Move
-        [SerializeField] private float moveExit = 0.15f;        // 小于此才回 Idle
-        [SerializeField] private float minStateTime = 0.08f;    // 动画状态最短保持时长
-        private Timer StateHoldTimer;
-
         [Header("Terrain Check")]
         [SerializeField] private Transform groundCheck;
         [SerializeField] private Transform LeftWallCheck;
@@ -350,42 +340,22 @@ namespace Inkform.player
             {
 
                 if (JumpUpTimer.IsRunning && (controller.linearVelocityX > 0.3 | controller.linearVelocityX < -0.3)) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
-                else SetState(AirState());
+                else SetState(controller.linearVelocityY > 0.1f
+                    ? PlayerState.Rise               // 上升
+                    : PlayerState.Fall);             // 下落
                 return;
             }
 
             if (LandAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // 落地瞬间
 
-            // Move/Idle 迟滞：单阈值时摇杆推到一半会每帧来回横跳
-            if (Mathf.Abs(moveInput.x) > moveEnter) SetState(PlayerState.Move);
-            else if (Mathf.Abs(moveInput.x) < moveExit) SetState(PlayerState.Idle);
-            // 两个阈值之间：保持当前状态不动
+            SetState(Mathf.Abs(moveInput.x) > 0.2f
+                ? PlayerState.Move
+                : PlayerState.Idle);
         }
-
-        // 上升/下落的迟滞：单阈值时顶点附近速度在零上下抖，动画会连着切好几次。
-        // 中间那段死区保持上一个空中态，只有真的越过其中一条线才换
-        private PlayerState AirState()
-        {
-            if (controller.linearVelocityY > riseEnter) return PlayerState.Rise;
-            if (controller.linearVelocityY < fallEnter) return PlayerState.Fall;
-            return playerState == PlayerState.Rise ? PlayerState.Rise : PlayerState.Fall;
-        }
-
-        // 一次性动画必须能立刻打断最短保持，否则反馈会迟到 —— 那比抖动更难受
-        private static bool IsUrgent(PlayerState state) =>
-            state == PlayerState.Land || state == PlayerState.Eat || state == PlayerState.Release
-            || state == PlayerState.JumpUp || state == PlayerState.CeilingStick;
 
         // 去重（只在变化时广播）由 PlayerBus 负责，这里直接 Raise 即可
         private void SetState(PlayerState state)
         {
-            if (state == playerState) return;
-
-            // 最短保持：挡住阈值附近的逐帧抖动。挡下来不要紧 ——
-            // UpdateAnimationState 每帧都在跑，保持期一过下一帧自然会补上
-            if (StateHoldTimer.IsRunning && !IsUrgent(state)) return;
-            StateHoldTimer.Set(minStateTime);
-
             playerState = state;
             PlayerBus.RaiseState(state);
         }
