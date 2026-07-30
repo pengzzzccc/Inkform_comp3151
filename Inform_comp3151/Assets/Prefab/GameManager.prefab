@@ -62,6 +62,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AniHandler
   animations: {fileID: 0}
+  sprite: {fileID: 0}
 --- !u!114 &3644243482193096029
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82,8 +83,8 @@ MonoBehaviour:
   attack: {fileID: 0}
   jump: {fileID: 0}
   land: {fileID: 0}
-  death: {fileID: 0}
-  respawn: {fileID: 0}
+  death: {fileID: 11400000, guid: 360ed3774a98fa742be7fc7f79800244, type: 2}
+  respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 0}
 --- !u!114 &1644368403275166719
 MonoBehaviour:
@@ -109,6 +110,6 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 028f6d9ec0efe2840ad38782b1f4ce73, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RespawnDirector
   respawnDelay: 0.9
