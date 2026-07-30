@@ -19,10 +19,7 @@ namespace Inkform.Bus
         /// <summary>镜头缩放 punch：amount = orthographicSize 的瞬时增量（负值为推近），duration = 回弹时长。</summary>
         public static event Action<float, float> ZoomRequested;
 
-        /// <summary>全屏闪色：color 含 alpha 作为峰值不透明度，duration = 淡出时长。</summary>
-        public static event Action<Color, float> FlashRequested;
-
-        /// <summary>后处理 punch：amount = 暗角/色差的强度增量（0~1），duration = 回落时长。</summary>
+        /// <summary>后处理 punch：amount = 暗角强度增量（0~1），duration = 回落时长。</summary>
         public static event Action<float, float> PunchRequested;
 
         /// <summary>相机立刻吸附到目标身上，不做平滑。玩家被瞬移（复活）之后必须发一次，
@@ -44,11 +41,6 @@ namespace Inkform.Bus
             ZoomRequested?.Invoke(amount, duration);
         }
 
-        public static void RaiseFlash(Color color, float duration)
-        {
-            FlashRequested?.Invoke(color, duration);
-        }
-
         public static void RaisePunch(float amount, float duration)
         {
             PunchRequested?.Invoke(amount, duration);
@@ -66,7 +58,6 @@ namespace Inkform.Bus
             ShakeRequested = null;
             HitStopRequested = null;
             ZoomRequested = null;
-            FlashRequested = null;
             PunchRequested = null;
             SnapRequested = null;
         }

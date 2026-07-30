@@ -1,6 +1,6 @@
 using System;
 using UnityEngine;
-using Inkform.player;
+using Inkform.Player;
 
 namespace Inkform.Bus
 {

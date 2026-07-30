@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Inkform.player;
+using Inkform.Player;
 
 namespace Inkform.Input
 {

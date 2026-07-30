@@ -1,8 +1,9 @@
-using UnityEngine;
-using System.Collections.Generic;
 using Inkform.Bus;
+using Inkform.Item;
+using Inkform.Tool;
+using UnityEngine;
 
-namespace Inkform.player
+namespace Inkform.Player
 {
     /// <summary>
     /// this class is made for handling player, it contain's OnGrand check, player mti-FSM, player state publisher.
