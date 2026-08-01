@@ -1,98 +1,45 @@
 using Inkform.Bus;
-using Inkform.Item;
+using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Player
 {
     /// <summary>
-    /// this class is made for handling player, it contain's OnGrand check, player mti-FSM, player state publisher.
-    /// 状态变化通过 PlayerBus 广播，订阅方不需要持有本对象的引用。
+    /// 玩家协调者：接收输入、按固定顺序驱动各子系统、响应死亡与复活。
+    /// 具体职责已拆给同物体上的四个组件 ——
+    /// ContactSensor（四向接触）、PlayerMotor（运动学）、AnimStateResolver（动画推导）、ItemCarrier（叼东西）。
+    ///
+    /// 之所以保留本类而不让 InputHandler 直接找 PlayerMotor：
+    /// ① InputHandler.player 是在 GameManager 预制体的场景实例覆盖里接线的，改类名会静默断线；
+    /// ② 各子系统的 Update 顺序必须是「感知 → 运动 → 动画」，而同物体上组件的 Update
+    ///    顺序 Unity 不保证 —— 只能由一个驱动者显式排好，那就是本类。
     /// </summary>
-    [RequireComponent(typeof(Rigidbody2D))]
+    // Rigidbody2D 不用在这里声明：PlayerMotor 已经 RequireComponent 了它
+    [RequireComponent(typeof(ContactSensor))]
+    [RequireComponent(typeof(PlayerMotor))]
+    [RequireComponent(typeof(AnimStateResolver))]
     public class PlayerHandler : MonoBehaviour
     {
-        // PlayerState
-        private PlayerState playerState;
-        private FaceDirection faceDirection = FaceDirection.R;   // 与 PlayerBus 快照默认值一致，否则开局白广播一次 L
-
-        // player controller
-        private Rigidbody2D controller;
-        private bool OnGround = false;
-        private bool OnLeftWall = false;
-        private bool OnRightWall = false;
-        private bool OnCeiling = false;
-        private bool jumpCutquest = false;
-        private Timer WallJumpBuffer;
-        private Timer AttackTimer;
-
-        // animation driving
-        private Vector2 moveInput;
-        private ItemSuper heldItem;    // 叼在嘴里的物品（null = 没叼东西）
-        private bool prevOnGround = false;
-        private bool prevOnCeiling = false;
-        private Timer LandAnimTimer;   // 落地瞬间的一次性动画
-        private Timer JumpUpTimer;     // 起跳瞬间的一次性动画（JumpUp，之后转 Rise）
-        private Timer CeilingAttachTimer;  // 刚贴上天花板的附着一次性动画
-
-
-        [Header("Player setting")]
-        [SerializeField] private float movingSpeed = 7f;
-        [SerializeField] private float jumpSpeed = 20.5f;
-        [SerializeField][Range(0, 1)] private float fallCutmultiper = 0.1f;
-        [SerializeField] private float Gravity = 4f;
-        [SerializeField] private float fallGravityMultiper = 2.2f;
-        [SerializeField][Range(0, 1)] private float OnWallGravityMultiper = 0.2f;
-        [SerializeField] private int jumpTimes = 1;
-        [SerializeField] private float wallJumpTime = 0.3f;
-        [SerializeField][Range(0, 1)] private float wallKickMultiper = 0.3f;
-        [SerializeField][Range(1, 2)] private float attackMultiper = 1.3f;
-        [SerializeField] private float attackTime = 0.6f;
-        [SerializeField] private float attackAnimTime = 0.4f;   // Eat/Release 动画保持时长（与冲刺时长解耦）
-        private Timer AttackAnimTimer;
-        [SerializeField] private float landAnimTime = 0.25f;
-        [SerializeField] private float jumpUpAnimTime = 0.3f;   // JumpUp 起跳一次性动画时长
-        [SerializeField] private float ceilingAttachTime = 0.25f;  // 天花板附着一次性动画时长
-        [SerializeField] private float CeilingStickTime = 0.5f;
-        private Timer CeilingStickTimer;
-        private int jumpLeft = 0;
-
-        [Header("Terrain Check")]
-        [SerializeField] private Transform groundCheck;
-        [SerializeField] private Transform LeftWallCheck;
-        [SerializeField] private Transform RightWallCheck;
-        [SerializeField] private Transform CeilingCheck;
-        [SerializeField] private LayerMask terrainMask;   // 四向接触检测统一层：Terrain | Breakable
-        [SerializeField] private float CheckRadius = 0.5f;
-
-        // jumpBuffer
-        [SerializeField] private float jumpBuffer = 0.2f;
-        private float requestTime = -999f;
-        private Timer updateBuffer;
-
-        [Header("Item / Knockback")]
-        // x 都会按朝向取反；spitOffset.x 必须大于「玩家碰撞体半宽 + 物品半径」，否则出生就重叠、会被物理弹开
-        [SerializeField] private Vector2 spitOffset = new Vector2(0.9f, 0.15f);
-        // spitSpeed.x 必须大于冲刺速度（movingSpeed * attackMultiper），否则吐出去就被自己追上、免疫期一过原地自爆
-        [SerializeField] private Vector2 spitSpeed = new Vector2(24f, 6f);
-        [SerializeField] private float knockbackTime = 0.35f;   // 被炸飞后锁住移动输入的时长
-        private Timer KnockbackTimer;
+        private ContactSensor contact;
+        private PlayerMotor motor;
+        private AnimStateResolver anim;
+        private ItemCarrier items;      // 允许为 null：不带道具玩法的关卡可以不挂
 
         void Awake()
         {
-            controller = GetComponent<Rigidbody2D>();
-            controller.gravityScale = Gravity;
-
-            jumpLeft = jumpTimes;
+            contact = GetComponent<ContactSensor>();
+            motor = GetComponent<PlayerMotor>();
+            anim = GetComponent<AnimStateResolver>();
+            TryGetComponent(out items);
 
             // 初始广播一次，让总线快照从一开始就是正确的
-            PlayerBus.RaiseState(playerState);
-            PlayerBus.RaiseFace(faceDirection);
+            PlayerBus.RaiseState(PlayerState.Idle);
+            PlayerBus.RaiseFace(FaceDirection.R);
         }
 
         void OnEnable()
         {
-            ItemBus.ItemEaten += OnItemEaten;
             HazardBus.Exploded += OnExploded;
             LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
@@ -100,7 +47,6 @@ namespace Inkform.Player
 
         void OnDisable()
         {
-            ItemBus.ItemEaten -= OnItemEaten;
             HazardBus.Exploded -= OnExploded;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
@@ -110,134 +56,71 @@ namespace Inkform.Player
         {
             if (LifeBus.IsDead) return;     // 死亡期间彻底停摆：接触检测、重力、跳跃、动画全停
 
-            ContactCheck();
-
-            ActiveNoneLinerGrivay();
-            playerJumping();
-
-            UpdateAnimationState();
-            
+            // 顺序不能动：动画要读的接触与速度都得是本帧最新的，
+            // 否则会慢一帧、在落地和起跳的瞬间闪错动画
+            contact.Tick();
+            motor.Tick();
+            if (motor.ConsumeJumpStarted()) anim.OnJumpStarted();
+            anim.Tick();
         }
 
-        private void ContactCheck()
-        {
-            // 四个方向统一用 terrainMask：覆盖原 groundmask/Wallmask/Ceilingmask 的全部检测对象
-            OnGround = Physics2D.OverlapCircle(groundCheck.position, CheckRadius, terrainMask);
-            OnLeftWall = Physics2D.OverlapCircle(LeftWallCheck.position, CheckRadius, terrainMask);
-            OnRightWall = Physics2D.OverlapCircle(RightWallCheck.position, CheckRadius, terrainMask);
-            OnCeiling = Physics2D.OverlapCircle(CeilingCheck.position, CheckRadius, terrainMask);
-
-            if (OnCeiling && OnLeftWall) OnCeiling = false;
-            if (OnCeiling && OnRightWall) OnCeiling = false;
-            if (!OnCeiling) CeilingStickTimer.Set(CeilingStickTime);
-        }
-
-        private void ActiveNoneLinerGrivay()
-        {
-            bool onWall = OnLeftWall || OnRightWall;
-            bool wallSliding = onWall && !OnGround && controller.linearVelocityY < 0f;
-
-            if (OnCeiling && CeilingStickTimer.IsRunning)
-                controller.gravityScale = -5;
-            else if(!CeilingStickTimer.IsRunning)
-                controller.gravityScale = Gravity;
-            else if (wallSliding)
-                controller.gravityScale = Gravity * OnWallGravityMultiper;
-            else if (controller.linearVelocityY < 0f)
-                controller.gravityScale = Gravity * fallGravityMultiper;
-            else
-                controller.gravityScale = Gravity;
-        }
+        // ---- 输入入口。方法名是 InputHandler 直接调的，改名会断线 ----
 
         public void playerMoving(Vector2 input)
         {
             if (LifeBus.IsDead) return;     // 死了不改朝向也不给速度
 
             // 朝向：输入永远最高优先级（移动锁定期间也生效）；无输入则保持当前朝向
-            if (input.x > 0.01f)
-            {
-                SetFace(FaceDirection.R);
-            }
-            else if (input.x < -0.01f)
-            {
-                SetFace(FaceDirection.L);
-            }
+            if (input.x > 0.01f) anim.SetFace(FaceDirection.R);
+            else if (input.x < -0.01f) anim.SetFace(FaceDirection.L);
 
-            moveInput = input;   // 只驱动动画不参与物理，锁定期间也要跟着输入走，否则落地会错放 Move
-
-            // 被炸飞期间也不接受移动输入，否则下一帧就把击退速度抹掉了
-            if (WallJumpBuffer.IsRunning || AttackTimer.IsRunning || KnockbackTimer.IsRunning) return;
-
-            controller.linearVelocityX = input.x * movingSpeed;
+            anim.SetMoveInput(input);       // 只驱动动画，锁定期间也跟着输入走
+            motor.Move(input);              // 是否被锁由 motor 自己判
         }
 
         public void RequestJump()
         {
             if (LifeBus.IsDead) return;
 
-            requestTime = Time.time;
-            if ((OnLeftWall || OnRightWall) && jumpLeft == 0 && !WallJumpBuffer.IsRunning)
-            {
-                jumpLeft++;
-                WallJumpBuffer.Set(wallJumpTime);
-            }
+            motor.RequestJump();
         }
 
         public void playerFalling()
         {
             if (LifeBus.IsDead) return;
 
-            jumpCutquest = true;
+            motor.CutJump();
         }
 
         public void playerAttack()
         {
             if (LifeBus.IsDead) return;
 
-            float dir = faceDirection == FaceDirection.R ? 1f : -1f;
+            // 朝向直接读总线快照，和 CamHandler / Bomb 的做法一致
+            float dir = PlayerBus.Face == FaceDirection.R ? 1f : -1f;
 
-            if (heldItem != null)
-            {
-                SetState(PlayerState.Release);   // 吐出叼着的物品
-                Vector2 mouth = (Vector2)transform.position + new Vector2(dir * spitOffset.x, spitOffset.y);
-                ItemBus.RaiseItemReleased(heldItem, mouth, new Vector2(dir * spitSpeed.x, spitSpeed.y));
-                heldItem = null;
-            }
-            else
-            {
-                SetState(PlayerState.Eat);       // 吃 / Eat
-            }
-
-            controller.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, controller.linearVelocityY);
-            AttackTimer.Set(attackTime);          // 冲刺 / 移动锁定
-            // Eat/Release 动画保持：松键不打断，到期后由 UpdateAnimationState 恢复移动动画
-            AttackAnimTimer.Set(attackAnimTime);
+            // 嘴里有东西就吐出去（Release），没有就是扑咬（Eat）—— 两种都吃同一段冲刺
+            bool released = items != null && items.TryRelease(dir);
+            anim.PlayAttack(released);
+            motor.Dash(dir);
         }
 
-        // 由 ItemBus 在物品被吃下时回调：只有真实吃到才进入叼着物品状态
-        private void OnItemEaten(ItemSuper item)
-        {
-            heldItem = item;
-        }
+        // ---- 总线回调 ----
 
         // 由 HazardBus 在爆炸时回调：沿「爆心 → 自己」的 8 向之一弹开，并锁一小段移动输入
         private void OnExploded(GameObject victim, Vector2 center, float force)
         {
             if (victim != gameObject) return;
 
-            controller.linearVelocity = Dir8.Snap((Vector2)transform.position - center) * force;
-            KnockbackTimer.Set(knockbackTime);
+            motor.Knockback(Dir8.Snap((Vector2)transform.position - center) * force);
         }
 
-        // 由 LifeBus 在自己死掉时回调：只停玩法，本体消失和碎块爆裂归 PlayerDeathFx 管
-        private void OnDied(GameObject victim, Vector2 from)
+        // 由 LifeBus 在自己死掉时回调：只停玩法，本体消失和碎块爆裂归死亡策略管
+        private void OnDied(DeathContext ctx)
         {
-            if (victim != gameObject) return;
+            if (ctx.Victim != gameObject) return;
 
-            controller.linearVelocity = Vector2.zero;
-            // 停物理即停掉一切碰撞回调，尸体不会再被刺反复判定。
-            // 不能 SetActive(false) —— OnDisable 会退订总线，就再也收不到「复活」了
-            controller.simulated = false;
+            motor.StopForDeath();
         }
 
         // 由 LifeBus 在复活时回调：放回检查点并把所有瞬时状态归零
@@ -245,146 +128,13 @@ namespace Inkform.Player
         {
             if (victim != gameObject) return;
 
-            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
-            transform.position = pos;
-            controller.position = pos;
-            controller.simulated = true;
-            controller.linearVelocity = Vector2.zero;
+            motor.RespawnAt(pos);
+            anim.ResetForRespawn();
 
-            // 死前攒下的锁定和跳跃次数不能带到下一条命里
-            jumpLeft = jumpTimes;
-            jumpCutquest = false;
-            requestTime = -999f;
-            WallJumpBuffer.Clear();
-            AttackTimer.Clear();
-            AttackAnimTimer.Clear();
-            KnockbackTimer.Clear();
-
-            // 先探一次地面再对齐 prev*：不然复活在地上会被判成「刚落地」，白播一次 Land 动画和落地音
-            ContactCheck();
-            prevOnGround = OnGround;
-            prevOnCeiling = OnCeiling;
+            // 先探一次地面再对齐基准：不然复活在地上会被判成「刚落地」，
+            // 白播一次 Land 动画和落地音
+            contact.Tick();
+            anim.SyncContactBaseline();
         }
-
-        private void playerJumping()
-        {
-            if (jumpCutquest && controller.linearVelocityY > 0f)
-            {
-                controller.linearVelocityY *= fallCutmultiper;
-                jumpCutquest = false;
-            }
-            else if (controller.linearVelocityY <= 0f)
-            {
-                jumpCutquest = false;
-            }
-
-            bool canJump = (Time.time - requestTime) < jumpBuffer;
-            if (canJump && jumpLeft > 0)
-            {
-
-                if (OnLeftWall && !OnGround)
-                {
-                    controller.linearVelocity = new Vector2(jumpSpeed * wallKickMultiper, jumpSpeed);
-                    WallJumpBuffer.Set(wallJumpTime);
-                }
-                else if (OnRightWall && !OnGround)
-                {
-                    controller.linearVelocity = new Vector2(-jumpSpeed * wallKickMultiper, jumpSpeed);
-                    WallJumpBuffer.Set(wallJumpTime);
-                }
-                controller.linearVelocityY = jumpSpeed;
-                requestTime = -999f;
-                jumpLeft--;
-                JumpUpTimer.Set(jumpUpAnimTime);   // 起跳一次性动画（含地面跳/二段跳/墙跳）
-                if(OnGround)
-                {
-                    updateBuffer.Set(0.1f);
-                }
-            }
-
-            if (OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
-        }
-
-        // 集中式动画状态机：每帧按优先级决定当前动画状态
-        // 落地一次性检测 > 吃/吐 > 天花板(动/静) > 墙侧下滑 > 空中(JumpUp一次性→Rise/Fall) > 地面(Move/Idle)
-        private void UpdateAnimationState()
-        {
-            // 落地/贴顶瞬间的一次性动画（起跳一次性在 playerJumping 里触发）
-            if (!prevOnGround && OnGround) LandAnimTimer.Set(landAnimTime);
-            prevOnGround = OnGround;
-            if (!prevOnCeiling && OnCeiling) CeilingAttachTimer.Set(ceilingAttachTime);
-            prevOnCeiling = OnCeiling;
-
-            if (AttackAnimTimer.IsRunning) return;   // Eat/Release 动画保持期间不打断
-
-            if (OnCeiling)
-            {
-                if (CeilingAttachTimer.IsRunning)
-                    SetState(PlayerState.CeilingStick);              // 刚贴上：附着一次性
-                else if (Mathf.Abs(moveInput.x) > 0.01f)
-                    SetState(PlayerState.CeilingMove);               // 天花板移动
-                else
-                    SetState(PlayerState.CeilingIdle);               // 静止 = 上下翻转的 Idle
-                return;
-            }
-
-            // bool onWall = OnLeftWall || OnRightWall;
-            if ((OnLeftWall || OnRightWall) && !OnGround && controller.linearVelocityY < 1f)
-            {
-                if(OnLeftWall) SetState(PlayerState.WallSlideL );
-                if(OnRightWall) SetState(PlayerState.WallSlideR);
-                return;
-            }
-
-
-            if (!OnGround)
-            {
-
-                if (JumpUpTimer.IsRunning && (controller.linearVelocityX > 0.3 | controller.linearVelocityX < -0.3)) SetState(PlayerState.JumpUp);   // 起跳瞬间（有方向）
-                else SetState(controller.linearVelocityY > 0.1f
-                    ? PlayerState.Rise               // 上升
-                    : PlayerState.Fall);             // 下落
-                return;
-            }
-
-            if (LandAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // 落地瞬间
-
-            SetState(Mathf.Abs(moveInput.x) > 0.2f
-                ? PlayerState.Move
-                : PlayerState.Idle);
-        }
-
-        // 去重（只在变化时广播）由 PlayerBus 负责，这里直接 Raise 即可
-        private void SetState(PlayerState state)
-        {
-            playerState = state;
-            PlayerBus.RaiseState(state);
-        }
-
-        private void SetFace(FaceDirection face)
-        {
-            faceDirection = face;
-            PlayerBus.RaiseFace(face);
-        }
-
-        void OnDrawGizmosSelected()
-        {
-            if (groundCheck == null) return;
-            Gizmos.color = OnGround ? Color.green : Color.red;
-            Gizmos.DrawWireSphere(groundCheck.position, CheckRadius);
-
-            if (LeftWallCheck == null) return;
-            Gizmos.color = OnLeftWall ? Color.green : Color.red;
-            Gizmos.DrawWireSphere(LeftWallCheck.position, CheckRadius);
-
-            if (RightWallCheck == null) return;
-            Gizmos.color = OnRightWall ? Color.green : Color.red;
-            Gizmos.DrawWireSphere(RightWallCheck.position, CheckRadius);
-
-            if (CeilingCheck == null) return;
-            Gizmos.color = OnCeiling ? Color.green : Color.red;
-            Gizmos.DrawWireSphere(CeilingCheck.position, CheckRadius);
-        }
-
     }
 }

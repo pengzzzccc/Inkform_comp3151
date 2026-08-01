@@ -27,8 +27,9 @@ namespace Inkform.Audio
         [SerializeField] private SoundCue jump;
         [SerializeField] private SoundCue land;
 
+        // 死亡音不在这里：它按死因而不是按关注点分派（刺死和摔死该有不同的声音），
+        // 所以那条 Cue 挂在 DeathStrategy 资产上，由策略自己播
         [Header("Life")]
-        [SerializeField] private SoundCue death;        // 死亡
         [SerializeField] private SoundCue respawn;      // 在检查点复活
         [SerializeField] private SoundCue checkpoint;   // 踩到检查点
 
@@ -40,7 +41,6 @@ namespace Inkform.Audio
             ItemBus.ItemEaten += OnItemEaten;
             ItemBus.ItemReleased += OnItemReleased;
             PlayerBus.StateChanged += OnPlayerState;
-            LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -53,7 +53,6 @@ namespace Inkform.Audio
             ItemBus.ItemEaten -= OnItemEaten;
             ItemBus.ItemReleased -= OnItemReleased;
             PlayerBus.StateChanged -= OnPlayerState;
-            LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
         }
@@ -69,10 +68,8 @@ namespace Inkform.Audio
 
         private void OnItemEaten(ItemSuper item) => Play(itemEaten);
 
-        // 这三条都是「玩家自己的声音」，恒在镜头中心，所以和 attack/jump/land 一样不传位置。
+        // 这两条都是「玩家自己的声音」，恒在镜头中心，所以和 attack/jump/land 一样不传位置。
         // 对应的 Cue 资产里 spatial 应保持关闭 —— 见 SoundCue.cs 里那条 Tooltip
-        private void OnDied(GameObject victim, Vector2 from) => Play(death);
-
         private void OnRespawned(GameObject victim, Vector2 pos) => Play(respawn);
 
         private void OnCheckpointSet(Vector2 pos) => Play(checkpoint);

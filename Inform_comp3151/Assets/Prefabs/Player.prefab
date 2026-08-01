@@ -46,6 +46,9 @@ GameObject:
   - component: {fileID: 7876590005240165724}
   - component: {fileID: 6890259264682127336}
   - component: {fileID: 3049182736450917364}
+  - component: {fileID: 2600059357283168755}
+  - component: {fileID: 2502678418540566454}
+  - component: {fileID: 4511968466877940253}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -143,34 +146,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fea19d1478c4f434eb7cf19fa43429a8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.player.PlayerHandler
-  movingSpeed: 10
-  jumpSpeed: 12
-  fallCutmultiper: 0.12
-  Gravity: 3
-  fallGravityMultiper: 2.2
-  OnWallGravityMultiper: 0.2
-  jumpTimes: 1
-  wallJumpTime: 0.15
-  wallKickMultiper: 0.3
-  attackMultiper: 1
-  attackTime: 0.22
-  attackAnimTime: 1
-  landAnimTime: 1
-  jumpUpAnimTime: 0.3
-  ceilingAttachTime: 0.25
-  CeilingStickTime: 0.5
-  groundCheck: {fileID: 8569766163812240374}
-  LeftWallCheck: {fileID: 1208995721875728481}
-  RightWallCheck: {fileID: 187834089383587721}
-  CeilingCheck: {fileID: 2554766400171842085}
-  terrainMask:
-    serializedVersion: 2
-    m_Bits: 2112
-  CheckRadius: 0.1
-  jumpBuffer: 0.15
-  spitOffset: {x: 0.9, y: 0.15}
-  spitSpeed: {x: 24, y: 6}
-  knockbackTime: 0.35
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5
@@ -269,8 +244,68 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5e011a9acdbcd3e4abf98cd3e4986369, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerDeathFx
-  deathPieces: {fileID: 11400000, guid: 43f2338f6f4b0a24ca724e3b1a535373, type: 2}
-  burstForce: 14
+--- !u!114 &2600059357283168755
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e07baec94a43eae40b990a4782d62d62, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.ContactSensor
+  groundCheck: {fileID: 8569766163812240374}
+  leftWallCheck: {fileID: 1208995721875728481}
+  rightWallCheck: {fileID: 187834089383587721}
+  ceilingCheck: {fileID: 2554766400171842085}
+  terrainMask:
+    serializedVersion: 2
+    m_Bits: 2112
+  checkRadius: 0.1
+  ceilingStickTime: 0.5
+--- !u!114 &2502678418540566454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6426036fe01335c42915fdce0b9cb7ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.PlayerMotor
+  movingSpeed: 10
+  jumpSpeed: 12
+  fallCutmultiper: 0.12
+  jumpBuffer: 0.15
+  jumpTimes: 1
+  gravity: 3
+  fallGravityMultiper: 2.2
+  onWallGravityMultiper: 0.2
+  wallJumpTime: 0.15
+  wallKickMultiper: 0.3
+  attackMultiper: 1
+  attackTime: 0.22
+  knockbackTime: 0.35
+--- !u!114 &4511968466877940253
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3505f1001b5f9494cad32327547c2998, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.AnimStateResolver
+  attackAnimTime: 1
+  landAnimTime: 1
+  jumpUpAnimTime: 0.3
+  ceilingAttachTime: 0.25
 --- !u!1 &5765958816110314823
 GameObject:
   m_ObjectHideFlags: 0

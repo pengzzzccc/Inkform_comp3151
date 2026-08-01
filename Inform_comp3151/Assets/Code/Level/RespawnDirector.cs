@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -12,14 +13,29 @@ namespace Inkform.Level
     public class RespawnDirector : MonoBehaviour
     {
         [Header("Respawn")]
-        [SerializeField] private float respawnDelay = 0.9f;     // 死亡到复活的停顿，蔚蓝大概 1 秒
+        // 兜底值：死因没配策略时用它。正常情况下停顿时长由 DeathStrategy.RespawnDelay 决定 ——
+        // 「多久回来」是死法的属性（摔死该比刺死回得快），不是复活系统的属性
+        [SerializeField] private float fallbackDelay = 0.9f;     // 死亡到复活的停顿，蔚蓝大概 1 秒
 
         private Vector2 checkpoint;
         private GameObject pending;         // 正在等复活的死者，null = 现在没人在等
 
-        // 必须用非缩放计时：死亡当帧 FxDirector 就会请求 hitstop 把 timeScale 压到 0，
+        // 必须用非缩放计时：死亡当帧死亡策略就会请求 hitstop 把 timeScale 压到 0，
         // 普通 Timer 的 Time.time 那时是冻住的，等它到期等于永远等不到
         private UnscaledTimer respawnTimer;
+
+        // 和 Bomb.Player / AudioManager.Listener 同一套懒缓存：换场景后旧引用会变成
+        // Unity 的 fake-null，下次取用时自动重找，所以不需要写 ResetStatics
+        private DeathDirector deathCache;
+
+        private DeathDirector Deaths
+        {
+            get
+            {
+                if (deathCache == null) deathCache = FindFirstObjectByType<DeathDirector>();
+                return deathCache;
+            }
+        }
 
         void OnEnable()
         {
@@ -69,10 +85,16 @@ namespace Inkform.Level
             checkpoint = pos;
         }
 
-        private void OnDied(GameObject victim, Vector2 from)
+        private void OnDied(DeathContext ctx)
         {
-            pending = victim;
-            respawnTimer.Set(respawnDelay);
+            pending = ctx.Victim;
+
+            // 场景里没有 DeathDirector、或这个死因没配策略时退回兜底值：
+            // 缺了策略只该丢掉演出，不该把人永远留在死亡状态里
+            DeathDirector deaths = Deaths;
+            DeathStrategy strategy = deaths != null ? deaths.Resolve(ctx.Cause) : null;
+
+            respawnTimer.Set(strategy != null ? strategy.RespawnDelay : fallbackDelay);
         }
 
         // 用不带排序参数的重载：带 FindObjectsSortMode 的那个也已经过时了，
