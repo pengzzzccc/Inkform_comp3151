@@ -71,9 +71,14 @@ namespace Inkform.Player
             return v;
         }
 
-        // 移动被锁住（墙跳后摇 / 冲刺 / 击退期间）。动画层不受此影响，仍跟着输入走
+        // 移动被锁住（墙跳后摇 / 冲刺 / 击退 / 绳索枪附绳期间）。动画层不受此影响，仍跟着输入走
         private bool MoveLocked =>
-            wallJumpBuffer.IsRunning || attackTimer.IsRunning || knockbackTimer.IsRunning;
+            wallJumpBuffer.IsRunning || attackTimer.IsRunning || knockbackTimer.IsRunning || grappleLocked;
+
+        private bool grappleLocked;     // 绳索枪悬挂/拉取期间的输入锁定，绳子主导运动
+
+        /// <summary>绳索枪附绳时锁住移动输入，脱离后解锁。锁的是输入，不碰刚体。</summary>
+        public void SetMoveLocked(bool locked) => grappleLocked = locked;
 
         public float VelocityX => body.linearVelocityX;
         public float VelocityY => body.linearVelocityY;

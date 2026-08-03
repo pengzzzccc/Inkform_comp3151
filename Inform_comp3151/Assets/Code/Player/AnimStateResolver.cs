@@ -36,6 +36,7 @@ namespace Inkform.Player
         private Vector2 moveInput;
         private bool prevOnGround;
         private bool prevOnCeiling;
+        private bool swinging;          // 绳索枪悬挂中：状态压过一切接触推导
 
         void Awake()
         {
@@ -49,6 +50,9 @@ namespace Inkform.Player
         /// <summary>移动输入只驱动动画不参与物理 —— 锁定期间也要跟着输入走，
         /// 否则落地会错放 Move。</summary>
         public void SetMoveInput(Vector2 input) => moveInput = input;
+
+        /// <summary>绳索枪悬挂中：每帧由 PlayerHandler 在 Tick 前刷新，悬挂态压过接触推导。</summary>
+        public void SetSwinging(bool value) => swinging = value;
 
         /// <summary>起跳一次性动画。由 PlayerHandler 从 PlayerMotor 取到起跳信号后转交。</summary>
         public void OnJumpStarted() => jumpUpTimer.Set(jumpUpAnimTime);
@@ -83,6 +87,8 @@ namespace Inkform.Player
             prevOnCeiling = contact.OnCeiling;
 
             if (attackAnimTimer.IsRunning) return;   // Eat/Release 动画保持期间不打断
+
+            if (swinging) { SetState(PlayerState.Swing); return; }   // 悬挂中：绳子主导，不推导接触
 
             if (contact.OnCeiling)
             {

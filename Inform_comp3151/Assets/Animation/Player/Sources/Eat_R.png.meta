@@ -50,9 +50,6 @@ TextureImporter:
   - first:
       213: 7917517373346454082
     second: Eat_R_15
-  - first:
-      213: -5420532337733238849
-    second: Eat_R_16
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -393,33 +390,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: Eat_R_10
-      rect:
-        serializedVersion: 2
-        x: 640
-        y: 0
-        width: 64
-        height: 64
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: c50a6f0e85ebed4b0800000000000000
-      internalID: -5413680413112098724
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 120cece7d60a0d84c8e93570e9a065e8
+    spriteID: 872d85bd1528f2448abeb3e393bcca94
     internalID: 0
     vertices: []
     indices: 
@@ -433,7 +408,6 @@ TextureImporter:
     nameFileIdTable:
       Eat_R_0: -2836523487582949161
       Eat_R_1: 7345213687047894846
-      Eat_R_10: -5413680413112098724
       Eat_R_2: -4405519467724844074
       Eat_R_3: 2629236354293376752
       Eat_R_4: -4513202554830022183

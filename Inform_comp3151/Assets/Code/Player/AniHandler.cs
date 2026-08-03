@@ -50,6 +50,7 @@ namespace Inkform.Player
                 PlayerState.CeilingStick => ("Ceiling_Stick", false),
                 PlayerState.CeilingMove  => ("Ceiling_Move",  false),
                 PlayerState.CeilingIdle  => ("Ceiling_Idle",  false),
+                PlayerState.Swing        => ("FallDown",      false),   // 悬挂：复用下落帧，无需新美术
                 PlayerState.WallSlideL   => ("Wall_Slide_L",  true),
                 PlayerState.WallSlideR   => ("Wall_Slide_R",  true),
                 _                        => ("Idle",          false),

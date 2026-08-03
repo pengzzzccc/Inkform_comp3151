@@ -170,6 +170,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Bomb
   eatAble: 1
+  mode: 0
   fuseTime: 1.5
   armTime: 0.3
   blastRadius: 2
@@ -187,3 +188,18 @@ MonoBehaviour:
   - {fileID: -3034200899849956086, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   proximityRadius: 3.5
   breakCue: {fileID: 11400000, guid: b7d92e04a1c5f8439e26d7b0a3c14f85, type: 2}
+  hangingPointCount: 1
+  hangingPointSpacing: {x: 0.6, y: 0}
+  hangingPointHeight: 3
+  chainSettings:
+    segmentLength: 0.25
+    maxSegments: 32
+    solverIterations: 6
+    chainGravityScale: 1
+    damping: 0.99
+    attachStiffness: 0.6
+    maxCorrectionSpeed: 20
+    playerCutRadius: 0.8
+    lineWidth: 0.08
+    sortingOrder: -1
+  speedExplodeThreshold: 1

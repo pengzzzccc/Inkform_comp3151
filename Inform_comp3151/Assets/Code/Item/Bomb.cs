@@ -1,20 +1,36 @@
 using Inkform.Bus;
 using Inkform.Fx;
-using Inkform.Player;
 using Inkform.Tool;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Inkform.Item
 {
     /// <summary>
-    /// 炸弹：碰到即爆 / 攻击态从正面接触时被吞下 / 吐出后引信倒计时爆炸。
-    /// 被吞下时不销毁自己，只是关掉物理和显示挂到玩家身上，吐出时把同一个实例原样放回世界。
+    /// 炸弹：碰到即爆 / 被绳索枪命中后拉到玩家嘴边吞下 / 吐出后引信倒计时爆炸。
+    /// 吞下时不销毁自己，只是关掉物理和显示挂到玩家身上，吐出时把同一个实例原样放回世界。
+    /// 注意：dash（攻击键）不再吞炸弹 —— 碰到就直接爆，吞只能靠绳索枪（TrySwallowByRope）。
+    ///
+    /// 两种模式：
+    /// Normal —— 上述行为，与旧版完全一致。
+    /// Hanging —— 悬挂模式：Awake 时给每个悬挂点（HangingPoint 子物体，编辑器生成、
+    /// 可拖动）生成一条物理链（Chain，Verlet 绳索），锚点 = 悬挂点的初始世界坐标（固定）；
+    /// 链条可被玩家攻击或爆炸切断，全断后炸弹自由下落。悬挂模式的任何状态（断链、被吞后
+    /// 吐出、爆炸销毁）都不可恢复 —— 玩家死亡复活不会重置它，本类不实现 IRestorable 正是
+    /// 这一点的一部分。
+    ///
+    /// 速度爆炸：速度达到 speedExplodeThreshold 时与任何物体碰撞都会爆炸，两种模式共用。
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(CircleCollider2D))]
     public class Bomb : ItemSuper
     {
+        public enum BombMode { Normal, Hanging }
+
         private enum BombPhase { Idle, Held, Fuse }
+
+        [Header("Mode")]
+        [SerializeField] private BombMode mode = BombMode.Normal;
 
         [Header("Bomb setting")]
         [SerializeField] private float fuseTime = 1.5f;         // 吐出后到爆炸的引信时长
@@ -23,7 +39,6 @@ namespace Inkform.Item
         [SerializeField] private float blastForce = 18f;
         [SerializeField] private float chainDelay = 0.1f;       // 被别的爆炸波及后，隔多久跟着炸（0 = 当帧同步连爆）
         [SerializeField] private LayerMask blastMask;
-        [SerializeField] private float frontEpsilon = 0.05f;    // 正前方判定容差：几乎重合时算正面
 
         [Header("Animation")]
         [SerializeField] private Sprite[] triggerFrames;        // 引信帧，0 = 常态，末帧 = 待爆
@@ -32,12 +47,25 @@ namespace Inkform.Item
         [Header("Break setting")]
         [SerializeField] private FragmentCue breakCue;          // 碎成什么样全写在这份资产里
 
+        [Header("Hanging mode")]
+        [Tooltip("仅编辑器用：Generate Hanging Points 菜单按这个数量生成悬挂点")]
+        [SerializeField] private int hangingPointCount = 1;
+        [SerializeField] private Vector2 hangingPointSpacing = new Vector2(0.6f, 0f);
+        [SerializeField] private float hangingPointHeight = 3f;
+        [SerializeField] private Chain.Settings chainSettings = new Chain.Settings();
+
+        [Header("Speed explode")]
+        [Tooltip("速度达到该阈值后，与任何物体碰撞都会爆炸；<= 0 关闭")]
+        [SerializeField] private float speedExplodeThreshold = 0f;
+
         private BombPhase phase = BombPhase.Idle;
         private bool exploded = false;      // 引信到期那一帧玩家正贴着时，物理回调和 Update 会各炸一次，防重入
         private Rigidbody2D body;
         private CircleCollider2D hitBox;
         private Timer FuseTimer;
         private Timer ArmTimer;
+
+        private readonly List<Chain> chains = new List<Chain>();    // 悬挂模式生成的链，随炸弹子树一并销毁
 
         private int frameIndex = -1;        // -1 = 还没定过，保证第一次一定会写一次图
         private float fuseDuration;         // 本次引信的总时长（吐出 = fuseTime，连锁 = chainDelay）
@@ -67,6 +95,32 @@ namespace Inkform.Item
             hitBox = GetComponent<CircleCollider2D>();
 
             RefreshFrame();                     // 先定好常态帧，免得第一帧闪一下预制体上原本那张图
+
+            if (mode == BombMode.Hanging) BuildHangingMode();
+        }
+
+        // 悬挂模式：给每个悬挂点生成一条物理链。锚点 = 悬挂点的初始世界坐标，
+        // 之后固定不动 —— 所以悬挂点虽然是炸弹子物体，移动炸弹不会移动锚点
+        private void BuildHangingMode()
+        {
+            HangingPoint[] pts = GetComponentsInChildren<HangingPoint>(true);
+            if (pts.Length == 0)
+            {
+                Debug.LogWarning($"{name} 处于 Hanging 模式但没有悬挂点，请在 Inspector 右键执行 Generate Hanging Points", this);
+                return;
+            }
+
+            chains.Clear();
+            foreach (HangingPoint pt in pts)
+            {
+                GameObject chainGo = new GameObject($"Chain_{pt.name}");
+                chainGo.transform.SetParent(pt.transform, false);
+
+                Chain chain = chainGo.AddComponent<Chain>();
+                chain.Configure(chainSettings);
+                chain.Init(body, pt.transform.position);
+                chains.Add(chain);
+            }
         }
 
         void OnEnable()
@@ -132,8 +186,29 @@ namespace Inkform.Item
         }
 
         // Stay 也要接：一直贴着玩家不会重新触发 Enter，免疫期结束的那一刻就得炸
-        void OnCollisionEnter2D(Collision2D collision) => HandlePlayerContact(collision);
-        void OnCollisionStay2D(Collision2D collision) => HandlePlayerContact(collision);
+        void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (CheckSpeedExplode(collision)) return;
+            HandlePlayerContact(collision);
+        }
+
+        void OnCollisionStay2D(Collision2D collision)
+        {
+            if (CheckSpeedExplode(collision)) return;
+            HandlePlayerContact(collision);
+        }
+
+        // 速度爆炸：速度达标时无论撞上什么都直接炸，与对象是谁无关、也不吃玩家那套免疫期。
+        // 返回 true = 已爆炸，调用方不用再走玩家接触逻辑
+        private bool CheckSpeedExplode(Collision2D collision)
+        {
+            if (phase == BombPhase.Held) return false;          // 叼在嘴里：碰撞体已关，防御性拦截
+            if (speedExplodeThreshold <= 0f) return false;
+            if (body.linearVelocity.magnitude < speedExplodeThreshold) return false;
+
+            Explode();
+            return true;
+        }
 
         private void HandlePlayerContact(Collision2D collision)
         {
@@ -149,13 +224,10 @@ namespace Inkform.Item
                     if (!ArmTimer.IsRunning) Explode();
                     return;
 
-                default:                                // Idle：满足吞下条件就被吃掉，否则原地爆炸
-                    // 状态直接读总线快照：触发和状态切换同一帧时不会读到上一帧的旧值
-                    // 嘴里已经有东西就不能再吞 —— Eat 状态会持续整个 attackAnimTime，
-                    // 期间碰到的每颗炸弹都会各自判定通过，但 PlayerHandler 只留得住最后一颗，
-                    // 先被吞的会永远以 Held 态挂在玩家身上（不可见、无物理、永不吐出）
-                    if (EatAble && ItemBus.Held == null && PlayerBus.State == PlayerState.Eat
-                        && IsInFront(collision.gameObject.transform))
+                default:                                // Idle：碰到就爆。
+                    // dash（Shift）不再吞炸弹 —— 只有绳索枪的 TrySwallowByRope 能吞。
+                    // 被绳索枪标记（ropeGrappled）后，玩家被拉过来接触时直接吞而不是爆
+                    if (ropeGrappled && EatAble && ItemBus.Held == null)
                         Swallow(collision.gameObject.transform);
                     else
                         Explode();
@@ -164,12 +236,21 @@ namespace Inkform.Item
         }
 
 
-        // 以玩家为原点，看炸弹是不是在玩家朝向的那一侧
-        private bool IsInFront(Transform player)
+        // 绳索枪抓取标记：被命中后玩家被拉过来，期间接触玩家必须吞、不能爆
+        private bool ropeGrappled;
+
+        public void MarkRopeGrappled() => ropeGrappled = true;
+        public void ClearRopeGrappled() => ropeGrappled = false;
+
+        /// <summary>绳索枪命中后把玩家拉到嘴边时的吞下入口。成功返回 true。</summary>
+        public bool TrySwallowByRope(Transform player)
         {
-            float dx = transform.position.x - player.position.x;
-            if (Mathf.Abs(dx) < frontEpsilon) return true;
-            return PlayerBus.Face == FaceDirection.R ? dx > 0f : dx < 0f;
+            if (phase != BombPhase.Idle) return false;
+            if (!EatAble) return false;
+            if (ItemBus.Held != null) return false;
+
+            Swallow(player);
+            return true;
         }
 
         // 吞下：不销毁，只关物理 + 关显示挂到玩家身上，等着被吐出来
@@ -177,11 +258,16 @@ namespace Inkform.Item
         private void Swallow(Transform player)
         {
             phase = BombPhase.Held;
+            ropeGrappled = false;
             body.simulated = false;
             hitBox.enabled = false;
             SetVisible(false);
             transform.SetParent(player, false);
             transform.localPosition = Vector3.zero;
+
+            // 悬挂模式的炸弹被吞：链条全部切断并隐藏。之后吐出/死亡掉落时
+            // 它就是一颗自由炸弹 —— 悬挂状态不可恢复，这正是设计意图
+            foreach (Chain c in chains) c.CutAll();
 
             ItemBus.RaiseItemEaten(this);
         }
@@ -304,6 +390,17 @@ namespace Inkform.Item
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireSphere(transform.position, proximityRadius);
 
+            if (mode == BombMode.Hanging)
+            {
+                // 蓝色虚线 = 悬挂点到炸弹的链位，方便在 Scene 里调悬挂点位置
+                HangingPoint[] pts = GetComponentsInChildren<HangingPoint>(true);
+                Gizmos.color = new Color(0.2f, 0.7f, 1f, 0.6f);
+                foreach (HangingPoint pt in pts)
+                {
+                    Gizmos.DrawLine(pt.transform.position, transform.position);
+                }
+            }
+
             // 黄色网格 = 碎块怎么切，方便调 Cue 里的 cellsX / cellsY
             // 这里不能用 hitBox：编辑器下 Awake 没跑过，缓存还是空的
             CircleCollider2D box = GetComponent<CircleCollider2D>();
@@ -311,6 +408,37 @@ namespace Inkform.Item
 
             Gizmos.color = Color.yellow;
             Shatter.DrawGrid(box.bounds, breakCue.cellsX, breakCue.cellsY);
+        }
+
+        // ---- 编辑器工具：生成/清理悬挂点（场景实例和预制体上都能跑）----
+
+        [ContextMenu("Generate Hanging Points")]
+        private void GenerateHangingPoints()
+        {
+            ClearHangingPoints();
+
+            int n = Mathf.Max(1, hangingPointCount);
+            for (int i = 0; i < n; i++)
+            {
+                GameObject go = new GameObject($"HangingPoint_{i + 1}");
+                go.transform.SetParent(transform, false);
+                go.AddComponent<HangingPoint>();
+
+                // 以炸弹为中心横向等距排开、整体抬高 hangingPointHeight，生成后自己在 Scene 里拖
+                float x = (i - (n - 1) * 0.5f) * hangingPointSpacing.x;
+                go.transform.localPosition = new Vector3(x, hangingPointHeight, 0f);
+            }
+        }
+
+        [ContextMenu("Clear Hanging Points")]
+        private void ClearHangingPoints()
+        {
+            HangingPoint[] old = GetComponentsInChildren<HangingPoint>(true);
+            foreach (HangingPoint o in old)
+            {
+                if (Application.isPlaying) Destroy(o.gameObject);
+                else DestroyImmediate(o.gameObject);
+            }
         }
     }
 }
