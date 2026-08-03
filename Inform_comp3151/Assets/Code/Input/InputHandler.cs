@@ -4,19 +4,23 @@ using Inkform.Player;
 
 namespace Inkform.Input
 {
+    /// <summary>
+    /// 输入层：把 InputSystem_Actions 资产里的动作转发给 PlayerHandler。
+    ///
+    /// 键位只有一个来源 —— InputSystem_Actions.inputactions 资产（改键去那儿改，
+    /// Unity 会重新生成 InputSystem_Actions.cs）。这里不再运行时补动作、也不改绑定。
+    /// </summary>
     public class InputHandler : MonoBehaviour
     {
         private InputSystem_Actions playerInput;
-        private InputActionMap playerMap;   // 运行时补动作 / 改绑定的入口（Player map 的原生对象）
 
-        // player inputAction init
-        private InputAction movement;
-        private InputAction look;
+        // Player map 里本作实际用到的六个动作，全部直接取自生成的 wrapper
+        private InputAction move;
+        private InputAction aim;
         private InputAction jump;
-        private InputAction attack;
+        private InputAction dash;
         private InputAction ropeFire;
-        private InputAction ropeToggle;
-        private InputAction spit;
+        private InputAction spitBomb;
 
         // Get player
         [SerializeField] private PlayerHandler player;
@@ -39,23 +43,18 @@ namespace Inkform.Input
         void Awake()
         {
             playerInput = new InputSystem_Actions();
-            playerMap = playerInput.asset.FindActionMap("Player", false);
+
+            // 游戏开始隐藏系统光标：瞄准靠绳索枪准星（Aim 动作在锁定状态下照常工作）
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
 
             // player input setup
-            movement = playerInput.Player.Move;
-            look = playerInput.Player.Look;
+            move = playerInput.Player.Move;
+            aim = playerInput.Player.Aim;
             jump = playerInput.Player.Jump;
-            attack = playerInput.Player.Attack;
-            ropeFire = FindOrCreate("RopeFire",
-                "<Mouse>/leftButton", "<Gamepad>/rightShoulder");
-            ropeToggle = FindOrCreate("RopeToggle",
-                "<Mouse>/rightButton", "<Gamepad>/leftShoulder");
-            spit = FindOrCreate("Spit",
-                "<Keyboard>/q", "<Gamepad>/rightTrigger");
-
-            // 新资产生效时（wrapper 已按 .inputactions 重新生成）Attack 已经绑 leftShift；
-            // 还没生效时旧绑定还在（LMB/Enter），运行时修成一致 —— 保证两种状态下键位相同
-            RebindDash(attack);
+            dash = playerInput.Player.Dash;
+            ropeFire = playerInput.Player.RopeFire;
+            spitBomb = playerInput.Player.SpitBomb;
 
             // 场景实例覆盖里的引用在 Awake 之前就已接线；此时还是 null 就永远不会有了，
             // 与其等 Update 里每帧 NRE，不如现在就吭一声
@@ -63,48 +62,23 @@ namespace Inkform.Input
                 Debug.LogWarning($"InputHandler 的 player 未接线（GameManager 预制体的场景实例覆盖）", this);
         }
 
-        // 从 Player map 里按名字取动作；资产里还没有（wrapper 未重新生成 / 编辑器未保存）时，
-        // 运行时补进 map —— 键位与 InputSystem_Actions.inputactions 资产保持一致
-        private InputAction FindOrCreate(string name, params string[] bindingPaths)
+        void OnDestroy()
         {
-            InputAction action = playerMap != null ? playerMap.FindAction(name, false) : null;
-            if (action != null) return action;
-
-            action = playerMap.AddAction(name, InputActionType.Button);
-            foreach (string p in bindingPaths) action.AddBinding(p);
-            return action;
-        }
-
-        // dash 键位：Attack 应绑 leftShift 而不是 LMB/Enter。新资产生效时什么都不做；
-        // 旧资产（wrapper 未重新生成）时把 LMB/Enter 用空路径覆盖掉（InputSystem 没有
-        // 运行时删绑定的 API，空路径 = 匹配不到任何控制 = 禁用），再补上 leftShift。
-        private void RebindDash(InputAction action)
-        {
-            for (int i = 0; i < action.bindings.Count; i++)
-            {
-                if (action.bindings[i].path == "<Keyboard>/leftShift") return;   // 新绑定已在
-            }
-
-            for (int i = 0; i < action.bindings.Count; i++)
-            {
-                string p = action.bindings[i].path;
-                if (p == "<Mouse>/leftButton" || p == "<Keyboard>/enter")
-                    action.ApplyBindingOverride(i, "");
-            }
-            action.AddBinding("<Keyboard>/leftShift");
+            // 生成的 wrapper 持有一份 InputActionAsset，实现了 IDisposable —— 不释放会漏
+            playerInput?.Dispose();
         }
 
         void Update()
         {
             if (player == null) return;
 
-            Vector2 raw = movement.ReadValue<Vector2>();
+            Vector2 raw = move.ReadValue<Vector2>();
 
             // 非键盘设备（手柄摇杆）输入本身就是模拟量，直接透传，不经过键盘合成
-            InputControl control = movement.activeControl;
+            InputControl control = move.activeControl;
             if (control != null && !(control.device is Keyboard))
             {
-                player.playerMoving(raw);
+                player.Move(raw);
             }
             else
             {
@@ -112,16 +86,16 @@ namespace Inkform.Input
                 stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
                 stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
 
-                player.playerMoving(new Vector2(
+                player.Move(new Vector2(
                     Mathf.Sign(stick.x) * stickCurve.Evaluate(Mathf.Abs(stick.x)),
                     Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
             }
 
-            // 瞄准：Look 动作（鼠标 delta / 右摇杆）。鼠标 delta 单位是像素，摇杆是模拟量，
+            // 瞄准：Aim 动作（鼠标 delta / 右摇杆）。鼠标 delta 单位是像素，摇杆是模拟量，
             // 用 pixelDelta 标志区分，换算在 RopeGun 里做
-            InputControl aimControl = look.activeControl;
-            Vector2 lookValue = look.ReadValue<Vector2>();
-            player.AimLook(lookValue, aimControl != null && aimControl.device is Mouse);
+            InputControl aimControl = aim.activeControl;
+            Vector2 aimValue = aim.ReadValue<Vector2>();
+            player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
         }
 
         // 单轴摇杆合成：朝目标（0 或 ±1）以对应速率匀速移动。
@@ -134,19 +108,19 @@ namespace Inkform.Input
             return Mathf.MoveTowards(current, target, rate * dt);
         }
 
-        private void OnJumpPerformed(InputAction.CallbackContext ctx)
+        private void OnJumpPressed(InputAction.CallbackContext ctx)
         {
-            player?.RequestJump();
+            player?.JumpPressed();
         }
 
-        private void OnJumpCancel(InputAction.CallbackContext ctx)
+        private void OnJumpReleased(InputAction.CallbackContext ctx)
         {
-            player?.playerFalling();
+            player?.JumpReleased();
         }
 
-        private void OnAttackPerformed(InputAction.CallbackContext ctx)
+        private void OnDash(InputAction.CallbackContext ctx)
         {
-            player?.playerAttack();
+            player?.Dash();
         }
 
         private void OnRopeFire(InputAction.CallbackContext ctx)
@@ -154,56 +128,43 @@ namespace Inkform.Input
             player?.RopeFire();
         }
 
-        private void OnRopeToggle(InputAction.CallbackContext ctx)
-        {
-            player?.RopeToggle();
-        }
-
-        private void OnSpit(InputAction.CallbackContext ctx)
+        private void OnSpitBomb(InputAction.CallbackContext ctx)
         {
             player?.SpitBomb();
         }
 
         void OnEnable()
         {
-            // enable player input.
-            movement.Enable();
-            look.Enable();
+            // 逐个启用而不是 playerInput.Player.Enable()：map 里还留着 Interact / Crouch /
+            // Previous / Next 四个本作没用上的动作，整 map 启用会把它们一起点亮
+            move.Enable();
+            aim.Enable();
             jump.Enable();
-            attack.Enable();
+            dash.Enable();
             ropeFire.Enable();
-            ropeToggle.Enable();
-            spit.Enable();
+            spitBomb.Enable();
 
-            // jump input callback
-            jump.performed += OnJumpPerformed;
-            jump.canceled += OnJumpCancel;
-            attack.performed += OnAttackPerformed;
+            jump.performed += OnJumpPressed;
+            jump.canceled += OnJumpReleased;
+            dash.performed += OnDash;
             ropeFire.performed += OnRopeFire;
-            ropeToggle.performed += OnRopeToggle;
-            spit.performed += OnSpit;
-
+            spitBomb.performed += OnSpitBomb;
         }
 
         void OnDisable()
         {
-            // disable player input.
-            movement.Disable();
-            look.Disable();
+            move.Disable();
+            aim.Disable();
             jump.Disable();
-            attack.Disable();
+            dash.Disable();
             ropeFire.Disable();
-            ropeToggle.Disable();
-            spit.Disable();
+            spitBomb.Disable();
 
-            // jump input callback
-            jump.performed -= OnJumpPerformed;
-            jump.canceled -= OnJumpCancel;
-            attack.performed -= OnAttackPerformed;
+            jump.performed -= OnJumpPressed;
+            jump.canceled -= OnJumpReleased;
+            dash.performed -= OnDash;
             ropeFire.performed -= OnRopeFire;
-            ropeToggle.performed -= OnRopeToggle;
-            spit.performed -= OnSpit;
-
+            spitBomb.performed -= OnSpitBomb;
         }
     }
 }

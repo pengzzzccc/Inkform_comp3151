@@ -18,15 +18,11 @@ namespace Inkform.Audio
         [SerializeField] private SoundCue wallBreak;    // 可破坏墙碎裂
         [SerializeField] private SoundCue bombTick;     // 炸弹警戒帧推进一格（逼近预警 + 引信倒计时共用）
 
-        [Header("RopeGun")]
-        [SerializeField] private SoundCue grappleMode;  // 绳索枪模式切换（收缩/悬挂）
-
         [Header("Item")]
         [SerializeField] private SoundCue itemEaten;    // 吞下
         [SerializeField] private SoundCue itemSpit;     // 吐出
 
         [Header("Player")]
-        [SerializeField] private SoundCue attack;       // 扑/吸的扬声，吃没吃到都放
         [SerializeField] private SoundCue jump;
         [SerializeField] private SoundCue land;
 
@@ -46,7 +42,6 @@ namespace Inkform.Audio
             PlayerBus.StateChanged += OnPlayerState;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
-            RopeGunBus.ModeChanged += OnGrappleMode;
         }
 
         void OnDisable()
@@ -59,7 +54,6 @@ namespace Inkform.Audio
             PlayerBus.StateChanged -= OnPlayerState;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
-            RopeGunBus.ModeChanged -= OnGrappleMode;
         }
 
         // 爆炸只能听 Blast —— Exploded 是在 foreach 里逐受害者发的，炸到 N 个就响 N 声
@@ -70,9 +64,6 @@ namespace Inkform.Audio
         // 玩家逼近和引信倒计时共用这一声。step / total 暂时用不上，
         // 留着是为了以后想「越接近音调越高」时不用再改总线签名
         private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
-
-        // 绳索枪模式切换：模式参数暂时不用，切换出声就行
-        private void OnGrappleMode(GrappleMode mode) => Play(grappleMode);
 
         private void OnItemEaten(ItemSuper item) => Play(itemEaten);
 
@@ -87,12 +78,11 @@ namespace Inkform.Audio
         private void OnItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
 
         // PlayerBus 自己已经去重（只在状态真的变化时广播），所以这里不会每帧连发。
-        // Release 不接：吐出声由 ItemBus.ItemReleased 负责，两边都接会重复。
+        // Eat/Release 动画已清理（冲刺是纯冲刺），这里只剩跳跃与落地
         private void OnPlayerState(PlayerState state)
         {
             switch (state)
             {
-                case PlayerState.Eat: Play(attack); break;
                 case PlayerState.JumpUp: Play(jump); break;
                 case PlayerState.Land: Play(land); break;
             }

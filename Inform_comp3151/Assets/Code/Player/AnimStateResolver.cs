@@ -12,7 +12,7 @@ namespace Inkform.Player
     /// 所以这里适合的是优先级链而不是 State 模式 —— 13 个状态各拆一个类，
     /// 换来的只是把同一条链拆散到 13 个文件里，读起来反而更难看出优先级。
     ///
-    /// [SerializeField] 默认值同样取自 Player.prefab 的实配值（attackAnimTime / landAnimTime 都是 1）。
+    /// [SerializeField] 默认值同样取自 Player.prefab 的实配值（landAnimTime 等）。
     /// 不自带 Update，由 PlayerHandler 最后调 Tick()。
     /// </summary>
     [RequireComponent(typeof(ContactSensor))]
@@ -20,7 +20,6 @@ namespace Inkform.Player
     public class AnimStateResolver : MonoBehaviour
     {
         [Header("One-shot anim durations")]
-        [SerializeField] private float attackAnimTime = 1f;      // Eat/Release 保持时长（与冲刺时长解耦）
         [SerializeField] private float landAnimTime = 1f;
         [SerializeField] private float jumpUpAnimTime = 0.3f;
         [SerializeField] private float ceilingAttachTime = 0.25f;
@@ -31,12 +30,10 @@ namespace Inkform.Player
         private Timer landAnimTimer;
         private Timer jumpUpTimer;
         private Timer ceilingAttachTimer;
-        private Timer attackAnimTimer;
 
         private Vector2 moveInput;
         private bool prevOnGround;
         private bool prevOnCeiling;
-        private bool swinging;          // 绳索枪悬挂中：状态压过一切接触推导
 
         void Awake()
         {
@@ -51,21 +48,12 @@ namespace Inkform.Player
         /// 否则落地会错放 Move。</summary>
         public void SetMoveInput(Vector2 input) => moveInput = input;
 
-        /// <summary>绳索枪悬挂中：每帧由 PlayerHandler 在 Tick 前刷新，悬挂态压过接触推导。</summary>
-        public void SetSwinging(bool value) => swinging = value;
-
         /// <summary>起跳一次性动画。由 PlayerHandler 从 PlayerMotor 取到起跳信号后转交。</summary>
         public void OnJumpStarted() => jumpUpTimer.Set(jumpUpAnimTime);
 
-        /// <summary>吃 / 吐的一次性动画，松键不打断，到期后由 Tick 恢复移动动画。</summary>
-        public void PlayAttack(bool releasing)
-        {
-            SetState(releasing ? PlayerState.Release : PlayerState.Eat);
-            attackAnimTimer.Set(attackAnimTime);
-        }
-
-        /// <summary>复活时清掉死前攒下的一次性动画。</summary>
-        public void ResetForRespawn() => attackAnimTimer.Clear();
+        /// <summary>复活时清掉死前攒下的一次性动画。
+        /// 冲刺不再播动画后只剩落地/贴顶一次性，这里保留调用点以防将来再加。</summary>
+        public void ResetForRespawn() { }
 
         /// <summary>把落地/贴顶的「上一帧」基准对齐到当前接触状态。
         /// 复活时必须在 ContactSensor.Tick() 之后调一次 —— 不然复活在地上会被判成
@@ -85,10 +73,6 @@ namespace Inkform.Player
             prevOnGround = contact.OnGround;
             if (!prevOnCeiling && contact.OnCeiling) ceilingAttachTimer.Set(ceilingAttachTime);
             prevOnCeiling = contact.OnCeiling;
-
-            if (attackAnimTimer.IsRunning) return;   // Eat/Release 动画保持期间不打断
-
-            if (swinging) { SetState(PlayerState.Swing); return; }   // 悬挂中：绳子主导，不推导接触
 
             if (contact.OnCeiling)
             {

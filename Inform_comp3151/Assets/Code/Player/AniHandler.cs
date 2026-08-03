@@ -45,12 +45,9 @@ namespace Inkform.Player
                 PlayerState.Rise         => ("RiseUp",        false),
                 PlayerState.Fall         => ("FallDown",      false),
                 PlayerState.Land         => ("Land",          false),
-                PlayerState.Eat          => ("Eat",           false),
-                PlayerState.Release      => ("Release",       false),
                 PlayerState.CeilingStick => ("Ceiling_Stick", false),
                 PlayerState.CeilingMove  => ("Ceiling_Move",  false),
                 PlayerState.CeilingIdle  => ("Ceiling_Idle",  false),
-                PlayerState.Swing        => ("FallDown",      false),   // 悬挂：复用下落帧，无需新美术
                 PlayerState.WallSlideL   => ("Wall_Slide_L",  true),
                 PlayerState.WallSlideR   => ("Wall_Slide_R",  true),
                 _                        => ("Idle",          false),
