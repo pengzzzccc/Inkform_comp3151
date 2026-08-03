@@ -27,11 +27,6 @@ namespace Inkform.Bus
         public static int DeathCount { get; private set; }
         public static bool IsDead { get; private set; }
 
-        /// <summary>最近一次死亡的上下文。RespawnDirector 靠它反查该等多久 ——
-        /// 「多久复活」写在死法上，而事件参数在死亡那一刻之后就取不到了，所以要存一份快照。
-        /// 快照必须在 Invoke 之前写好：订阅者回调里读到的得是本次死亡而不是上一次。</summary>
-        public static DeathContext CurrentDeath { get; private set; }
-
         public static void RaiseDied(in DeathContext ctx)
         {
             // 去重：同一帧可能有好几块刺同时判定到玩家，不挡的话计数翻倍、碎块也是双份
@@ -39,7 +34,6 @@ namespace Inkform.Bus
             if (IsDead) return;
             IsDead = true;
             DeathCount++;
-            CurrentDeath = ctx;
 
             Died?.Invoke(ctx);
         }
@@ -65,7 +59,6 @@ namespace Inkform.Bus
             // 计数也要清：ScriptableObject 那套「上次运行残留」的坑在静态字段上同样存在
             DeathCount = 0;
             IsDead = false;
-            CurrentDeath = default;
         }
     }
 }

@@ -23,6 +23,15 @@ namespace Inkform.Item
             sprite = this.gameObject.GetComponent<SpriteRenderer>();
         }
 
+        /// <summary>
+        /// 玩家死亡时把叼着的东西放回世界。默认实现只负责显形；
+        /// 需要恢复物理的子类（如 Bomb）必须覆写 —— 否则物品会带着被关掉的模拟永远留在世界上。
+        /// </summary>
+        public virtual void DropAt(Vector2 pos)
+        {
+            SetVisible(true);
+        }
+
         protected void SetVisible(bool visible)
         {
             if (_visible == visible) return;

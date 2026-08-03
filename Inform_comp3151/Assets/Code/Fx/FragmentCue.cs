@@ -26,7 +26,7 @@ namespace Inkform.Fx
         public int cellsX = 2;                                  // 横向切几块
         public int cellsY = 3;                                  // 纵向切几块
         [Tooltip("碎块速度 = 爆炸推力 × 本系数")]
-        [Range(0f, 2f)] public float forceMultiper = 0.6f;
+        [Range(0f, 2f)] public float forceMultiplier = 0.6f;
         [Tooltip("碎块随机自转的角速度上限")]
         public float spinSpeed = 180f;
 

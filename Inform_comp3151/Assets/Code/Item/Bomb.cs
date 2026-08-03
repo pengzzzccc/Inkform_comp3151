@@ -186,6 +186,29 @@ namespace Inkform.Item
             ItemBus.RaiseItemEaten(this);
         }
 
+        /// <summary>
+        /// 玩家死亡时被放回世界（Idle 相，不点引信）：从 Held 恢复成一颗普通炸弹。
+        /// 与 OnItemReleased 的区别：死亡掉落的炸弹不进入倒计时，只是停在原地等玩家再捡。
+        /// </summary>
+        public override void DropAt(Vector2 pos)
+        {
+            phase = BombPhase.Idle;
+            transform.SetParent(null);
+            SetVisible(true);
+            hitBox.enabled = true;
+            body.simulated = true;
+
+            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            transform.position = pos;
+            body.position = pos;
+            body.linearVelocity = Vector2.zero;
+            body.angularVelocity = 0f;
+
+            exploded = false;       // 本实例并未炸过，重置以防万一
+            frameIndex = -1;        // 强制下一帧重写常态帧 —— 现在是 Idle 相，不该停在引信末帧
+            RefreshFrame();
+        }
+
         // 被玩家吐出来：放回世界、给初速度、点引信
         private void OnItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity)
         {

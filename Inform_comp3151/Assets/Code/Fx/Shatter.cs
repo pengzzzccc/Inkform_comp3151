@@ -48,7 +48,7 @@ namespace Inkform.Fx
 
             // 工程里 m_AutoSyncTransforms = 0，改完 transform 顺手同步刚体，和 Bomb.OnItemReleased 一个理由
             body.position = pos;
-            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiper);
+            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier);
             body.angularVelocity = Random.Range(-cue.spinSpeed, cue.spinSpeed);
         }
 

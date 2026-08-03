@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Item;
+using Inkform.Life;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -8,6 +9,7 @@ namespace Inkform.Player
     /// 叼在嘴里的东西：记住当前持有的物品，攻击时把它吐出去。
     /// 从 PlayerHandler 拆出来的第四层 —— 吞下这一步不在这里，
     /// 那是物品自己判定的（见 Bomb.Swallow），本类只等 ItemBus 通知「你吃到了」。
+    /// 玩家死亡时把叼着的东西放回世界，复活后嘴是空的。
     ///
     /// 挂在 Player 上。
     /// </summary>
@@ -16,7 +18,7 @@ namespace Inkform.Player
         [Header("Spit")]
         // x 都会按朝向取反；spitOffset.x 必须大于「玩家碰撞体半宽 + 物品半径」，否则出生就重叠、会被物理弹开
         [SerializeField] private Vector2 spitOffset = new Vector2(0.9f, 0.15f);
-        // spitSpeed.x 必须大于冲刺速度（movingSpeed * attackMultiper），否则吐出去就被自己追上、免疫期一过原地自爆
+        // spitSpeed.x 必须大于冲刺速度（movingSpeed * attackMultiplier），否则吐出去就被自己追上、免疫期一过原地自爆
         [SerializeField] private Vector2 spitSpeed = new Vector2(24f, 6f);
 
         // 叼在嘴里的物品（null = 没叼东西）。不对外暴露查询接口 ——
@@ -26,11 +28,13 @@ namespace Inkform.Player
         void OnEnable()
         {
             ItemBus.ItemEaten += OnItemEaten;
+            LifeBus.Died += OnDied;
         }
 
         void OnDisable()
         {
             ItemBus.ItemEaten -= OnItemEaten;
+            LifeBus.Died -= OnDied;
         }
 
         /// <summary>
@@ -51,6 +55,19 @@ namespace Inkform.Player
         private void OnItemEaten(ItemSuper item)
         {
             heldItem = item;
+        }
+
+        // 由 LifeBus 在自己死掉时回调：把叼着的东西放回世界。
+        // 不清理的话复活后会带着一颗隐形、无物理、永不引信的炸弹卡死在 Held 相
+        //（吐出去是走 ItemReleased 的，那条路会点引信，死亡掉落不该点，所以单独处理）
+        private void OnDied(DeathContext ctx)
+        {
+            if (ctx.Victim != gameObject) return;
+            if (heldItem == null) return;
+
+            heldItem.DropAt(transform.position);
+            heldItem = null;
+            ItemBus.ClearHeld();
         }
     }
 }

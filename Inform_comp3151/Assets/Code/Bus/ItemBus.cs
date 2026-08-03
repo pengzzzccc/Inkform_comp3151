@@ -33,6 +33,13 @@ namespace Inkform.Bus
             ItemReleased?.Invoke(item, pos, velocity);
         }
 
+        /// <summary>清空快照。玩家死亡把叼着的物品放回世界时用 ——
+        /// 那条路径不走 ItemReleased（放了会点引信），所以快照得单独清。</summary>
+        public static void ClearHeld()
+        {
+            Held = null;
+        }
+
         // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()

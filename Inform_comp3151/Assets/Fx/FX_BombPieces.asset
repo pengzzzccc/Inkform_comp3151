@@ -33,7 +33,7 @@ MonoBehaviour:
   tint: {r: 1, g: 1, b: 1, a: 1}
   cellsX: 2
   cellsY: 3
-  forceMultiper: 0.6
+  forceMultiplier: 0.6
   spinSpeed: 180
   lifeTime: 3
   fadeTime: 1

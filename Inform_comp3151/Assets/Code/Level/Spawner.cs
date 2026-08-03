@@ -10,8 +10,8 @@ namespace Inkform.Level
     /// </summary>
     public class Spawner : MonoBehaviour
     {
-        [SerializeField] private float spawneraTimer = 5f;
-        [SerializeField] private GameObject spawneraObject;
+        [SerializeField] private float spawnTimer = 5f;
+        [SerializeField] private GameObject spawnObject;
 
         private Timer timer;
         private GameObject current;     // 本 spawner 当前持有的实例
@@ -29,7 +29,7 @@ namespace Inkform.Level
             if (!cooling)                       // 刚发现实例没了，从这一刻才开始计冷却
             {
                 cooling = true;
-                timer.Set(spawneraTimer);
+                timer.Set(spawnTimer);
                 return;
             }
 
@@ -41,7 +41,7 @@ namespace Inkform.Level
         {
             // 必须用带 position 的重载：Instantiate(prefab, transform) 会沿用预制体存档里的
             // localPosition（Bomb.prefab 存的是 -4.07, 0.45），而不是挪到本节点位置上
-            current = Instantiate(spawneraObject, transform.position, Quaternion.identity);
+            current = Instantiate(spawnObject, transform.position, Quaternion.identity);
             cooling = false;
         }
     }

@@ -6382,8 +6382,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6eda585e09036254f99b88a83efe7356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Spawner
-  spawneraTimer: 5
-  spawneraObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
+  spawnTimer: 5
+  spawnObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
 --- !u!4 &1236585734
 Transform:
   m_ObjectHideFlags: 0
@@ -6982,8 +6982,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6eda585e09036254f99b88a83efe7356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Spawner
-  spawneraTimer: 5
-  spawneraObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
+  spawnTimer: 5
+  spawnObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
 --- !u!4 &1951417610
 Transform:
   m_ObjectHideFlags: 0

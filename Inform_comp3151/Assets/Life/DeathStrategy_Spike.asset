@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e86588c8cc23d147af59e0aff778bc0, type: 3}
+  m_Name: DeathStrategy_Spike
+  m_EditorClassIdentifier: 
+  cause: 0
+  respawnDelay: 0.9
+  pieces: {fileID: 11400000, guid: 43f2338f6f4b0a24ca724e3b1a535373, type: 2}
+  burstForce: 14
+  trauma: 0.7
+  hitStop: 0.12
+  zoom: -0.5
+  zoomTime: 0.4
+  punch: 0.8
+  punchTime: 0.5
+  deathCue: {fileID: 11400000, guid: 360ed3774a98fa742be7fc7f79800244, type: 2}

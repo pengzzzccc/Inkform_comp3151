@@ -32,7 +32,9 @@ namespace Inkform.Level
         {
             get
             {
-                if (deathCache == null) deathCache = FindFirstObjectByType<DeathDirector>();
+                // 用 FindAnyObjectByType 而不是 FindFirstObjectByType：后者依赖 instance ID
+                // 顺序、已废弃（顺序本来就不保证稳定，这里也不关心哪个先找到）
+                if (deathCache == null) deathCache = FindAnyObjectByType<DeathDirector>();
                 return deathCache;
             }
         }
@@ -97,7 +99,7 @@ namespace Inkform.Level
             respawnTimer.Set(strategy != null ? strategy.RespawnDelay : fallbackDelay);
         }
 
-        // 用不带排序参数的重载：带 FindObjectsSortMode 的那个也已经过时了，
+        // 不带排序参数的重载即当前推荐 API：带 FindObjectsSortMode 的版本在 Unity 6000.4 已废弃，
         // 理由和 AudioManager 那边一样 —— instance ID 的顺序本来就不保证稳定，这里也不关心顺序
         private Checkpoint FindStartPoint()
         {

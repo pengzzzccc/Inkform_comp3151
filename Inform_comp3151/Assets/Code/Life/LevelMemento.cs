@@ -36,10 +36,10 @@ namespace Inkform.Life
 
         void Start()
         {
-            // 用带参重载：Unity 6 里 FindObjectsByType 必须显式给排序模式。
-            // 不关心顺序（还原之间互不影响），所以选 None —— 省掉一次排序
-            MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(
-                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            // 用带 includeInactive 的重载：Unity 6000.4 已废弃带 FindObjectsSortMode 的版本
+            // （instance ID 排序将来会被 EntityId 取代），不带排序参数的重载即当前推荐 API。
+            // 不关心顺序（还原之间互不影响），也不需要排序参数
+            MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include);
 
             foreach (MonoBehaviour mb in all)
             {

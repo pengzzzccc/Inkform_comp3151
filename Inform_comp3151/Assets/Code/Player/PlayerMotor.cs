@@ -18,21 +18,21 @@ namespace Inkform.Player
         [Header("Move")]
         [SerializeField] private float movingSpeed = 10f;
         [SerializeField] private float jumpSpeed = 12f;
-        [SerializeField][Range(0, 1)] private float fallCutmultiper = 0.12f;
+        [SerializeField][Range(0, 1)] private float fallCutMultiplier = 0.12f;
         [SerializeField] private float jumpBuffer = 0.15f;
         [SerializeField] private int jumpTimes = 1;
 
         [Header("Gravity")]
         [SerializeField] private float gravity = 3f;
-        [SerializeField] private float fallGravityMultiper = 2.2f;
-        [SerializeField][Range(0, 1)] private float onWallGravityMultiper = 0.2f;
+        [SerializeField] private float fallGravityMultiplier = 2.2f;
+        [SerializeField][Range(0, 1)] private float onWallGravityMultiplier = 0.2f;
 
         [Header("Wall jump")]
         [SerializeField] private float wallJumpTime = 0.15f;
-        [SerializeField][Range(0, 1)] private float wallKickMultiper = 0.3f;
+        [SerializeField][Range(0, 1)] private float wallKickMultiplier = 0.3f;
 
         [Header("Attack dash")]
-        [SerializeField][Range(1, 2)] private float attackMultiper = 1f;
+        [SerializeField][Range(1, 2)] private float attackMultiplier = 1f;
         [SerializeField] private float attackTime = 0.22f;      // 冲刺 / 移动锁定时长
 
         [Header("Knockback")]
@@ -48,7 +48,7 @@ namespace Inkform.Player
 
         private int jumpLeft;
         private float requestTime = -999f;
-        private bool jumpCutquest;
+        private bool jumpCutQueued;
 
         // 起跳发生在本帧 —— 由 PlayerHandler 取走后转交给动画层。
         // 用「取一次即清」的标志而不是事件：同物体内的一次性通知，架个事件不划算
@@ -106,12 +106,12 @@ namespace Inkform.Player
         }
 
         /// <summary>松开跳键：上升中就把纵向速度砍掉一截，实现按住越久跳越高。</summary>
-        public void CutJump() => jumpCutquest = true;
+        public void CutJump() => jumpCutQueued = true;
 
         /// <summary>攻击冲刺：朝 dir 方向给一段横向速度并锁住移动输入。</summary>
         public void Dash(float dir)
         {
-            body.linearVelocity = new Vector2(dir * movingSpeed * attackMultiper, body.linearVelocityY);
+            body.linearVelocity = new Vector2(dir * movingSpeed * attackMultiplier, body.linearVelocityY);
             attackTimer.Set(attackTime);
         }
 
@@ -142,7 +142,7 @@ namespace Inkform.Player
 
             // 死前攒下的锁定和跳跃次数不能带到下一条命里
             jumpLeft = jumpTimes;
-            jumpCutquest = false;
+            jumpCutQueued = false;
             jumpStarted = false;
             requestTime = -999f;
             wallJumpBuffer.Clear();
@@ -162,23 +162,23 @@ namespace Inkform.Player
             else if (!contact.CeilingStickActive)
                 body.gravityScale = gravity;                        // 贴顶时间用完，掉下来
             else if (wallSliding)
-                body.gravityScale = gravity * onWallGravityMultiper; // 贴墙下滑减速
+                body.gravityScale = gravity * onWallGravityMultiplier; // 贴墙下滑减速
             else if (body.linearVelocityY < 0f)
-                body.gravityScale = gravity * fallGravityMultiper;   // 下落加速，手感更利落
+                body.gravityScale = gravity * fallGravityMultiplier;   // 下落加速，手感更利落
             else
                 body.gravityScale = gravity;
         }
 
         private void StepJump()
         {
-            if (jumpCutquest && body.linearVelocityY > 0f)
+            if (jumpCutQueued && body.linearVelocityY > 0f)
             {
-                body.linearVelocityY *= fallCutmultiper;
-                jumpCutquest = false;
+                body.linearVelocityY *= fallCutMultiplier;
+                jumpCutQueued = false;
             }
             else if (body.linearVelocityY <= 0f)
             {
-                jumpCutquest = false;
+                jumpCutQueued = false;
             }
 
             bool canJump = (Time.time - requestTime) < jumpBuffer;
@@ -186,12 +186,12 @@ namespace Inkform.Player
             {
                 if (contact.OnLeftWall && !contact.OnGround)
                 {
-                    body.linearVelocity = new Vector2(jumpSpeed * wallKickMultiper, jumpSpeed);
+                    body.linearVelocity = new Vector2(jumpSpeed * wallKickMultiplier, jumpSpeed);
                     wallJumpBuffer.Set(wallJumpTime);
                 }
                 else if (contact.OnRightWall && !contact.OnGround)
                 {
-                    body.linearVelocity = new Vector2(-jumpSpeed * wallKickMultiper, jumpSpeed);
+                    body.linearVelocity = new Vector2(-jumpSpeed * wallKickMultiplier, jumpSpeed);
                     wallJumpBuffer.Set(wallJumpTime);
                 }
 

@@ -19,7 +19,7 @@ namespace Inkform.Life
     {
         [Header("Death burst")]
         [SerializeField] private FragmentCue pieces;        // 碎成什么样全写在这份资产里
-        [SerializeField] private float burstForce = 14f;    // 碎块初速度，再乘 Cue 里的 forceMultiper
+        [SerializeField] private float burstForce = 14f;    // 碎块初速度，再乘 Cue 里的 forceMultiplier
 
         // 死亡是全场最强的一次反馈，每项都该比爆炸更重。
         // 这里不做距离衰减：死亡恒发生在玩家身上 ≈ 镜头中心，算出来的系数必然是 1

@@ -32,7 +32,6 @@ namespace Inkform.Level
 
             // 致死点取碰撞体上离玩家最近的那个点，不能用 transform.position ——
             // 一整排刺画在同一张 Tilemap 上时那是网格原点，碎块会齐刷刷朝几十格外飞
-            Debug.Log("On Spike");
             LifeBus.RaiseDied(new DeathContext(
                 other.gameObject,
                 hitBox.ClosestPoint(other.bounds.center),

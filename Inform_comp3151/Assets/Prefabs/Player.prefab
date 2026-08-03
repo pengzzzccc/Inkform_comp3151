@@ -49,6 +49,7 @@ GameObject:
   - component: {fileID: 2600059357283168755}
   - component: {fileID: 2502678418540566454}
   - component: {fileID: 4511968466877940253}
+  - component: {fileID: 9904000001}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -279,15 +280,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.PlayerMotor
   movingSpeed: 10
   jumpSpeed: 12
-  fallCutmultiper: 0.12
+  fallCutMultiplier: 0.12
   jumpBuffer: 0.15
   jumpTimes: 1
   gravity: 3
-  fallGravityMultiper: 2.2
-  onWallGravityMultiper: 0.2
+  fallGravityMultiplier: 2.2
+  onWallGravityMultiplier: 0.2
   wallJumpTime: 0.15
-  wallKickMultiper: 0.3
-  attackMultiper: 1
+  wallKickMultiplier: 0.3
+  attackMultiplier: 1
   attackTime: 0.22
   knockbackTime: 0.35
 --- !u!114 &4511968466877940253
@@ -399,3 +400,17 @@ Transform:
   m_Children: []
   m_Father: {fileID: 8747597000814489108}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9904000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3780543705610343857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2620b5d37dce76646aec1bb3bd733d00, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.ItemCarrier
+  spitOffset: {x: 0.9, y: 0.15}
+  spitSpeed: {x: 24, y: 6}
