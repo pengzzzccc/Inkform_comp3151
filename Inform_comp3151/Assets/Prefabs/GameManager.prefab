@@ -51,6 +51,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Input.InputHandler
   player: {fileID: 0}
+  rampUpTime: 0.15
+  rampDownTime: 0.1
+  stickCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!114 &8232150284752385224
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -79,10 +105,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioDirector
   blast: {fileID: 11400000, guid: 0ec1aedd8b689a1498affbb33b64375e, type: 2}
   wallBreak: {fileID: 11400000, guid: b8abcbfba51dd124d8a107e676e86a0c, type: 2}
-  bombTick: {fileID: 0}
+  bombTick: {fileID: 11400000, guid: 64bba8dad938a134a8392bee7dcc93eb, type: 2}
   itemEaten: {fileID: 0}
   itemSpit: {fileID: 0}
-  attack: {fileID: 0}
   jump: {fileID: 0}
   land: {fileID: 0}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
@@ -113,7 +138,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 028f6d9ec0efe2840ad38782b1f4ce73, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RespawnDirector
-  respawnDelay: 0.9
+  fallbackDelay: 0.9
 --- !u!114 &9903000001
 MonoBehaviour:
   m_ObjectHideFlags: 0

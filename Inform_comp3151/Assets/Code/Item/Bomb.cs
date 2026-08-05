@@ -67,7 +67,7 @@ namespace Inkform.Item
 
         private readonly List<Chain> chains = new List<Chain>();    // 悬挂模式生成的链，随炸弹子树一并销毁
 
-        private int frameIndex = -1;        // -1 = 还没定过，保证第一次一定会写一次图
+        private int frameIndex = 1;        // -1 = 还没定过，保证第一次一定会写一次图
         private float fuseDuration;         // 本次引信的总时长（吐出 = fuseTime，连锁 = chainDelay）
         private bool snapToLast;            // 连锁触发：时间太短，不播动画直接停末帧
 
