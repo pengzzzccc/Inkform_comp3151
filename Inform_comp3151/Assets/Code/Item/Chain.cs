@@ -33,6 +33,7 @@ namespace Inkform.Item
         private readonly VerletRope rope = new VerletRope();
         private Rigidbody2D body;       // 末端绑定的炸弹刚体
         private Vector2 anchor;         // 世界固定锚点：悬挂点的初始世界坐标，不随炸弹移动
+        private Vector2 attachOffset;   // 挂点相对刚体位置的局部偏移（随刚体旋转），默认零 = 挂在质心
         private LineRenderer line;
 
         private Settings cfg = new Settings();
@@ -72,13 +73,17 @@ namespace Inkform.Item
             if (s != null) cfg = s;
         }
 
-        /// <summary>绑定炸弹刚体与锚点，按距离生成链段。必须在 AddComponent 之后立刻调用。</summary>
-        public void Init(Rigidbody2D bombBody, Vector2 anchorPos)
+        /// <summary>
+        /// 绑定炸弹刚体与锚点，按距离生成链段。必须在 AddComponent 之后立刻调用。
+        /// attachOffset = 挂点相对刚体位置的局部偏移（如墙的右缘），默认零 = 挂在刚体质心。
+        /// </summary>
+        public void Init(Rigidbody2D bombBody, Vector2 anchorPos, Vector2 attachOffset = default)
         {
             body = bombBody;
             anchor = anchorPos;
+            this.attachOffset = attachOffset;
 
-            rope.Init(cfg.solver, anchor, body.position);
+            rope.Init(cfg.solver, anchor, body.position + VerletRope.Rotate(attachOffset, body.rotation));
             segmentCount = rope.SegmentCount;
             intactEnd = segmentCount;
 
@@ -133,7 +138,7 @@ namespace Inkform.Item
             if (intactEnd <= 0) return;
 
             rope.SolveFixed(Time.fixedDeltaTime, anchor, intactEnd,
-                            IsIntact ? body : null, null);
+                            IsIntact ? body : null, null, attachOffset);
         }
 
         // 爆炸波及：爆心到某段中点 < 爆炸半径就切，且切最靠近爆心的那段

@@ -122,13 +122,24 @@ namespace Inkform.Tool
             }
         }
 
+        /// <summary>按角度（度）旋转向量。附刚体模式的挂点偏移是刚体局部坐标，
+        /// 必须按当前 rotation 换算回世界，否则墙一转链就挂错位置。</summary>
+        public static Vector2 Rotate(Vector2 v, float angleDeg)
+        {
+            float rad = angleDeg * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(rad);
+            float sin = Mathf.Sin(rad);
+            return new Vector2(v.x * cos - v.y * sin, v.x * sin + v.y * cos);
+        }
+
         /// <summary>
         /// 推进一步。anchor = 世界固定锚点（每帧更新也没关系，钉死不动的那端）。
         /// solveCount = 参与解算的末端点下标（Chain 切断后传 intactEnd，完整链传 SegmentCount）。
         /// body 非 null = 附刚体模式；endPin 非 null = 钉点模式；两者都 null = 自由悬垂。
+        /// bodyOffset = 挂点相对刚体位置的局部偏移（随刚体旋转换算成世界，默认零 = 挂在质心）。
         /// </summary>
         public void SolveFixed(float dt, Vector2 anchor, int solveCount,
-                               Rigidbody2D body, Vector2? endPin)
+                               Rigidbody2D body, Vector2? endPin, Vector2 bodyOffset = default)
         {
             if (solveCount <= 0) return;
 
@@ -146,7 +157,7 @@ namespace Inkform.Tool
             points[0] = anchor;
             prev[0] = anchor;
 
-            Vector2 bodyPos = attached ? body.position : Vector2.zero;
+            Vector2 bodyPos = attached ? body.position + Rotate(bodyOffset, body.rotation) : Vector2.zero;
             Vector2 solverBody = bodyPos;
 
             // 2. 距离约束迭代：链段间定长；附刚体时末端与刚体间零长（各分一半修正）
@@ -232,7 +243,8 @@ namespace Inkform.Tool
                 // 扣径向、留切向 = 绳子绷得住又照样能荡。
                 if (cfg.attachDamping > 0f)
                 {
-                    Vector2 radialDir = body.position - anchor;
+                    // 取挂点（而非质心）到锚点的方向：悬挂本质是单摆，挂点才是真正的摆半径
+                    Vector2 radialDir = bodyPos - anchor;
                     float len = radialDir.magnitude;
                     if (len > 1e-5f)
                     {
