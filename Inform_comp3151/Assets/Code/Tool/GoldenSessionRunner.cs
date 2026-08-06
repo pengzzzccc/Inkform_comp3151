@@ -31,11 +31,12 @@ namespace Inkform.Tool
             "dash",             // 右移 + 冲刺
             "death-respawn",    // 右移 + 刺死 + 复活
             "bomb-eat-spit",    // 生成炸弹 + 挂绳抓取 + 吐出
+            "rope-fire",        // 右移 + 发射绳索（拉取/收绳轨迹基线）
         };
 
         private static readonly int[] ScenarioDurations =
         {
-            700, 500, 420, 320, 650, 800,
+            700, 500, 420, 320, 650, 800, 700,
         };
 
         private const int SettleFrames = 40;    // 复位/开局稳定帧数（不录制）
@@ -171,6 +172,11 @@ namespace Inkform.Tool
                     }
                     if (frame == 150) cmd.fire = true;
                     if (frame == 560) cmd.spit = true;
+                    break;
+
+                case 6:     // rope-fire：无瞄准 → 移动方向上倾发射；记录飞行/拉取/收绳全过程的玩家轨迹
+                    if (frame == 150) cmd.fire = true;
+                    if (frame == 400) cmd.fire = true;      // 第二次按下 = 取消/松绳（视相位而定）
                     break;
             }
 

@@ -1,0 +1,16 @@
+{
+    "name": "Inkform.Core.Gameplay",
+    "rootNamespace": "Inkform.Core.Gameplay",
+    "references": [
+        "Inkform.Core.Framework"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

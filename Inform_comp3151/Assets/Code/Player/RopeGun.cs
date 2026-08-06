@@ -3,6 +3,8 @@ using Inkform.Item;
 using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
+using CoreRope = Inkform.Core.VerletRope;
+using CoreLayerKey = Inkform.Core.LayerKey;
 
 namespace Inkform.Player
 {
@@ -65,7 +67,7 @@ namespace Inkform.Player
         [SerializeField] private float previewStepDt = 1f / 30f;
 
         [Header("Rope")]
-        [SerializeField] private VerletRope.Settings ropeSettings = VerletRope.Settings.Default();
+        [SerializeField] private CoreRope.Settings ropeSettings = CoreRope.Settings.Default();
         [SerializeField] private LayerMask ropeCollisionMask = (1 << 6) | (1 << 11);  // 绳索段碰撞层（默认 Terrain|Breakable）
         [SerializeField] private float ropeGravityScale = 2.5f;                // 绳索重量：段重力系数，越大下垂越明显
         [SerializeField] private Material ropeMaterial;
@@ -109,7 +111,9 @@ namespace Inkform.Player
         private float lastPullDist;     // 拉取卡死检测：上一物理步到锚点的距离
         private float pullStuck;        // 距离不再下降的累计时长
 
-        private readonly VerletRope rope = new VerletRope();
+        private readonly CoreRope rope = new CoreRope();
+        private Rigidbody2DAdapter playerRopeBody;      // 玩家刚体的 Core 附体适配
+        private Rigidbody2DAdapter hookRopeBody;        // 钩子刚体的 Core 附体适配（收绳拖回用）
         private LineRenderer ropeLine;
 
         private Transform reticle;
@@ -179,6 +183,9 @@ namespace Inkform.Player
             playerBody = GetComponent<Rigidbody2D>();
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
+
+            playerRopeBody = new Rigidbody2DAdapter(playerBody);
+            rope.Physics = CoreBridge.Physics;
 
             reticle = CreateFx("RopeReticle", out reticleSprite,
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
@@ -262,6 +269,7 @@ namespace Inkform.Player
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
             hookBody = hookGo.AddComponent<Rigidbody2D>();
+            hookRopeBody = new Rigidbody2DAdapter(hookBody);
             hookBody.gravityScale = bulletGravityScale;
             hookBody.linearDamping = 0f;                // 与预览解析一致，抛物线才吻合
             // includeLayers 是「追加允许」语义，不会限制碰撞 —— 必须用 excludeLayers 排除
@@ -276,7 +284,7 @@ namespace Inkform.Player
             hookHit = hookGo.AddComponent<HookHit>();
             hookHit.Init(this);
 
-            rope.Init(RopeCfg(), origin, origin);
+            rope.Init(RopeCfg(), origin.ToCore(), origin.ToCore());
             ropeLine.enabled = true;
         }
 
@@ -290,10 +298,10 @@ namespace Inkform.Player
         // ---- 内部流程 ----
 
         // 把序列化的绳索碰撞层与重量合并进解算配置（绳索段要碰地形、加重下垂；炸弹链保持关闭）
-        private VerletRope.Settings RopeCfg()
+        private CoreRope.Settings RopeCfg()
         {
             var s = ropeSettings;
-            s.collisionMask = ropeCollisionMask;
+            s.collisionMask = new CoreLayerKey(ropeCollisionMask.value);
             s.gravityScale = ropeGravityScale;
             return s;
         }
@@ -404,6 +412,7 @@ namespace Inkform.Player
             if (hookGo != null) Destroy(hookGo);
             hookGo = null;
             hookBody = null;
+            hookRopeBody = null;
             hookHit = null;
         }
 
@@ -452,7 +461,7 @@ namespace Inkform.Player
                         hookBody.angularVelocity = 0f;
                         ropeLength = currentMaxRange;
                         rope.SetLength(ropeLength);
-                        rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
+                        rope.SolveFixed(dt, origin.ToCore(), rope.SegmentCount, null, hookBody.position.ToCore());
 
                         // 绷住的第一帧不转收绳：OnCollisionEnter2D 在 FixedUpdate 之后才跑，
                         // 当帧就切成 ReelIn 的话，紧接着到来的合法地形碰撞会被 OnHookTerrainHit
@@ -465,7 +474,7 @@ namespace Inkform.Player
 
                     ropeTaut = false;
                     rope.SetLength(hookDist);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
+                    rope.SolveFixed(dt, origin.ToCore(), rope.SegmentCount, null, hookBody.position.ToCore());
 
                     CutChainsNearHook();
                     if (DetectBomb()) return;
@@ -479,7 +488,7 @@ namespace Inkform.Player
                     var reel = RopeCfg();
                     rope.Configure(reel);
                     rope.SetLength(ropeLength);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, hookBody, null);
+                    rope.SolveFixed(dt, origin.ToCore(), rope.SegmentCount, hookRopeBody, null);
                     if (ropeLength <= detachDistance
                         || Vector2.Distance(origin, hookBody.position) <= detachDistance)
                         Finish();
@@ -528,8 +537,8 @@ namespace Inkform.Player
             var taut = RopeCfg();
             taut.gravityScale = tautRopeGravity;
             rope.Configure(taut);
-            rope.SetLength(dist);
-            rope.SolveFixed(dt, target, rope.SegmentCount, null, playerBody.position);
+                    rope.SetLength(dist);
+                    rope.SolveFixed(dt, target.ToCore(), rope.SegmentCount, null, playerBody.position.ToCore());
 
             // 卡死推进：距离不再下降（贴墙滑动中距离在降，不算卡死）→ 累计超时松绳
             if (dist < lastPullDist - 0.01f) pullStuck = 0f;
@@ -672,7 +681,7 @@ namespace Inkform.Player
             // 绳索渲染
             ropeLine.positionCount = rope.SegmentCount + 1;
             for (int i = 0; i <= rope.SegmentCount; i++)
-                ropeLine.SetPosition(i, rope.GetPoint(i));
+                ropeLine.SetPosition(i, rope.GetPoint(i).ToUnity3());
         }
 
         // ---- 总线回调 ----

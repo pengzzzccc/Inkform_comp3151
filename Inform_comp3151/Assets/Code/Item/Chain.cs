@@ -1,13 +1,15 @@
 using Inkform.Bus;
+using Inkform.Core;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
+using CoreVec2 = System.Numerics.Vector2;
 
 namespace Inkform.Item
 {
     /// <summary>
     /// Verlet 绳索链：连接炸弹与悬挂锚点（悬挂点的世界坐标）的可切断链条。
-    /// 解算本体在 VerletRope（与绳索枪共用），本类只保留：
+    /// 解算本体在 Inkform.Core.VerletRope（与绳索枪共用），本类只保留：
     /// ① 切断（CutAt / CutAll）；
     /// ② 切断途径：爆炸（HazardBus.Blast）波及 / 绳索枪飞行命中（静态注册表逐段检测）；
     /// ③ LineRenderer 渲染。
@@ -31,9 +33,9 @@ namespace Inkform.Item
         }
 
         private readonly VerletRope rope = new VerletRope();
-        private Rigidbody2D body;       // 末端绑定的炸弹刚体
-        private Vector2 anchor;         // 世界固定锚点：悬挂点的初始世界坐标，不随炸弹移动
-        private Vector2 attachOffset;   // 挂点相对刚体位置的局部偏移（随刚体旋转），默认零 = 挂在质心
+        private IAttachedBody attachedBody;     // 末端绑定的炸弹刚体（adapter 包装）
+        private CoreVec2 anchor;                // 世界固定锚点：悬挂点的初始世界坐标，不随炸弹移动
+        private CoreVec2 attachOffset;          // 挂点相对刚体位置的局部偏移（随刚体旋转），默认零 = 挂在质心
         private LineRenderer line;
 
         private Settings cfg = new Settings();
@@ -52,6 +54,8 @@ namespace Inkform.Item
             line.loop = false;
             line.positionCount = 0;
             line.enabled = false;
+
+            rope.Physics = CoreBridge.Physics;
         }
 
         void OnEnable()
@@ -79,11 +83,13 @@ namespace Inkform.Item
         /// </summary>
         public void Init(Rigidbody2D bombBody, Vector2 anchorPos, Vector2 attachOffset = default)
         {
-            body = bombBody;
-            anchor = anchorPos;
-            this.attachOffset = attachOffset;
+            attachedBody = new Rigidbody2DAdapter(bombBody);
+            anchor = anchorPos.ToCore();
+            this.attachOffset = attachOffset.ToCore();
 
-            rope.Init(cfg.solver, anchor, body.position + VerletRope.Rotate(attachOffset, body.rotation));
+            rope.Init(cfg.solver, anchor,
+                new System.Numerics.Vector2(bombBody.position.x, bombBody.position.y)
+                + VerletRope.Rotate(this.attachOffset, bombBody.rotation));
             segmentCount = rope.SegmentCount;
             intactEnd = segmentCount;
 
@@ -113,17 +119,18 @@ namespace Inkform.Item
         {
             if (!IsIntact) return -1;
 
+            CoreVec2 p = point.ToCore();
             float bestSq = maxDist * maxDist;
             int best = -1;
             for (int i = 0; i < segmentCount; i++)
             {
-                Vector2 a = rope.GetPoint(i);
-                Vector2 b = rope.GetPoint(i + 1);
-                Vector2 ab = b - a;
-                Vector2 ap = point - a;
-                float lenSq = ab.sqrMagnitude;
-                float t = lenSq > 1e-8f ? Mathf.Clamp01(Vector2.Dot(ap, ab) / lenSq) : 0f;
-                float d2 = (a + ab * t - point).sqrMagnitude;
+                CoreVec2 a = rope.GetPoint(i);
+                CoreVec2 b = rope.GetPoint(i + 1);
+                CoreVec2 ab = b - a;
+                CoreVec2 ap = p - a;
+                float lenSq = ab.LengthSquared();
+                float t = lenSq > 1e-8f ? Mathf.Clamp01(System.Numerics.Vector2.Dot(ap, ab) / lenSq) : 0f;
+                float d2 = (a + ab * t - p).LengthSquared();
                 if (d2 <= bestSq)
                 {
                     bestSq = d2;
@@ -138,7 +145,7 @@ namespace Inkform.Item
             if (intactEnd <= 0) return;
 
             rope.SolveFixed(Time.fixedDeltaTime, anchor, intactEnd,
-                            IsIntact ? body : null, null, attachOffset);
+                            IsIntact ? attachedBody : null, null, attachOffset);
         }
 
         // 爆炸波及：爆心到某段中点 < 爆炸半径就切，且切最靠近爆心的那段
@@ -146,12 +153,13 @@ namespace Inkform.Item
         {
             if (!IsIntact) return;
 
+            CoreVec2 c = center.ToCore();
             float bestSq = radius * radius;
             int best = -1;
             for (int i = 0; i < segmentCount; i++)
             {
-                Vector2 mid = (rope.GetPoint(i) + rope.GetPoint(i + 1)) * 0.5f;
-                float d2 = (mid - center).sqrMagnitude;
+                CoreVec2 mid = (rope.GetPoint(i) + rope.GetPoint(i + 1)) * 0.5f;
+                float d2 = (mid - c).LengthSquared();
                 if (d2 <= bestSq && (best < 0 || d2 < bestSq))
                 {
                     bestSq = d2;
@@ -167,7 +175,7 @@ namespace Inkform.Item
             if (!line.enabled || intactEnd <= 0) return;
             line.positionCount = intactEnd + 1;
             for (int i = 0; i <= intactEnd; i++)
-                line.SetPosition(i, rope.GetPoint(i));
+                line.SetPosition(i, rope.GetPoint(i).ToUnity3());
         }
     }
 }
