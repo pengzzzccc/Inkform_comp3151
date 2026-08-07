@@ -4,14 +4,16 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 触碰爆炸触发：碰到目标（默认玩家）就炸。配合 ExplodePart 使用 ——
-    /// 触发条件与爆炸本身分离，想换触发方式（定时 / 连锁）只换 part 不碰核心。
-    /// 触发器碰撞体和物理碰撞体都能触发：主节点把两者统一分发进 HandleContact。
+    /// Touch-detonation trigger: explodes on contact with the target (player by default). Use with
+    /// ExplodePart — the trigger condition and the explosion itself are separated; swapping the trigger
+    /// mode (timed / chain) swaps parts without touching the core.
+    /// Both trigger colliders and physical colliders can trigger it: the node unifies both into
+    /// HandleContact.
     /// </summary>
     public class ExplodeOnContact : MonoBehaviour, IInteractablePart
     {
         [Header("Trigger")]
-        [Tooltip("碰谁炸：CompareTag 传错字符串不会报错、只会永远不匹配，用 Tags 常量")]
+        [Tooltip("Who detonates it: CompareTag never errors on a wrong string, it just never matches — use the Tags constants")]
         [SerializeField] private string targetTag = Tags.Player;
 
         private Interactable root;
@@ -19,12 +21,13 @@ namespace Inkform.Interactable.Parts
 
         public void Attach(Interactable root) => this.root = root;
 
-        // 依赖解析放 Start：Interactable.Awake 边收集边调 Attach，此刻 TryGetPart 可能
-        // 还没轮到核心；Start 在所有 Awake 之后，保证爆炸核心已入列表
+        // Dependency resolution in Start: Interactable.Awake collects and Attach-es parts on the fly,
+        // so TryGetPart here might not reach the core yet; Start runs after all Awakes, guaranteeing
+        // the explosion core is already in the list
         void Start()
         {
             if (!root.TryGetPart(out explode))
-                Debug.LogWarning($"{root.name} 挂了 ExplodeOnContact 但没挂 ExplodePart，触碰不会爆炸", root);
+                Debug.LogWarning($"{root.name} has ExplodeOnContact but no ExplodePart; touch will not detonate", root);
         }
 
         public bool HandleContact(ContactPhase phase, Collider2D other)
@@ -34,7 +37,7 @@ namespace Inkform.Interactable.Parts
             if (!other.CompareTag(targetTag)) return false;
 
             explode.Explode();
-            return true;    // 已处理：短路后续 parts
+            return true;    // handled: short-circuit later parts
         }
     }
 }

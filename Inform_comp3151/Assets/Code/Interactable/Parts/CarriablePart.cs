@@ -6,20 +6,23 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 可叼 part：物体能被绳索枪命中后吞下、叼在嘴里、吐出、死亡掉落。
-    /// Bomb.Swallow / DropAt / OnItemReleased 的公共行为抽出来（去掉炸弹特有的引信）——
-    /// 「吞下后放回世界」这套生命周期对任何可叼物都一样，引爆之类才是具体物体的私事。
+    /// Carriable part: an object that can be swallowed after the rope gun hits it, carried in the
+    /// mouth, spit out, and dropped on death. The common behavior of Bomb.Swallow / DropAt /
+    /// OnItemReleased, extracted (minus the bomb-specific fuse) — "swallowed then put back into the
+    /// world" is the same lifecycle for any carriable; detonating and the like are the concrete
+    /// object's own business.
     ///
-    /// 玩家侧只认 ICarriable 接口：ItemCarrier / ItemBus / RopeGun 都不认识本类。
-    /// 要求：Interactable 本物体上有 Rigidbody2D（隐藏时关 simulated）。
-    /// 注：挂在子物体上 RopeGun 的 GetComponent 探测不到 —— 必须挂在本物体。
+    /// The player side only knows the ICarriable interface: ItemCarrier / ItemBus / RopeGun do not
+    /// know this class. Requires: Rigidbody2D on the Interactable root object (simulated is disabled
+    /// while hidden). Note: on a child object RopeGun's GetComponent probe would not find it — must
+    /// sit on the root object.
     /// </summary>
     public class CarriablePart : MonoBehaviour, IInteractablePart, ICarriable
     {
         [Header("Carriable")]
-        [Tooltip("能不能被吞下（绳索枪拉到后）")]
+        [Tooltip("Whether it can be swallowed (after the rope gun reels it in)")]
         [SerializeField] private bool eatAble = true;
-        [Tooltip("吐出后短暂免疫玩家接触，防止刚吐出去就被引爆；<= 0 关闭")]
+        [Tooltip("Brief immunity to player contact after being spit out, so it is not detonated right at the muzzle; <= 0 disables")]
         [SerializeField] private float spitArmTime = 0.3f;
 
         private Interactable root;
@@ -27,14 +30,14 @@ namespace Inkform.Interactable.Parts
         private Collider2D hitBox;
         private readonly List<Renderer> renderers = new List<Renderer>();
         private bool held;
-        private Timer spitTimer;    // 吐出免疫计时：只对玩家接触短路
+        private Timer spitTimer;    // spit-immunity timer: short-circuits only player contact
 
         public void Attach(Interactable root)
         {
             this.root = root;
             body = root.GetComponent<Rigidbody2D>();
             if (body == null)
-                Debug.LogWarning($"{root.name} 挂了 CarriablePart 但没挂 Rigidbody2D，无法被吞吃", root);
+                Debug.LogWarning($"{root.name} has CarriablePart but no Rigidbody2D; it cannot be swallowed", root);
 
             hitBox = root.GetComponent<Collider2D>();
             renderers.Clear();
@@ -44,14 +47,17 @@ namespace Inkform.Interactable.Parts
         void OnEnable() { ItemBus.ItemReleased += OnItemReleased; }
         void OnDisable() { ItemBus.ItemReleased -= OnItemReleased; }
 
-        // 拉取中（ropeGrappled）接触玩家：吞，而不是让爆炸类 part 引爆（Bomb 同款优先级）。
-        // 吞失败（嘴满等）不短路 —— 放行给后续 part，Bomb 原版嘴满拉过来也是炸
+        // While being pulled (ropeGrappled), contact with the player swallows instead of letting
+        // explosion-type parts detonate (same priority as Bomb). A failed swallow (mouth full, etc.)
+        // does NOT short-circuit — it falls through to later parts; in the original Bomb a full mouth
+        // also detonates on contact while being pulled
         public bool HandleContact(ContactPhase phase, Collider2D other)
         {
             if (phase == ContactPhase.Exit) return false;
 
-            // 吐出后的免疫期：吞掉玩家接触，防止刚吐出去就被爆炸触发引爆（Bomb ArmTimer 同款）。
-            // 只拦玩家 —— 撞地撞墙的速度爆炸不受影响
+            // Spit immunity: swallow player contact so it is not detonated right after being spit out
+            // (same as Bomb's ArmTimer). Only blocks the player — impact detonation vs ground/walls
+            // keeps working
             if (spitTimer.IsRunning && other.CompareTag(Tags.Player)) return true;
 
             if (!ropeGrappled) return false;
@@ -65,14 +71,15 @@ namespace Inkform.Interactable.Parts
         {
             if (held) return false;
             if (!eatAble) return false;
-            if (ItemBus.Held != null) return false;     // 嘴里已经有东西
+            if (ItemBus.Held != null) return false;     // something is already in the mouth
 
             Swallow(player);
             return true;
         }
 
-        // 吞下：不销毁，只关物理 + 关显示挂到玩家身上，等着被吐出来。
-        // 注意不能 SetActive(false)：OnDisable 会退订总线，就收不到「吐出」了
+        // Swallow: does not destroy, just disables physics + hides, parents to the player, waiting to
+        // be spit out. Note: must NOT SetActive(false) — OnDisable unsubscribes the bus and the
+        // "released" event would never arrive
         private void Swallow(Transform player)
         {
             held = true;
@@ -83,13 +90,14 @@ namespace Inkform.Interactable.Parts
             transform.SetParent(player, false);
             transform.localPosition = Vector3.zero;
 
-            // 被吞 = 切断所有挂绳：悬挂可叼物吐出后是自由物体（Bomb 同款语义）
+            // Being swallowed cuts all ropes: a hanging carriable becomes a free object once spit out
+            // (same semantics as Bomb)
             if (root.TryGetPart(out HangingChain hanging)) hanging.CutAllChains();
 
             ItemBus.RaiseItemEaten(this);
         }
 
-        /// <summary>玩家死亡时被放回世界：原地放下，不点引信、不给初速。</summary>
+        /// <summary>Dropped back into the world on the player's death: put down in place, no fuse, no initial velocity.</summary>
         public void DropAt(Vector2 pos)
         {
             held = false;
@@ -98,18 +106,20 @@ namespace Inkform.Interactable.Parts
             hitBox.enabled = true;
             body.simulated = true;
 
-            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
+            // write both
             transform.position = pos;
             body.position = pos;
             body.linearVelocity = Vector2.zero;
             body.angularVelocity = 0f;
         }
 
-        // 被玩家吐出来：放回世界、给初速度。
-        // 不点引信 —— 引信是炸弹的私有行为，「吐出后干什么」由具体物体自己决定
+        // Spit out: back into the world with an initial velocity.
+        // No fuse is lit — the fuse is the bomb's own behavior; "what happens after being spit out"
+        // is decided by the concrete object itself
         private void OnItemReleased(ICarriable item, Vector2 pos, Vector2 velocity)
         {
-            if (item != (ICarriable)this) return;       // 吐的不是我
+            if (item != (ICarriable)this) return;       // not the one being spit
 
             held = false;
             transform.SetParent(null);
@@ -117,23 +127,26 @@ namespace Inkform.Interactable.Parts
             hitBox.enabled = true;
             body.simulated = true;
 
-            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
+            // write both
             transform.position = pos;
             body.position = pos;
             body.linearVelocity = velocity;
             body.angularVelocity = 0f;
 
-            // 吐出保护：吐出瞬间初速高、玩家往往紧贴，这期间接触玩家不触发任何爆炸
+            // Spit protection: right after being spit out the velocity is high and the player is often
+            // still touching — this window blocks any explosion trigger from player contact
             if (spitArmTime > 0f) spitTimer.Set(spitArmTime);
         }
 
-        // 拉取中标记：被绳索枪命中后玩家被拉过来，期间接触玩家必须吞、不能炸（Bomb 同款）
+        // Pull-mark: after the rope gun hits, the player is reeled in; during that contact with the
+        // player must swallow rather than detonate (same as Bomb)
         private bool ropeGrappled;
 
         public void MarkRopeGrappled() => ropeGrappled = true;
         public void ClearRopeGrappled() => ropeGrappled = false;
 
-        // 自带去重：隐藏/显示与 Bomb 的 SetVisible 同一套（逐帧驱动也不会重复写）
+        // Self-deduplicating: same show/hide logic as Bomb's SetVisible (per-frame driving never rewrites)
         private bool _visible = true;
 
         private void SetVisible(bool visible)

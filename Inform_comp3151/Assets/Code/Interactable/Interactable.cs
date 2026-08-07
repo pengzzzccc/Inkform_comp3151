@@ -4,31 +4,37 @@ using UnityEngine;
 namespace Inkform.Interactable
 {
     /// <summary>
-    /// 可接触物主节点（组件模式交互框架的核心）：场景里所有与玩家交互的物件
-    /// （危险物 / 普通表面 / 炸弹…）都挂一个本组件，再按需组合行为组件（parts）。
+    /// Interactable node (the core of the component-based interaction framework): every object that
+    /// interacts with the player (hazards / plain surfaces / bombs...) carries this component and
+    /// composes behavior components (parts) as needed.
     ///
-    /// 分工：
-    /// ① 主节点只做两件事 —— 统一收物理回调（OnTrigger*/OnCollision*）并按声明顺序分发给 parts
-    ///    （遇「已处理」即短路）；对外暴露 parts 查询（TryGetPart），玩家和系统
-    ///    只经手本节点，不认识任何具体行为；
-    /// ② parts 挂在本物体或子物体上（GetComponentsInChildren 自动收集，挂上即生效，
-    ///    不用 Inspector 手动拖），具体行为（接触致死 / 爆炸 / 可叼 / 可抓…）由各 part
-    ///    自己实现 —— 「玩家只需要接口存储，具体逻辑看具体物体」。
+    /// Division of labor:
+    /// ① The node does two things — centrally receives physics callbacks (OnTrigger*/OnCollision*) and
+    ///    dispatches them in declaration order to parts (short-circuiting on "handled"); and exposes
+    ///    part lookup (TryGetPart) as the single entry for players and systems, which never know any
+    ///    concrete behavior;
+    /// ② parts attach to this object or its children (collected via GetComponentsInChildren, active
+    ///    on attach, no manual Inspector wiring); concrete behavior (touch-death / explosion /
+    ///    carriable / grabbable...) is implemented by each part — "the player needs only interface
+    ///    storage; concrete logic lives in the concrete object".
     ///
-    /// 触发器与物理碰撞统一分发：静态物（尖刺/激光，触发器碰撞体、无刚体）走 OnTrigger*，
-    /// 实体物（炸弹/地雷，非触发器 + Rigidbody2D）走 OnCollision* —— parts 不必区分来源，
-    /// 两者最终都汇进 HandleContact(phase, other)。碰撞回调要求本物体上有 Rigidbody2D。
+    /// Trigger and physical collision dispatch unified: static objects (spikes/lasers, trigger
+    /// colliders, no rigidbody) go through OnTrigger*; physical objects (bombs/mines, non-trigger +
+    /// Rigidbody2D) go through OnCollision* — parts never need to distinguish the source; both funnel
+    /// into HandleContact(phase, other). Collision callbacks require a Rigidbody2D on this object.
     ///
-    /// 层建议：危险物类放在 Hazard(13) 层 —— 工程里 Physics2D.QueriesHitTriggers = 1，
-    /// 放 Terrain/Breakable 的话玩家的四向 OverlapCircle 会把刺当成能站的地面。
+    /// Layer suggestion: hazard-class objects belong on Hazard(13) — the project sets
+    /// Physics2D.QueriesHitTriggers = 1, so on Terrain/Breakable the player's four-way OverlapCircle
+    /// would treat spikes as standable ground.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class Interactable : MonoBehaviour
     {
         private readonly List<IInteractablePart> parts = new List<IInteractablePart>();
 
-        /// <summary>查询行为组件：玩家/系统侧的统一入口（如 ItemCarrier 查可叼 part、
-        /// RopeGun 查可抓 part）。查不到返回 false，调用方按「没有这个行为」降级。</summary>
+        /// <summary>Part lookup: unified entry for the player/system side (e.g. ItemCarrier looks up the
+        /// carriable part, RopeGun the grabbable part). Returns false when absent — the caller degrades
+        /// to "no such behavior".</summary>
         public bool TryGetPart<T>(out T part) where T : class, IInteractablePart
         {
             foreach (IInteractablePart p in parts)
@@ -45,18 +51,18 @@ namespace Inkform.Interactable
 
         void Awake()
         {
-            // 收集 parts 必须在任何物理回调之前：物理回调在 Awake 之后才可能到达
+            // Parts must be collected before any physics callback: callbacks can only arrive after Awake
             parts.Clear();
             foreach (IInteractablePart p in GetComponentsInChildren<IInteractablePart>(true))
             {
                 parts.Add(p);
-                p.Attach(this);     // 挂载回调：此刻本节点 Awake 已跑完，可直接缓存引用
+                p.Attach(this);     // mount callback: this node's Awake already ran, references can be cached now
             }
         }
 
-        // ---- 物理回调统一入口：分发给所有 parts，遇「已处理」即短路 ----
-        // 触发器与碰撞共用同一套分发：静态物（无刚体）只收到 OnTrigger*，
-        // 实体物（有 Rigidbody2D）收到 OnCollision*，parts 无需区分来源
+        // ---- Unified physics callback entry: dispatch to all parts, short-circuit on "handled" ----
+        // Triggers and collisions share the same dispatch: static objects (no rigidbody) only receive
+        // OnTrigger*, physical objects (with Rigidbody2D) receive OnCollision* — parts need no source distinction
 
         void OnTriggerEnter2D(Collider2D other) => Dispatch(ContactPhase.Enter, other);
         void OnTriggerStay2D(Collider2D other) => Dispatch(ContactPhase.Stay, other);
@@ -74,7 +80,8 @@ namespace Inkform.Interactable
             }
         }
 
-        // 在 Scene 视图画出主节点范围 + 已挂 parts 一览，摆关卡时一眼看出组合
+        // Draws the node's bounds + an overview of attached parts in the Scene view, so a level designer
+        // can see the composition at a glance
         void OnDrawGizmosSelected()
         {
             Collider2D c = GetComponent<Collider2D>();
@@ -83,7 +90,7 @@ namespace Inkform.Interactable
             Gizmos.color = new Color(0.9f, 0.3f, 0.9f, 0.5f);
             Gizmos.DrawWireCube(c.bounds.center, c.bounds.size);
 
-            // 每个行为组件画个黄点：这个可接触物挂了哪几层行为，一眼可见
+            // A yellow dot per behavior component: which behavior layers this object carries, at a glance
             Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.9f);
             foreach (IInteractablePart p in GetComponentsInChildren<IInteractablePart>(true))
             {

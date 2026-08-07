@@ -5,20 +5,21 @@ using UnityEngine;
 namespace Inkform.Life
 {
     /// <summary>
-    /// 关卡快照管理者（备忘录模式里的 Caretaker）：踩到检查点时给全场可还原物件拍一张照，
-    /// 死亡复活时统一还原。
+    /// Level snapshot caretaker (Caretaker of the memento pattern): on checkpoint touch, captures every
+    /// restorable object in the scene; on death respawn, restores them all.
     ///
-    /// 解决的是一个真实的玩法问题：复活原本只把玩家瞬移回检查点，被炸碎的墙不会回来，
-    /// 于是同一段关卡反复重试会越来越空、后面的谜题直接失效。
+    /// Solves a real gameplay problem: respawn used to only teleport the player back to the checkpoint,
+    /// so shattered walls never came back — retrying the same section repeatedly left it emptier and
+    /// emptier, silently breaking later puzzles.
     ///
-    /// 本类不认识任何具体物件类型 —— 只经手 IMemento，内容对它不透明。
-    /// 挂在 GameManager 上（那里已经是 RespawnDirector / DeathDirector 的宿主）。
+    /// This class knows no concrete object types — it only deals with IMemento, whose content is
+    /// opaque. Attach to GameManager (already the host of RespawnDirector / DeathDirector).
     /// </summary>
     public class LevelMemento : MonoBehaviour
     {
-        // 原发者只在开局扫一次：关卡物件是场景里摆好的，运行时不会新增。
-        // 这也天然把 Spawner 运行时生成的实例排除在外 —— 那些归 Spawner 自己补货，
-        // 纳进来反而会在复活时凭空多出一批炸弹
+        // Originators are scanned once at startup: level objects are placed in the scene and never
+        // added at runtime. This also naturally excludes Spawner's runtime instances — those refill
+        // themselves, and including them would spawn an extra batch of bombs on every respawn
         private readonly List<IRestorable> originators = new List<IRestorable>();
         private readonly List<IMemento> snapshot = new List<IMemento>();
 
@@ -36,9 +37,10 @@ namespace Inkform.Life
 
         void Start()
         {
-            // 用带 includeInactive 的重载：Unity 6000.4 已废弃带 FindObjectsSortMode 的版本
-            // （instance ID 排序将来会被 EntityId 取代），不带排序参数的重载即当前推荐 API。
-            // 不关心顺序（还原之间互不影响），也不需要排序参数
+            // Use the includeInactive overload: Unity 6000.4 deprecated the FindObjectsSortMode
+            // versions (instance ID ordering will be replaced by EntityId), the no-sort-parameter
+            // overload is the current recommended API. Order is irrelevant (restores never affect each
+            // other), so no sort parameter is needed
             MonoBehaviour[] all = FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include);
 
             foreach (MonoBehaviour mb in all)
@@ -46,7 +48,8 @@ namespace Inkform.Life
                 if (mb is IRestorable r) originators.Add(r);
             }
 
-            // 开局先拍一张：还没踩到任何检查点就死掉时，也得有一份可还原的初始状态
+            // Capture once at startup: dying before touching any checkpoint still needs a restorable
+            // initial state
             Capture();
         }
 
@@ -59,8 +62,9 @@ namespace Inkform.Life
             snapshot.Clear();
             foreach (IRestorable r in originators)
             {
-                // 原发者可能已被别处销毁。必须转回 MonoBehaviour 再判 —— Unity 重载的 ==
-                // 挂在 UnityEngine.Object 上，拿接口引用直接判 null 认不出已销毁的对象
+                // The originator may have been destroyed elsewhere. Must cast back to MonoBehaviour
+                // before checking — Unity's overloaded == lives on UnityEngine.Object; comparing an
+                // interface reference directly cannot recognize destroyed objects
                 if (r as MonoBehaviour == null) continue;
                 snapshot.Add(r.Capture());
             }

@@ -3,14 +3,14 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 悬挂锚点标记：挂在「挂载了 HangingChain 的物体」的子物体上，标识一个链锚点位置。
-    /// 纯标记组件（Bomb.HangingPoint 的框架版）—— 无逻辑，HangingChain 在 Attach 时
-    /// GetComponentsInChildren 自动收集，所以锚点**必须是该物体的子节点**。
-    /// 无碰撞体、无刚体，只有 Scene 视图里的图标方便定位。
+    /// Hanging anchor marker: attach to a child of an object carrying HangingChain to mark a chain
+    /// anchor position. Pure marker component (the framework version of Bomb.HangingPoint) — no logic;
+    /// HangingChain auto-collects via GetComponentsInChildren at Attach, so an anchor **must be a child
+    /// node of that object**. No collider, no rigidbody — only a Scene-view icon for positioning.
     /// </summary>
     public class HangAnchor : MonoBehaviour
     {
-        [Tooltip("Scene 视图里锚点图标的大小，纯编辑辅助")]
+        [Tooltip("Anchor icon size in the Scene view, purely an editor aid")]
         [SerializeField] private float gizmoSize = 0.25f;
 
         void OnDrawGizmos()

@@ -7,15 +7,17 @@ using UnityEngine;
 namespace Inkform.EditorTools
 {
     /// <summary>
-    /// 一次性迁移工具：把「死亡策略 + 关卡备忘录 + PlayerHandler 拆分」这轮重构所需的
-    /// 资产和预制体接线一次做完。菜单：Tools/Refactor/Apply Death + Split Migration。
+    /// One-shot migration tool: completes the asset and prefab wiring needed by the "death strategy +
+    /// level memento + PlayerHandler split" refactor in one go.
+    /// Menu: Tools/Refactor/Apply Death + Split Migration.
     ///
-    /// 为什么必须有这个脚本：拆组件时 Unity **不会**把 [SerializeField] 的值迁到新组件上，
-    /// 而 Player.prefab 上有 11 个配值和 4 个子物体引用与代码默认值不同。
-    /// 手工重接一遍既慢又容易漏，漏了还只表现为「手感有点怪」，排查成本极高。
+    /// Why this script must exist: when splitting components, Unity does **not** migrate
+    /// [SerializeField] values onto the new components, and Player.prefab has 11 configured values and
+    /// 4 child-object references that differ from the code defaults. Re-wiring by hand is slow and
+    /// easy to miss, and a miss only shows as "the feel is slightly off", extremely costly to debug.
     ///
-    /// 幂等：重复点击不会重复加组件、也不会重复建资产（沿用 PlayerAnimBuilder 的做法，
-    /// 已存在就原地更新）。
+    /// Idempotent: repeated runs add no duplicate components and create no duplicate assets (same
+    /// approach as PlayerAnimBuilder — update in place when it exists).
     /// </summary>
     public static class RefactorMigration
     {
@@ -28,8 +30,9 @@ namespace Inkform.EditorTools
         const string PlayerPieces = "Assets/Fx/FX_PlayerPieces.asset";
         const string DeathSound = "Assets/Audio/SFX/Player/SFX_PlayerDead.asset";
 
-        // Player.prefab 里四个探测点子物体的名字。ContactSensor 的引用靠名字重接 ——
-        // 拆分前它们是 PlayerHandler 的字段，代码一改 Unity 就把那几个引用丢了
+        // Names of the four probe child objects in Player.prefab. ContactSensor's references are
+        // rewired by name — before the split they were PlayerHandler fields, and changing the code
+        // made Unity drop those references
         const string GroundChild = "CheckGround";
         const string CeilingChild = "CheckCeiling";
         const string LeftWallChild = "CheckLeftWall";
@@ -44,10 +47,10 @@ namespace Inkform.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("重构迁移完成：死亡策略资产、GameManager 与 Player 预制体均已接线。");
+            Debug.Log("Refactor migration complete: death strategy asset, GameManager and Player prefabs all wired.");
         }
 
-        // ---- 死亡策略资产 ----
+        // ---- Death strategy asset ----
 
         private static DeathStrategy EnsureSpikeStrategy()
         {
@@ -61,8 +64,8 @@ namespace Inkform.EditorTools
                 AssetDatabase.CreateAsset(strategy, SpikeStrategy);
             }
 
-            // 数值取自重构前 FxDirector 的 Death FX 区段和 PlayerDeathFx，
-            // 与 Player_test.unity 里的实配值逐项一致 —— 迁移不该改变手感
+            // Values come from the pre-refactor FxDirector Death FX section and PlayerDeathFx,
+            // matching Player_test.unity's actual values one by one — the migration must not change the feel
             var so = new SerializedObject(strategy);
             SetEnum(so, "cause", (int)DeathCause.Spike);
             SetFloat(so, "respawnDelay", 0.9f);
@@ -81,40 +84,41 @@ namespace Inkform.EditorTools
             return strategy;
         }
 
-        // ---- GameManager：加死亡导演 + 关卡备忘录 ----
+        // ---- GameManager: add death director + level memento ----
 
         private static void MigrateGameManager(DeathStrategy strategy)
         {
             GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefab);
-            if (root == null) { Debug.LogError($"找不到 {GameManagerPrefab}"); return; }
+            if (root == null) { Debug.LogError($"Cannot find {GameManagerPrefab}"); return; }
 
             DeathDirector deaths = Ensure<DeathDirector>(root);
             var so = new SerializedObject(deaths);
 
-            // 只有一个死因有策略，数组固定长度 1
+            // Only one cause has a strategy; the array is fixed at length 1
             SerializedProperty arr = so.FindProperty("strategies");
             if (arr != null)
             {
                 arr.arraySize = 1;
                 arr.GetArrayElementAtIndex(0).objectReferenceValue = strategy;
             }
-            SetRef(so, "fallback", strategy);   // 兜底也用它：漏配的死因至少还有一套演出
+            SetRef(so, "fallback", strategy);   // fallback uses it too: an unconfigured cause still gets a presentation
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            Ensure<LevelMemento>(root);         // 无需接线，自己扫场景
+            Ensure<LevelMemento>(root);         // no wiring needed, it scans the scene itself
 
             PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefab);
             PrefabUtility.UnloadPrefabContents(root);
         }
 
-        // ---- Player：加四个拆出来的组件并重接探测点 ----
+        // ---- Player: add the four split components and rewire the probe points ----
 
         private static void MigratePlayer()
         {
             GameObject root = PrefabUtility.LoadPrefabContents(PlayerPrefab);
-            if (root == null) { Debug.LogError($"找不到 {PlayerPrefab}"); return; }
+            if (root == null) { Debug.LogError($"Cannot find {PlayerPrefab}"); return; }
 
-            // 顺序无所谓，但 RequireComponent 会连带自动加，先显式加一遍免得漏
+            // Order does not matter, but RequireComponent would add them anyway; adding explicitly
+            // first so nothing is missed
             ContactSensor sensor = Ensure<ContactSensor>(root);
             Ensure<PlayerMotor>(root);
             Ensure<AnimStateResolver>(root);
@@ -127,14 +131,15 @@ namespace Inkform.EditorTools
             SetRef(so, "ceilingCheck", FindChild(root.transform, CeilingChild));
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            // 其余数值不在这里设：新组件的 C# 默认值已经写成了预制体上的原配值
-            // （movingSpeed 10 / jumpSpeed 12 / CheckRadius 0.1 …），加上就是对的
+            // The remaining values are not set here: the new components' C# defaults already equal
+            // the prefab's original values (movingSpeed 10 / jumpSpeed 12 / CheckRadius 0.1 ...),
+            // adding them would be redundant
 
             PrefabUtility.SaveAsPrefabAsset(root, PlayerPrefab);
             PrefabUtility.UnloadPrefabContents(root);
         }
 
-        // ---- 小工具 ----
+        // ---- Small helpers ----
 
         private static T Ensure<T>(GameObject go) where T : Component
         {
@@ -142,15 +147,15 @@ namespace Inkform.EditorTools
             return existing != null ? existing : go.AddComponent<T>();
         }
 
-        // 用遍历而不是 Transform.Find：后者要求写出完整层级路径，
-        // 子物体一旦被挪进空节点里就会静默失配
+        // Iterate rather than Transform.Find: the latter requires the full hierarchy path, and would
+        // silently fail once a child is moved into an empty node
         private static Transform FindChild(Transform root, string name)
         {
             foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == name) return t;
             }
-            Debug.LogWarning($"Player.prefab 里找不到子物体 {name}，对应的探测点需要手动拖");
+            Debug.LogWarning($"Cannot find child {name} in Player.prefab; the matching probe needs a manual drag");
             return null;
         }
 
@@ -175,9 +180,9 @@ namespace Inkform.EditorTools
             p.enumValueIndex = value;
         }
 
-        // 字段改名后本脚本会静默失效，所以找不到时必须吭一声
+        // This script fails silently after field renames, so a missing field must complain
         private static void Warn(SerializedObject so, string field)
-            => Debug.LogWarning($"{so.targetObject.GetType().Name} 上找不到序列化字段 {field}，已跳过");
+            => Debug.LogWarning($"Serialized field {field} not found on {so.targetObject.GetType().Name}, skipped");
     }
 }
 #endif

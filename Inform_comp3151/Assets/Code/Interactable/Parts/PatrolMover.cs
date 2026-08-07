@@ -3,25 +3,26 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 往返平移：在「初始位置 + pointA」与「初始位置 + pointB」之间来回走。
-    /// 两个端点是本地偏移、以 Attach 时的世界位置为基准 —— 物体摆在哪都能原地起算，
-    /// 整组挪动不用重配端点。配合 Spinner 就是「左右横移的旋转齿轮」。
-    /// 纯驱动器：不消费接触。
+    /// Patrol translation: moves back and forth between "initial position + pointA" and "initial
+    /// position + pointB". Both endpoints are local offsets based on the world position captured at
+    /// Attach — the object can be placed anywhere and the patrol starts from there; moving the whole
+    /// group needs no endpoint re-tuning. Combine with Spinner for a "rotating gear that strafes".
+    /// Pure driver: does not consume contact.
     /// </summary>
     public class PatrolMover : MonoBehaviour, IInteractablePart
     {
         [Header("Patrol")]
-        [Tooltip("左端点（相对初始位置的本地偏移）")]
+        [Tooltip("Left endpoint (local offset relative to the initial position)")]
         [SerializeField] private Vector2 pointA = new Vector2(-2.5f, 0f);
-        [Tooltip("右端点（相对初始位置的本地偏移）")]
+        [Tooltip("Right endpoint (local offset relative to the initial position)")]
         [SerializeField] private Vector2 pointB = new Vector2(2.5f, 0f);
-        [Tooltip("移动速度，单位/秒")]
+        [Tooltip("Movement speed, units/second")]
         [SerializeField] private float speed = 2.2f;
 
         private Interactable root;
-        private Rigidbody2D body;       // 有刚体时同步物理位置，站上面的玩家才能被带着走
-        private Vector2 startPos;   // Attach 时的世界位置，巡逻基准
-        private Vector2 target;     // 当前目标端点
+        private Rigidbody2D body;       // when a rigidbody exists, sync its position so players standing on top get carried
+        private Vector2 startPos;   // world position at Attach, patrol baseline
+        private Vector2 target;     // current target endpoint
         private bool goingToB = true;
 
         public void Attach(Interactable root)
@@ -44,7 +45,8 @@ namespace Inkform.Interactable.Parts
 
             if (dist <= step)
             {
-                // 到达端点：位置精确落在端点上（避免逐帧逼近的累计误差），换另一头
+                // Arrived at the endpoint: land exactly on it (avoids per-frame cumulative error),
+                // turn around
                 SetPosition(target);
                 goingToB = !goingToB;
                 target = startPos + (goingToB ? pointB : pointA);
@@ -55,15 +57,16 @@ namespace Inkform.Interactable.Parts
             }
         }
 
-        // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写 ——
-        // 不同步刚体的话物理碰撞体留在原地，站上面的玩家会被甩下（平台推挤/跟随都无从谈起）
+        // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
+        // write both — without the rigidbody sync the physics collider stays behind and players
+        // standing on top get left behind (no push, no follow to speak of)
         private void SetPosition(Vector2 next)
         {
             root.transform.position = next;
             if (body != null) body.position = next;
         }
 
-        // 编辑器下 Attach 没跑过，用当前 transform.position 当基准画示意
+        // In the editor Attach never ran; draw the hint from the current transform.position
         void OnDrawGizmosSelected()
         {
             Vector3 basePos = transform.position;

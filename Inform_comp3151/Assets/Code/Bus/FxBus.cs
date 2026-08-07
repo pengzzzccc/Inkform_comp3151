@@ -4,26 +4,26 @@ using UnityEngine;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// 特效总线：命令型（不是事实型）—— 发布方说「给我抖一下」，不关心谁来抖、怎么抖。
-    /// 于是 Bomb 不需要持有相机引用，相机也不需要知道爆炸的存在。
-    /// 具体某个游戏事件该配多强的特效，由 FxDirector 统一翻译。
+    /// FX bus: command-style (not fact-style) — publishers say "give me a shake", nobody cares who
+    /// shakes or how. Bomb therefore needs no camera reference, and the camera does not know explosions exist.
+    /// How strong an effect each game event deserves is translated uniformly by FxDirector.
     /// </summary>
     public static class FxBus
     {
-        /// <summary>屏幕抖动：amount 是 trauma 增量（0~1），多次请求累加而非重置，衰减速度由相机设置决定。</summary>
+        /// <summary>Screen shake: amount is a trauma increment (0~1); repeated requests accumulate rather than reset, decay speed is set by the camera.</summary>
         public static event Action<float> ShakeRequested;
 
-        /// <summary>卡帧：timeScale 归零的时长，单位是非缩放秒。</summary>
+        /// <summary>Hitstop: how long timeScale is zeroed, in unscaled seconds.</summary>
         public static event Action<float> HitStopRequested;
 
-        /// <summary>镜头缩放 punch：amount = orthographicSize 的瞬时增量（负值为推近），duration = 回弹时长。</summary>
+        /// <summary>Camera zoom punch: amount = instantaneous orthographicSize delta (negative = push in), duration = settle time.</summary>
         public static event Action<float, float> ZoomRequested;
 
-        /// <summary>后处理 punch：amount = 暗角强度增量（0~1），duration = 回落时长。</summary>
+        /// <summary>Post-processing punch: amount = vignette strength increment (0~1), duration = decay time.</summary>
         public static event Action<float, float> PunchRequested;
 
-        /// <summary>相机立刻吸附到目标身上，不做平滑。玩家被瞬移（复活）之后必须发一次，
-        /// 否则相机会拖着跟随惯性从旧位置一路滑过去。</summary>
+        /// <summary>Camera snaps onto the target immediately, no smoothing. Must be raised after the player
+        /// teleports (respawn), or the camera drags its follow inertia all the way from the old position.</summary>
         public static event Action SnapRequested;
 
         public static void RaiseShake(float amount)
@@ -51,7 +51,8 @@ namespace Inkform.Bus
             SnapRequested?.Invoke();
         }
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
+        // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {

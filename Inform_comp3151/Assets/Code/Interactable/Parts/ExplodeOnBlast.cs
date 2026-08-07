@@ -5,20 +5,20 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 连锁爆炸触发：被别的爆炸波及后延迟引信再炸。配合 ExplodePart 使用。
-    /// 靠 HazardBus.Exploded 的 victim 自认领 —— 发布方不需要认识本物体，
-    /// 一排爆炸物因此会依次炸开而不是同一帧全炸光。
+    /// Chain-explosion trigger: after being caught in another explosion, detonates on a delayed fuse.
+    /// Use with ExplodePart. Claims itself via the victim of HazardBus.Exploded — the publisher never
+    /// needs to know this object, so a row of explosives blows in sequence instead of all in one frame.
     /// </summary>
     public class ExplodeOnBlast : MonoBehaviour, IInteractablePart
     {
         [Header("Chain")]
-        [Tooltip("被别的爆炸波及后，隔多久跟着炸（0 = 当帧同步连爆）")]
+        [Tooltip("Delay before detonating after being caught in an explosion (0 = same-frame chain)")]
         [SerializeField] private float chainDelay = 0.1f;
 
         private Interactable root;
         private ExplodePart explode;
         private Timer timer;
-        private bool pending;       // 已被波及、正等引信
+        private bool pending;       // caught in a blast, fuse running
 
         public void Attach(Interactable root) => this.root = root;
 
@@ -28,13 +28,13 @@ namespace Inkform.Interactable.Parts
         void Start()
         {
             if (!root.TryGetPart(out explode))
-                Debug.LogWarning($"{root.name} 挂了 ExplodeOnBlast 但没挂 ExplodePart，连锁不会生效", root);
+                Debug.LogWarning($"{root.name} has ExplodeOnBlast but no ExplodePart; chaining will not work", root);
         }
 
-        // 纯监听：不消费接触，让 ExplodeOnContact 之类正常收到
+        // Pure listener: does not consume contact, so ExplodeOnContact and the like still receive it
         public bool HandleContact(ContactPhase phase, Collider2D other) => false;
 
-        // 由 HazardBus 在别的爆炸波及自己时回调：victim 自认领
+        // Called by HazardBus when another explosion affects this object: the victim claims itself
         private void OnChainExploded(GameObject victim, Vector2 center, float force)
         {
             if (victim != root.gameObject) return;

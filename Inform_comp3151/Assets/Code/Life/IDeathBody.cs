@@ -3,23 +3,26 @@ using UnityEngine;
 namespace Inkform.Life
 {
     /// <summary>
-    /// 尸体的操作面：策略通过它摆布死者的本体，而不直接认识 PlayerDeathFx / SpriteRenderer。
-    /// 于是「谁是尸体」和「尸体怎么处置」解耦 —— 以后想让敌人也能死，让它实现本接口即可。
+    /// The corpse's operation surface: the strategy manipulates the deceased's body through it, never
+    /// knowing PlayerDeathFx / SpriteRenderer directly. So "who is the corpse" and "how to handle the
+    /// corpse" are decoupled — a future enemy that can die just implements this interface.
     ///
-    /// 只放当前用得到的成员。加 FadeDeathStrategy（淡出而不碎裂）时在这里补一个 FadeOut(float)，
-    /// 那才是接口该长大的时机 —— 现在就摆一个没人调的方法只会变成死代码。
+    /// Only currently-used members live here. Add FadeOut(float) when a FadeDeathStrategy (fade
+    /// without shattering) arrives — that is when the interface should grow; an uncalled method now
+    /// would just be dead code.
     /// </summary>
     public interface IDeathBody
     {
-        /// <summary>本体的可见包围盒，碎块照着它切。
-        /// 必须在 Hide() 之前取 —— 关掉渲染/碰撞之后包围盒会退化成原点上的零尺寸。</summary>
+        /// <summary>The body's visible bounds; shards are sliced against it.
+        /// Must be captured before Hide() — after rendering/collision are off, bounds degenerate to
+        /// zero size at the origin.</summary>
         Bounds VisualBounds { get; }
 
-        /// <summary>藏起本体。实现方须避开 SetActive(false)：那会触发 OnDisable 退订总线，
-        /// 就再也收不到「复活」了。关渲染即可。</summary>
+        /// <summary>Hides the body. Implementors must avoid SetActive(false): that triggers OnDisable
+        /// unsubscribing the buses, and "respawn" would never arrive. Disabling rendering suffices.</summary>
         void Hide();
 
-        /// <summary>复活时显回本体。</summary>
+        /// <summary>Shows the body back on respawn.</summary>
         void Show();
     }
 }

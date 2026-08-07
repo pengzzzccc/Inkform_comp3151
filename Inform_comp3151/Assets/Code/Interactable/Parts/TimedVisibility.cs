@@ -5,23 +5,24 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 定时显隐：让危险物按「出现 onTime → 消失 offTime」的周期循环。消失期间
-    /// 碰撞体和渲染全关、玩家可以穿过去；出现期间一切照旧。定时激光柱 / 定时尖刺
-    /// 这类物件直接挂本组件（激光柱只要再配个碰撞体和渲染即可）。
+    /// Timed visibility: cycles hazards between "visible onTime → hidden offTime". While hidden the
+    /// collider and renderers are fully off and the player passes through; while visible everything
+    /// behaves normally. Objects like a timed laser pillar / timed spike attach this component
+    /// directly (a laser pillar only needs a collider and a renderer on top).
     ///
-    /// 实现要点：翻转时只切 Collider2D 和 Renderer 的 enabled，**不用 SetActive** ——
-    /// 失活会让本组件自己的 Update 停摆、永远无法在消失周期结束时把自己唤醒。
-    /// 这也是全工程的老规矩（BreakableWall.SetBroken / Bomb.SetVisible 都是切 enabled）。
-    /// 对 Tilemap 同样生效：TilemapRenderer 也是 Renderer。
+    /// Implementation note: the flip only toggles Collider2D and Renderer enabled, **never SetActive** —
+    /// deactivation would stop this component's own Update and it could never wake itself when the
+    /// hidden phase ends. This is a project-wide rule (BreakableWall.SetBroken / Bomb.SetVisible all
+    /// toggle enabled). Works on Tilemaps too: TilemapRenderer is a Renderer.
     /// </summary>
     public class TimedVisibility : MonoBehaviour, IInteractablePart
     {
         [Header("Timing")]
-        [Tooltip("出现（碰撞/渲染开启）时长，秒")]
+        [Tooltip("Visible (collision/rendering on) duration, seconds")]
         [SerializeField] private float onTime = 2f;
-        [Tooltip("消失（碰撞/渲染关闭）时长，秒。玩家可在此时段穿过")]
+        [Tooltip("Hidden (collision/rendering off) duration, seconds. The player can pass through during this window")]
         [SerializeField] private float offTime = 1.5f;
-        [Tooltip("开跑先亮还是先灭")]
+        [Tooltip("Whether it starts visible or hidden")]
         [SerializeField] private bool startVisible = true;
 
         private Collider2D body;
@@ -33,10 +34,10 @@ namespace Inkform.Interactable.Parts
         {
             body = root.GetComponent<Collider2D>();
             if (body == null)
-                Debug.LogWarning($"{root.name} 的 Interactable 上没有 Collider2D，定时显隐不会生效", root);
+                Debug.LogWarning($"{root.name}'s Interactable has no Collider2D; timed visibility will not work", root);
 
-            // 渲染器可能挂在本体或子物体上（Tilemap 的渲染在子物体）；只切 enabled，
-            // 关掉的渲染器照常拿回引用，不依赖激活顺序
+            // Renderers may sit on the root or children (a Tilemap's rendering is on a child); only
+            // toggling enabled, disabled renderers still hand back their references — no activation-order dependency
             renderers.Clear();
             renderers.AddRange(root.GetComponentsInChildren<Renderer>(true));
 
@@ -45,7 +46,7 @@ namespace Inkform.Interactable.Parts
             Apply();
         }
 
-        // 纯驱动器：不消费任何接触，让后面的 part（如 HarmOnTouch）正常收到
+        // Pure driver: consumes no contact, so later parts (like HarmOnTouch) receive it normally
         public bool HandleContact(ContactPhase phase, Collider2D other) => false;
 
         void Update()
@@ -61,7 +62,7 @@ namespace Inkform.Interactable.Parts
             Apply();
         }
 
-        // 防抖：时长 0 会每帧翻转，钳到最小有效时长
+        // Anti-jitter: a zero duration would flip every frame; clamp to a minimum effective duration
         private float PhaseDuration(bool forOn) => Mathf.Max(forOn ? onTime : offTime, 0.05f);
 
         private void Apply()

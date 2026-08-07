@@ -3,14 +3,15 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 旋转：绕自身 Z 轴匀速自转（度/秒）。碰撞体随 transform 一起转，
-    /// 触发检测跟着走 —— 旋转齿轮这类危险物的基本运动。负值反转方向。
-    /// 纯驱动器：不消费接触。
+    /// Spin: constant self-rotation around the local Z axis (degrees/second). The collider rotates
+    /// with the transform, so trigger detection follows — the basic motion of hazards like spinning
+    /// gears. Negative values reverse direction.
+    /// Pure driver: does not consume contact.
     /// </summary>
     public class Spinner : MonoBehaviour, IInteractablePart
     {
         [Header("Spin")]
-        [Tooltip("角速度，度/秒。负值 = 反转")]
+        [Tooltip("Angular speed, degrees/second. Negative = reverse")]
         [SerializeField] private float angularSpeed = 120f;
 
         private Interactable root;

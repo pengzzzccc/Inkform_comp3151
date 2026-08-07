@@ -7,9 +7,10 @@ using UnityEngine;
 namespace Inkform.EditorTools
 {
     /// <summary>
-    /// 从 Assets/Animation/Player/Sources 下已切好帧的精灵表，自动生成/更新所有玩家动画 clip，
-    /// 并把它们加入 Player.controller 的状态机。菜单：Tools/Player/Build Animations。
-    /// 源文件更新后重新点一次即可重建（会覆盖同名 clip 的帧绑定）。
+    /// Auto-generates/updates every player animation clip from the pre-sliced sprite sheets under
+    /// Assets/Animation/Player/Sources and adds them to the Player.controller state machine.
+    /// Menu: Tools/Player/Build Animations. Re-run after updating the sources to rebuild (overwrites
+    /// frame bindings of same-named clips).
     /// </summary>
     public static class PlayerAnimBuilder
     {
@@ -20,14 +21,14 @@ namespace Inkform.EditorTools
 
         struct Entry
         {
-            public string sheet;   // 源精灵表文件名（不含 .png）
-            public string clip;    // 输出 clip / 状态名
-            public bool loop;      // 是否循环（一次性动作设 false）
-            public bool flipY;     // 是否上下翻转（复用 Idle 帧做天花板倒吊）
+            public string sheet;   // source sprite sheet file name (without .png)
+            public string clip;    // output clip / state name
+            public bool loop;      // whether it loops (one-shots set false)
+            public bool flipY;     // whether to flip vertically (reusing Idle frames for ceiling-hanging)
             public Entry(string s, string c, bool l, bool fy = false) { sheet = s; clip = c; loop = l; flipY = fy; }
         }
 
-        // 源精灵表 -> 目标 clip 名 / 循环。命名与 AniHandler 的映射一致。
+        // Source sprite sheet -> target clip name / loop. Naming matches the AniHandler mapping.
         static readonly Entry[] Map =
         {
             new Entry("Idle_L.psd",          "Idle_L",          true),
@@ -50,7 +51,7 @@ namespace Inkform.EditorTools
             new Entry("WallClimb_MoveR",     "Ceiling_Move_R",  true),
             new Entry("WallClimb_LSide",     "Wall_Slide_L",    true),
             new Entry("WallClimb_RSide",     "Wall_Slide_R",    true),
-            // 天花板静止：复用 Idle 帧 + 上下翻转
+            // Ceiling-still: reuse Idle frames + vertical flip
             new Entry("Idle_L.psd",          "Ceiling_Idle_L",  true, true),
             new Entry("Idle_R.psd",          "Ceiling_Idle_R",  true, true),
         };
@@ -60,7 +61,7 @@ namespace Inkform.EditorTools
         {
             var controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(ControllerPath);
             if (controller == null)
-                Debug.LogWarning($"找不到 AnimatorController: {ControllerPath}（只生成 clip，不加状态）");
+                Debug.LogWarning($"AnimatorController not found: {ControllerPath} (clips generated, states not added)");
 
             int made = 0;
             foreach (var e in Map)
@@ -73,7 +74,7 @@ namespace Inkform.EditorTools
 
                 if (sprites.Length == 0)
                 {
-                    Debug.LogWarning($"跳过 {e.clip}：{texPath} 没有已切片的精灵");
+                    Debug.LogWarning($"Skipping {e.clip}: {texPath} has no sliced sprites");
                     continue;
                 }
 
@@ -93,7 +94,7 @@ namespace Inkform.EditorTools
                 settings.loopTime = e.loop;
                 AnimationUtility.SetAnimationClipSettings(clip, settings);
 
-                if (e.flipY)   // 上下翻转：整段 m_FlipY 常量=1
+                if (e.flipY)   // vertical flip: constant m_FlipY = 1 over the whole clip
                     clip.SetCurve("", typeof(SpriteRenderer), "m_FlipY",
                         AnimationCurve.Constant(0f, sprites.Length / Fps, 1f));
 
@@ -115,10 +116,10 @@ namespace Inkform.EditorTools
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"Player animations built: {made}/{Map.Length} 个 clip 已生成/更新。");
+            Debug.Log($"Player animations built: {made}/{Map.Length} clips generated/updated.");
         }
 
-        // 从 "Idle_L.psd_3" / "JumpUp_L_5" 这样的精灵名里取末尾序号，保证帧顺序
+        // Extracts the trailing index from sprite names like "Idle_L.psd_3" / "JumpUp_L_5" to keep frame order
         static int ExtractIndex(string spriteName)
         {
             int u = spriteName.LastIndexOf('_');
@@ -133,7 +134,7 @@ namespace Inkform.EditorTools
             {
                 if (cs.state.name == stateName)
                 {
-                    cs.state.motion = clip;   // 已存在同名状态 -> 只更新 motion
+                    cs.state.motion = clip;   // same-named state exists -> update only the motion
                     return;
                 }
             }

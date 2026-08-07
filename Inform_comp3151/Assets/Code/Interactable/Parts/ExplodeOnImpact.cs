@@ -3,15 +3,17 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// 撞击引爆触发：速度达到阈值后与任何物体碰撞即炸。配合 ExplodePart 使用 ——
-    /// 速度爆炸（Bomb.CheckSpeedExplode）的框架版：不限制目标标签，撞墙撞地撞玩家都算，
-    /// 也不吃任何免疫期。
-    /// 被吞时刚体模拟已关、碰撞体已关 → 无接触回调，天然不会触发，无需防御检查。
+    /// Impact-detonation trigger: once velocity reaches the threshold, contact with ANY object
+    /// detonates. Use with ExplodePart — the framework version of speed detonation
+    /// (Bomb.CheckSpeedExplode): no target-tag restriction, hitting a wall/ground/player all count,
+    /// and it ignores any immunity window.
+    /// While swallowed the rigidbody simulation and collider are off → no contact callbacks, so it
+    /// cannot trigger — no defensive check needed.
     /// </summary>
     public class ExplodeOnImpact : MonoBehaviour, IInteractablePart
     {
         [Header("Impact")]
-        [Tooltip("速度达到该阈值后，与任何物体碰撞都会爆炸；<= 0 关闭")]
+        [Tooltip("Once velocity reaches this threshold, contact with any object detonates; <= 0 disables")]
         [SerializeField] private float threshold = 0f;
 
         private Interactable root;
@@ -23,15 +25,16 @@ namespace Inkform.Interactable.Parts
             this.root = root;
             body = root.GetComponent<Rigidbody2D>();
             if (body == null)
-                Debug.LogWarning($"{root.name} 挂了 ExplodeOnImpact 但没挂 Rigidbody2D，速度判定不会生效", root);
+                Debug.LogWarning($"{root.name} has ExplodeOnImpact but no Rigidbody2D; speed checks will not work", root);
         }
 
-        // 依赖解析放 Start：Interactable.Awake 边收集边调 Attach，此刻 TryGetPart 可能
-        // 还没轮到核心；Start 在所有 Awake 之后，保证爆炸核心已入列表
+        // Dependency resolution in Start: Interactable.Awake collects and Attach-es parts on the fly,
+        // so TryGetPart here might not reach the core yet; Start runs after all Awakes, guaranteeing
+        // the explosion core is already in the list
         void Start()
         {
             if (!root.TryGetPart(out explode))
-                Debug.LogWarning($"{root.name} 挂了 ExplodeOnImpact 但没挂 ExplodePart，撞击不会爆炸", root);
+                Debug.LogWarning($"{root.name} has ExplodeOnImpact but no ExplodePart; impacts will not detonate", root);
         }
 
         public bool HandleContact(ContactPhase phase, Collider2D other)
@@ -41,7 +44,7 @@ namespace Inkform.Interactable.Parts
             if (body.linearVelocity.magnitude < threshold) return false;
 
             explode.Explode();
-            return true;    // 已处理：短路后续 parts
+            return true;    // handled: short-circuit later parts
         }
     }
 }

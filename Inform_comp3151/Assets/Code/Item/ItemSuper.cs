@@ -3,8 +3,9 @@ using UnityEngine;
 namespace Inkform.Item
 {
     /// <summary>
-    /// 所有可拾取/可吃物品的基类：持有物品数据和 SpriteRenderer 缓存。
-    /// 注意：MonoBehaviour 不能用构造函数（Unity 自己负责实例化），数据一律用 SerializeField 在 Inspector 里配。
+    /// Base class of all pickable/eatable items: holds item data and the SpriteRenderer cache.
+    /// Note: MonoBehaviours cannot use constructors (Unity instantiates them itself); data is always
+    /// configured via SerializeField in the Inspector.
     /// </summary>
     public class ItemSuper : MonoBehaviour
     {
@@ -24,8 +25,9 @@ namespace Inkform.Item
         }
 
         /// <summary>
-        /// 玩家死亡时把叼着的东西放回世界。默认实现只负责显形；
-        /// 需要恢复物理的子类（如 Bomb）必须覆写 —— 否则物品会带着被关掉的模拟永远留在世界上。
+        /// Puts the held item back into the world when the player dies. The default implementation only
+        /// shows it; subclasses that need physics restored (like Bomb) must override — otherwise the
+        /// item stays in the world forever with its simulation disabled.
         /// </summary>
         public virtual void DropAt(Vector2 pos)
         {
@@ -40,7 +42,8 @@ namespace Inkform.Item
 
         }
 
-        // 和 SetVisible 一样自带去重：逐帧驱动的动画每帧都会调进来，但大多数帧是同一张图
+        // Like SetVisible, self-deduplicating: per-frame-driven animation calls in every frame, but
+        // most frames are the same sprite
         protected void SetSprite(Sprite s)
         {
             if (_current == s) return;

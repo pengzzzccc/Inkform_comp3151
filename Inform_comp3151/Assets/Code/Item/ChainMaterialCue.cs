@@ -3,16 +3,18 @@ using UnityEngine;
 namespace Inkform.Item
 {
     /// <summary>
-    /// 链子材质包：多张材质，生成多条链时按下标循环取。
-    /// 在 Assets > Create > Item > Chain Material Cue 创建，由 HangingChain 在 Inspector 里引用。
+    /// Chain material pack: multiple materials; when generating multiple chains they are picked
+    /// cyclically by index. Created via Assets > Create > Item > Chain Material Cue, referenced by
+    /// HangingChain in the Inspector.
     /// </summary>
     [CreateAssetMenu(menuName = "Item/Chain Material Cue")]
     public class ChainMaterialCue : ScriptableObject
     {
-        [Tooltip("链子材质表，多条链按下标循环取；空槽位 = 该条链用默认材质；全空 = 全部默认")]
+        [Tooltip("Chain material list, picked cyclically by chain index; an empty slot = that chain uses the default material; all empty = all default")]
         public Material[] materials;
 
-        /// <summary>循环取第 index 条链的材质；数组为空或该槽空返回 null（调用方回落默认）。</summary>
+        /// <summary>Cyclically picks the material for chain index; returns null when the array is empty
+        /// or that slot is empty (the caller falls back to default).</summary>
         public Material PickMaterial(int index)
         {
             if (materials == null || materials.Length == 0) return null;

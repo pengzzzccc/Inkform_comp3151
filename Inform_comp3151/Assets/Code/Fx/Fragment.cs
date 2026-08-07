@@ -4,22 +4,24 @@ using UnityEngine;
 namespace Inkform.Fx
 {
     /// <summary>
-    /// 碎块：外观、尺寸、初速度全部由 Shatter 在生成时按 FragmentCue 写入，
-    /// 存活 lifeTime 后自毁，最后 fadeTime 秒淡出，免得碎块凭空消失。
+    /// Fragment: look, size, and initial velocity are all written by Shatter at spawn according to the
+    /// FragmentCue; self-destructs after lifeTime, fading out over the last fadeTime seconds so shards
+    /// do not vanish out of thin air.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(SpriteRenderer))]
     public class Fragment : MonoBehaviour
     {
         [Header("Fragment setting")]
-        // 不走 Cue 直接扔进场景时的兜底值；Shatter 生成的碎块会在 Apply 里被 Cue 覆盖
+        // Fallback values when dropped into a scene without a Cue; shards spawned by Shatter get
+        // overwritten by the Cue in Apply
         [SerializeField] private float lifeTime = 3f;
-        [SerializeField] private float fadeTime = 1f;   // 生命末尾的淡出时长
+        [SerializeField] private float fadeTime = 1f;   // fade-out duration at end of life
 
         private SpriteRenderer sprite;
-        private BoxCollider2D box;      // 可能没有，允许为 null
+        private BoxCollider2D box;      // may be absent, allowed to be null
         private Timer LifeTimer;
-        private float baseAlpha = 1f;   // Cue 里 tint 自带的透明度，淡出以它为上限
+        private float baseAlpha = 1f;   // alpha carried by the Cue's tint; fade caps at this
 
         void Awake()
         {
@@ -29,17 +31,17 @@ namespace Inkform.Fx
         }
 
         /// <summary>
-        /// 由 Shatter 在 Instantiate 之后立刻调用：随机换一张外观，等比缩放到塞进格子。
-        /// 必须排在 Awake 之后 —— sprite 缓存和寿命计时器都是在那里初始化的。
+        /// Called by Shatter immediately after Instantiate: picks a random look and scales to fit the cell.
+        /// Must run after Awake — the sprite cache and the life timer are initialized there.
         /// </summary>
         public void Apply(FragmentCue cue, Vector2 cell)
         {
             lifeTime = cue.lifeTime;
             fadeTime = cue.fadeTime;
-            LifeTimer.Set(lifeTime);            // Awake 里已按预制体上的旧值起过一次，这里按 Cue 重来
+            LifeTimer.Set(lifeTime);            // Awake already started once with the prefab's old values; restart per the Cue
 
             Sprite pick = cue.PickSprite();
-            if (pick != null) sprite.sprite = pick;     // Cue 里一张图都没配时，保留预制体自带的
+            if (pick != null) sprite.sprite = pick;     // when the Cue has no sprites configured, keep the prefab's own
             sprite.color = cue.tint;
             baseAlpha = cue.tint.a;
 
@@ -49,14 +51,16 @@ namespace Inkform.Fx
                 sprite.flipY = Random.value < 0.5f;
             }
 
-            // 等比缩放，且基准是「图集里最大那张」而不是本块自己 ——
-            // 逐轴拉伸会把手绘轮廓压变形，按本块自己算又会把小碎片放大到和大块一样
+            // Uniform scale, based on "the largest sprite in the atlas" rather than this shard itself —
+            // per-axis stretching distorts hand-drawn silhouettes, and basing it on the shard itself
+            // would blow small shards up to match big ones
             Vector2 basis = cue.MaxSpriteSize;
             float s = Mathf.Min(cell.x / basis.x, cell.y / basis.y) * cue.PickScale();
             transform.localScale = new Vector3(s, s, 1f);
 
-            // 碰撞体按图的实际外框走：预制体上那个 1×1 的方盒配不上不规则碎片，
-            // 不改的话碎块会悬在地面上方，还会互相用大得多的隐形盒子顶开
+            // Collider follows the sprite's actual outline: the prefab's 1×1 box does not fit irregular
+            // shards — unchanged, shards would hover above ground and shove each other with far larger
+            // invisible boxes
             if (box != null && sprite.sprite != null) box.size = sprite.sprite.bounds.size;
         }
 
