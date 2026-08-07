@@ -39,13 +39,17 @@ namespace Inkform.Player
 
         public bool OnWall => OnLeftWall || OnRightWall;
 
+        /// <summary>脚下命中的碰撞体（层 6/11）。平台跟随靠它读脚下物体的位移。</summary>
+        public Collider2D Ground { get; private set; }
+
         /// <summary>贴顶时间还没用完 —— 见 ceilingStickTimer 上那段反相语义的说明。</summary>
         public bool CeilingStickActive => ceilingStickTimer.IsRunning;
 
         /// <summary>探一次四向接触。由 PlayerHandler 在每帧最前面调。</summary>
         public void Tick()
         {
-            OnGround = Physics2D.OverlapCircle(groundCheck.position, checkRadius, terrainMask);
+            Ground = Physics2D.OverlapCircle(groundCheck.position, checkRadius, terrainMask);
+            OnGround = Ground != null;
             OnLeftWall = Physics2D.OverlapCircle(leftWallCheck.position, checkRadius, terrainMask);
             OnRightWall = Physics2D.OverlapCircle(rightWallCheck.position, checkRadius, terrainMask);
             OnCeiling = Physics2D.OverlapCircle(ceilingCheck.position, checkRadius, terrainMask);

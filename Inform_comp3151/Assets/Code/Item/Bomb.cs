@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Fx;
+using Inkform.Interactable;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
@@ -23,7 +24,7 @@ namespace Inkform.Item
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(CircleCollider2D))]
-    public class Bomb : ItemSuper
+    public class Bomb : ItemSuper, ICarriable
     {
         public enum BombMode { Normal, Hanging }
 
@@ -296,9 +297,9 @@ namespace Inkform.Item
         }
 
         // 被玩家吐出来：放回世界、给初速度、点引信
-        private void OnItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity)
+        private void OnItemReleased(ICarriable item, Vector2 pos, Vector2 velocity)
         {
-            if (item != (ItemSuper)this) return;        // 吐的不是我
+            if (item != (ICarriable)this) return;        // 吐的不是我
 
             phase = BombPhase.Fuse;
             transform.SetParent(null);

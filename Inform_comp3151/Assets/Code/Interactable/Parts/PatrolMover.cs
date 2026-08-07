@@ -19,6 +19,7 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private float speed = 2.2f;
 
         private Interactable root;
+        private Rigidbody2D body;       // 有刚体时同步物理位置，站上面的玩家才能被带着走
         private Vector2 startPos;   // Attach 时的世界位置，巡逻基准
         private Vector2 target;     // 当前目标端点
         private bool goingToB = true;
@@ -26,6 +27,7 @@ namespace Inkform.Interactable.Parts
         public void Attach(Interactable root)
         {
             this.root = root;
+            body = root.GetComponent<Rigidbody2D>();
             startPos = root.transform.position;
             target = startPos + pointB;
         }
@@ -43,14 +45,22 @@ namespace Inkform.Interactable.Parts
             if (dist <= step)
             {
                 // 到达端点：位置精确落在端点上（避免逐帧逼近的累计误差），换另一头
-                root.transform.position = target;
+                SetPosition(target);
                 goingToB = !goingToB;
                 target = startPos + (goingToB ? pointB : pointA);
             }
             else
             {
-                root.transform.position = from + to / dist * step;
+                SetPosition(from + to / dist * step);
             }
+        }
+
+        // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写 ——
+        // 不同步刚体的话物理碰撞体留在原地，站上面的玩家会被甩下（平台推挤/跟随都无从谈起）
+        private void SetPosition(Vector2 next)
+        {
+            root.transform.position = next;
+            if (body != null) body.position = next;
         }
 
         // 编辑器下 Attach 没跑过，用当前 transform.position 当基准画示意

@@ -1,5 +1,5 @@
 using Inkform.Bus;
-using Inkform.Item;
+using Inkform.Interactable;
 using Inkform.Player;
 using UnityEngine;
 
@@ -65,7 +65,7 @@ namespace Inkform.Audio
         // 留着是为了以后想「越接近音调越高」时不用再改总线签名
         private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
 
-        private void OnItemEaten(ItemSuper item) => Play(itemEaten);
+        private void OnItemEaten(ICarriable item) => Play(itemEaten);
 
         // 这两条都是「玩家自己的声音」，恒在镜头中心，所以和 attack/jump/land 一样不传位置。
         // 对应的 Cue 资产里 spatial 应保持关闭 —— 见 SoundCue.cs 里那条 Tooltip
@@ -75,7 +75,7 @@ namespace Inkform.Audio
 
         // 吐出点恒在玩家身上 ≈ 镜头中心，衰减系数必然接近 1，传位置纯粹是为了
         // 「有位置就传下去」的一致性，实际听感和不传一样
-        private void OnItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
+        private void OnItemReleased(ICarriable item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
 
         // PlayerBus 自己已经去重（只在状态真的变化时广播），所以这里不会每帧连发。
         // Eat/Release 动画已清理（冲刺是纯冲刺），这里只剩跳跃与落地

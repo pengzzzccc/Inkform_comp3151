@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
 using Inkform.Tool;
@@ -23,7 +24,8 @@ namespace Inkform.Player
     /// （和炸弹悬挂链同一套 Verlet 解算）。
     ///
     /// 特殊命中：
-    /// ① 炸弹：短 hitstop 后把玩家拉向炸弹，到达后吞下（Bomb.TrySwallowByRope）；
+    /// ① 可叼物（实现 ICarriable 的物体：Bomb、CarriablePart 挂载物等）：短 hitstop 后
+    ///    把玩家拉向目标，到达后吞下（ICarriable.TrySwallowByRope）；
     /// ② 炸弹悬挂链：在命中点切断（Chain.CutAt，靠 Chain 静态注册表逐段检测）。
     ///
     /// 射程：默认 maxRange，特殊区域（RopeRangeZone）通过 RopeGunBus 覆盖/恢复。
@@ -31,7 +33,7 @@ namespace Inkform.Player
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        private enum RopePhase { Idle, Flying, ReelIn, Pulling, PullingBomb }
+        private enum RopePhase { Idle, Flying, ReelIn, Pulling, PullingEat }
 
         [Header("Range")]
         [SerializeField] private float maxRange = 4.2f;                     // 默认最大射程（也是光标半径/绳索长度上限）
@@ -104,8 +106,8 @@ namespace Inkform.Player
         private Rigidbody2D hookBody;
         private HookHit hookHit;
 
-        private Bomb grappleBomb;       // PullingBomb 的目标
-        private Vector2 pullTarget;     // 锚点：地形命中点 / 炸弹当前位置
+        private ICarriable grapple;        // PullingEat 的目标（只经手接口，不认识具体实现）
+        private Vector2 pullTarget;     // 锚点：地形命中点 / 可叼物当前位置
         private float lastPullDist;     // 拉取卡死检测：上一物理步到锚点的距离
         private float pullStuck;        // 距离不再下降的累计时长
 
@@ -243,7 +245,7 @@ namespace Inkform.Player
                 Cancel();           // 再次按下 = 取消本次发射 / 松绳
                 return;
             }
-            if (ItemBus.Held != null) return;   // 嘴里叼着炸弹射不了
+            if (ItemBus.Held != null) return;   // 嘴里叼着东西射不了
 
             // 有瞄准输入 → 精确朝准星；隐藏时 → 移动方向上倾（EffectiveFireDir）
             Vector2 fireDir = EffectiveFireDir;
@@ -318,6 +320,14 @@ namespace Inkform.Player
         {
             if (phase != RopePhase.Flying) return;
 
+            // Terrain/Breakable 层上可能躺着可叼物（食物箱这类「站得住又能吃」的实体）：
+            // 钩子物理命中它时改走「吞吃拉取」，而不是当普通地形锚点
+            if (collision.collider.TryGetComponent(out ICarriable carriable))
+            {
+                StartPullingCarriable(carriable);
+                return;
+            }
+
             ContactPoint2D contact = collision.GetContact(0);
 
             // 锚点沿接触法线往外挪半个绳宽：接触点本身贴在地形表面上，绳段的 CircleCast
@@ -363,15 +373,15 @@ namespace Inkform.Player
             // 收绳阶段保留碰撞体：钩子沿墙滑回、不穿模（卡角落由 reelTimeout 兜底）
         }
 
-        private void StartPullingBomb(Bomb bomb)
+        private void StartPullingCarriable(ICarriable target)
         {
-            bomb.MarkRopeGrappled();
-            grappleBomb = bomb;
-            phase = RopePhase.PullingBomb;
+            target.MarkRopeGrappled();
+            grapple = target;
+            phase = RopePhase.PullingEat;
             AnchorHook();
             motor?.SetMoveLocked(true);
 
-            // 抓炸弹同样是「命中」，给一样的短卡帧
+            // 抓可叼物同样是「命中」，给一样的短卡帧
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
         }
 
@@ -385,11 +395,12 @@ namespace Inkform.Player
 
         private void Finish()
         {
-            if (grappleBomb != null)
+            // 接口没有 Unity 的假 null 重载：先转 MonoBehaviour 再判，认得出已销毁的目标
+            if (grapple as MonoBehaviour != null)
             {
-                grappleBomb.ClearRopeGrappled();
-                grappleBomb = null;
+                grapple.ClearRopeGrappled();
             }
+            grapple = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
             reelTimer.Clear();
@@ -468,7 +479,7 @@ namespace Inkform.Player
                     rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
 
                     CutChainsNearHook();
-                    if (DetectBomb()) return;
+                    if (DetectCarriable()) return;
                     break;
 
                 case RopePhase.ReelIn:
@@ -485,20 +496,21 @@ namespace Inkform.Player
                         Finish();
                     break;
 
-                case RopePhase.PullingBomb:
-                    if (grappleBomb == null) { Finish(); break; }   // 炸弹被炸没了
-                    pullTarget = grappleBomb.transform.position;
+                case RopePhase.PullingEat:
+                    // 接口没有 Unity 的假 null 重载，先转 MonoBehaviour 再判：认得出被炸毁的目标
+                    if (grapple as MonoBehaviour == null) { Finish(); break; }
+                    pullTarget = grapple.transform.position;
 
-                    float bombDist = PullStep(pullTarget, dt);
+                    float eatDist = PullStep(pullTarget, dt);
 
-                    if (bombDist <= swallowDistance)
+                    if (eatDist <= swallowDistance)
                     {
-                        if (grappleBomb.TrySwallowByRope(transform)) Finish();
+                        if (grapple.TrySwallowByRope(transform)) Finish();
                         else Finish();      // 吞不下（嘴满等）：松绳，别卡着
                         break;
                     }
 
-                    if (pullStuck >= stuckTime) Finish();   // 炸弹在墙后够不到就超时松绳
+                    if (pullStuck >= stuckTime) Finish();   // 目标在墙后够不到就超时松绳
                     break;
 
                 case RopePhase.Pulling:
@@ -511,7 +523,7 @@ namespace Inkform.Player
             }
         }
 
-        // 拉取单步推进（地形 Pulling 与抓炸弹 PullingBomb 共用）：
+        // 拉取单步推进（地形 Pulling 与抓可叼物 PullingEat 共用）：
         // 硬速度写回（压过重力、直线）+ 绷紧绳索 + 卡死距离推进。
         // 返回当前到目标的距离，终点判定由调用方做。
         private float PullStep(Vector2 target, float dt)
@@ -538,16 +550,17 @@ namespace Inkform.Player
             return dist;
         }
 
-        // 飞行中逐段检测炸弹：钩子物理上不碰 Default 层，靠探测找炸弹
-        private bool DetectBomb()
+        // 飞行中逐段检测可叼物：钩子物理上不碰 Default 层的物体（炸弹等），靠探测找。
+        // 探测不限层 —— TryGetComponent 认接口，Bomb（直接实现）和 CarriablePart（框架物）都命中
+        private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(
                 hookBody.position, bombDetectRadius + bulletRadius);
             foreach (Collider2D h in hits)
             {
-                if (h.TryGetComponent(out Bomb bomb))
+                if (h.TryGetComponent(out ICarriable carriable))
                 {
-                    StartPullingBomb(bomb);
+                    StartPullingCarriable(carriable);
                     return true;
                 }
             }
@@ -665,8 +678,8 @@ namespace Inkform.Player
         {
             if (phase == RopePhase.Idle) return;
 
-            // 挂在炸弹上的钩子跟着炸弹走（PullingBomb 时钩子物理已关，手动同步）
-            if (hookGo != null && hookBody != null && !hookBody.simulated && phase == RopePhase.PullingBomb)
+            // 挂在可叼物上的钩子跟着目标走（PullingEat 时钩子物理已关，手动同步）
+            if (hookGo != null && hookBody != null && !hookBody.simulated && phase == RopePhase.PullingEat)
                 hookGo.transform.position = pullTarget;
 
             // 绳索渲染

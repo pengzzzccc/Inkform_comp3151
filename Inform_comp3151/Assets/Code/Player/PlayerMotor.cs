@@ -50,6 +50,11 @@ namespace Inkform.Player
         private float requestTime = -999f;
         private bool jumpCutQueued;
 
+        // 平台跟随状态：站在移动平台上跟着走。玩家侧零「平台认知」——
+        // 只认物理事实（脚下刚体这一帧位移了多少），静态平台位移恒零、天然无影响
+        private Collider2D groundPlatform;     // 上一帧的脚下碰撞体
+        private Vector2 groundPrevPos;         // 平台上一帧位置
+
         // 起跳发生在本帧 —— 由 PlayerHandler 取走后转交给动画层。
         // 用「取一次即清」的标志而不是事件：同物体内的一次性通知，架个事件不划算
         private bool jumpStarted;
@@ -88,6 +93,41 @@ namespace Inkform.Player
         {
             ApplyNonLinearGravity();
             StepJump();
+            StepPlatform();
+        }
+
+        // 平台跟随：脚下刚体本帧的位移叠加到玩家身上，让玩家站在移动平台上被带着走。
+        // 换平台时重置基准（不应用跨平台的跳变位移）；起跳/走出边缘后 Ground 消失自动停止。
+        private void StepPlatform()
+        {
+            if (contact.Ground == null)
+            {
+                groundPlatform = null;
+                return;
+            }
+
+            if (contact.Ground != groundPlatform)
+            {
+                groundPlatform = contact.Ground;
+                groundPrevPos = PlatformPos();
+                return;
+            }
+
+            Vector2 now = PlatformPos();
+            Vector2 delta = now - groundPrevPos;
+            groundPrevPos = now;
+            if (delta.sqrMagnitude < 1e-8f) return;
+
+            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            transform.position += (Vector3)delta;
+            body.position += delta;
+        }
+
+        // 平台位置读刚体（物理真实位置，PatrolMover 已双写同步）；无刚体回落 transform
+        private Vector2 PlatformPos()
+        {
+            Rigidbody2D rb = groundPlatform.attachedRigidbody;
+            return rb != null ? rb.position : (Vector2)groundPlatform.transform.position;
         }
 
         public void Move(Vector2 input)

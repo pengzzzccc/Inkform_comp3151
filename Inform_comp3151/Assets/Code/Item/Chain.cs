@@ -73,13 +73,19 @@ namespace Inkform.Item
             if (s != null) cfg = s;
         }
 
+        /// <summary>换材质。null = 保持默认；可在 Init 前或后调用（材质与几何无关）。</summary>
+        public void SetMaterial(Material material)
+        {
+            if (material != null && line != null) line.material = material;
+        }
+
         /// <summary>
-        /// 绑定炸弹刚体与锚点，按距离生成链段。必须在 AddComponent 之后立刻调用。
+        /// 绑定悬挂物刚体与锚点，按距离生成链段。必须在 AddComponent 之后立刻调用。
         /// attachOffset = 挂点相对刚体位置的局部偏移（如墙的右缘），默认零 = 挂在刚体质心。
         /// </summary>
-        public void Init(Rigidbody2D bombBody, Vector2 anchorPos, Vector2 attachOffset = default)
+        public void Init(Rigidbody2D body, Vector2 anchorPos, Vector2 attachOffset = default)
         {
-            body = bombBody;
+            this.body = body;
             anchor = anchorPos;
             this.attachOffset = attachOffset;
 
