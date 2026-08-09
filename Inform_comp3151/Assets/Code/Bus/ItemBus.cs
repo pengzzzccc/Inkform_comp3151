@@ -1,46 +1,50 @@
-using Inkform.Item;
+using Inkform.Interactable;
 using System;
 using UnityEngine;
 
 namespace Inkform.Bus
 {
     /// <summary>
-    /// 物品总线：物品被吃下时由物品自己发布，PlayerHandler 订阅。
-    /// 物品预制体因此不再需要序列化任何场景引用，可以在运行时自由 Instantiate。
+    /// Item bus: published by the item itself when eaten, subscribed by PlayerHandler.
+    /// The player side only deals with the ICarriable interface — concrete implementations
+    /// (Bomb / CarriablePart) never need to be known. Item prefabs therefore need no serialized
+    /// scene references and can be freely Instantiated at runtime.
     /// </summary>
     public static class ItemBus
     {
-        /// <summary>玩家吃下某个物品。参数是被吃掉的物品本身，听众可按具体子类型区分种类。</summary>
-        public static event Action<ItemSuper> ItemEaten;
+        /// <summary>The player ate an item. The parameter is the item itself; listeners can distinguish kinds by concrete type.</summary>
+        public static event Action<ICarriable> ItemEaten;
 
-        /// <summary>玩家吐出叼着的物品。pos = 出生点（嘴边），velocity = 初速度。</summary>
-        public static event Action<ItemSuper, Vector2, Vector2> ItemReleased;
+        /// <summary>The player spit out the held item. pos = spawn point (mouth), velocity = initial velocity.</summary>
+        public static event Action<ICarriable, Vector2, Vector2> ItemReleased;
 
-        /// <summary>当前叼在嘴里的物品（null = 没叼东西）。
-        /// 快照必须在 Invoke 之前更新：同一物理步里多个物品依次回调，
-        /// 后面那个要能立刻看到前面那个已经被吃下。</summary>
-        public static ItemSuper Held { get; private set; }
+        /// <summary>The item currently held in the mouth (null = nothing held).
+        /// The snapshot must update before Invoke: multiple items may callback in sequence within one
+        /// physics step, and the later one must immediately see that the earlier one was eaten.</summary>
+        public static ICarriable Held { get; private set; }
 
-        public static void RaiseItemEaten(ItemSuper item)
+        public static void RaiseItemEaten(ICarriable item)
         {
             Held = item;
             ItemEaten?.Invoke(item);
         }
 
-        public static void RaiseItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity)
+        public static void RaiseItemReleased(ICarriable item, Vector2 pos, Vector2 velocity)
         {
-            if (Held == item) Held = null;      // 只有吐的确实是叼着的那个才清快照
+            if (Held == item) Held = null;      // only clear the snapshot when the spit item is the one held
             ItemReleased?.Invoke(item, pos, velocity);
         }
 
-        /// <summary>清空快照。玩家死亡把叼着的物品放回世界时用 ——
-        /// 那条路径不走 ItemReleased（放了会点引信），所以快照得单独清。</summary>
+        /// <summary>Clears the snapshot. Used when the player dies and the held item is dropped back into
+        /// the world — that path does not go through ItemReleased (it would light a fuse), so the
+        /// snapshot must be cleared separately.</summary>
         public static void ClearHeld()
         {
             Held = null;
         }
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
+        // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {

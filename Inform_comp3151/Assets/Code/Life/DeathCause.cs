@@ -1,16 +1,17 @@
 namespace Inkform.Life
 {
     /// <summary>
-    /// 死因。决定这次死亡由哪个 DeathStrategy 来演 —— 于是「怎么死的」和「死了怎么演」彻底分开：
-    /// Spike 只需要说自己是刺，不需要知道碎块、抖屏、复活延迟长什么样。
+    /// Death cause. Decides which DeathStrategy performs this death — so "how you died" and "how the
+    /// death plays out" are fully separated: Spike only needs to say it is a spike, never knowing what
+    /// shards, screen shake, or respawn delay look like.
     ///
-    /// Blast / Void 目前没有任何发布方，是预留的扩展点：
-    /// 补上「炸弹能炸死人」「掉出世界摔死」时，只需给它们各配一份策略资产，本枚举不用改。
+    /// Blast / Void currently have no publisher; they are reserved extension points: adding "bombs can
+    /// kill" / "falling out of the world kills" only needs one strategy asset each, this enum stays unchanged.
     /// </summary>
     public enum DeathCause
     {
-        Spike,      // 尖刺：唯一真正会被触发的死因
-        Blast,      // 爆炸致死（预留，当前 Bomb 只击退不致死）
-        Void,       // 掉出世界 / 深渊（预留，当前没有 DeathZone）
+        Spike,      // spikes: the only cause actually triggered today
+        Blast,      // death by explosion (reserved; Bomb currently only knocks back, never kills)
+        Void,       // falling out of the world / abyss (reserved; no DeathZone exists yet)
     }
 }

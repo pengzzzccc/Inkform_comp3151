@@ -5,16 +5,17 @@ using Inkform.Player;
 namespace Inkform.Input
 {
     /// <summary>
-    /// 输入层：把 InputSystem_Actions 资产里的动作转发给 PlayerHandler。
+    /// Input layer: forwards the actions from the InputSystem_Actions asset to PlayerHandler.
     ///
-    /// 键位只有一个来源 —— InputSystem_Actions.inputactions 资产（改键去那儿改，
-    /// Unity 会重新生成 InputSystem_Actions.cs）。这里不再运行时补动作、也不改绑定。
+    /// Key bindings have a single source — the InputSystem_Actions.inputactions asset (rebind there;
+    /// Unity regenerates InputSystem_Actions.cs). No runtime action patching or binding edits here.
     /// </summary>
     public class InputHandler : MonoBehaviour
     {
         private InputSystem_Actions playerInput;
 
-        // Player map 里本作实际用到的六个动作，全部直接取自生成的 wrapper
+        // The six actions actually used in this game from the Player map, all taken straight from the
+        // generated wrapper
         private InputAction move;
         private InputAction aim;
         private InputAction jump;
@@ -25,16 +26,17 @@ namespace Inkform.Input
         // Get player
         [SerializeField] private PlayerHandler player;
 
-        // 键盘是离散的 0/±1，这里把它按按压时长合成出模拟摇杆的力度：
-        // 按住越久越接近满力（rampUpTime），松开后回中（rampDownTime），
-        // 输出前再过一条力度曲线（起步轻柔、末端干脆，像推手柄摇杆）。
-        // 手柄等已带模拟量的设备（摇杆）原样透传，不做合成。
+        // A keyboard is discrete 0/±1; here we synthesize analog stick strength from press duration:
+        // the longer a key is held the closer to full strength (rampUpTime), recentering on release
+        // (rampDownTime), then run through a strength curve (gentle start, crisp end — like pushing a
+        // stick). Devices that already carry analog input (sticks) pass through untouched.
         [Header("Keyboard -> stick")]
-        [SerializeField] private float rampUpTime = 0.15f;                 // 按多久到满力
-        [SerializeField] private float rampDownTime = 0.1f;                // 松开后回中时长
+        [SerializeField] private float rampUpTime = 0.15f;                 // how long to full strength
+        [SerializeField] private float rampDownTime = 0.1f;                // recenter time after release
         [SerializeField] private AnimationCurve stickCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-        // 虚拟摇杆位置（-1..1）。反向拨动时 MoveTowards 天然经过 0，甩过中位的过渡不用特判
+        // Virtual stick position (-1..1). Reversing direction passes through 0 via MoveTowards naturally;
+        // the flip across center needs no special-casing
         private Vector2 stick;
 
         /// <summary>
@@ -44,7 +46,8 @@ namespace Inkform.Input
         {
             playerInput = new InputSystem_Actions();
 
-            // 游戏开始隐藏系统光标：瞄准靠绳索枪准星（Aim 动作在锁定状态下照常工作）
+            // Hide the system cursor at game start: aiming uses the rope gun's reticle (the Aim action
+            // keeps working while locked)
             Cursor.visible = false;
             Cursor.lockState = CursorLockMode.Locked;
 
@@ -56,15 +59,15 @@ namespace Inkform.Input
             ropeFire = playerInput.Player.RopeFire;
             spitBomb = playerInput.Player.SpitBomb;
 
-            // 场景实例覆盖里的引用在 Awake 之前就已接线；此时还是 null 就永远不会有了，
-            // 与其等 Update 里每帧 NRE，不如现在就吭一声
+            // The reference wired in the scene instance override is connected before Awake; if it is
+            // still null now it will never appear — better to complain now than NRE every frame in Update
             if (player == null)
-                Debug.LogWarning($"InputHandler 的 player 未接线（GameManager 预制体的场景实例覆盖）", this);
+                Debug.LogWarning($"InputHandler's player is not wired (scene instance override on the GameManager prefab)", this);
         }
 
         void OnDestroy()
         {
-            // 生成的 wrapper 持有一份 InputActionAsset，实现了 IDisposable —— 不释放会漏
+            // The generated wrapper holds an InputActionAsset implementing IDisposable — not disposing leaks
             playerInput?.Dispose();
         }
 
@@ -74,7 +77,8 @@ namespace Inkform.Input
 
             Vector2 raw = move.ReadValue<Vector2>();
 
-            // 非键盘设备（手柄摇杆）输入本身就是模拟量，直接透传，不经过键盘合成
+            // Non-keyboard devices (gamepad sticks) already output analog values; pass through raw,
+            // bypassing the keyboard synthesis
             InputControl control = move.activeControl;
             if (control != null && !(control.device is Keyboard))
             {
@@ -82,7 +86,7 @@ namespace Inkform.Input
             }
             else
             {
-                // 键盘：两轴各自按按压时长爬升 / 松开回中
+                // Keyboard: each axis ramps up by press duration / recenters on release
                 stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
                 stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
 
@@ -91,15 +95,16 @@ namespace Inkform.Input
                     Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
             }
 
-            // 瞄准：Aim 动作（鼠标 delta / 右摇杆）。鼠标 delta 单位是像素，摇杆是模拟量，
-            // 用 pixelDelta 标志区分，换算在 RopeGun 里做
+            // Aiming: the Aim action (mouse delta / right stick). Mouse deltas are in pixels, sticks are
+            // analog — the pixelDelta flag distinguishes them, conversion happens in RopeGun
             InputControl aimControl = aim.activeControl;
             Vector2 aimValue = aim.ReadValue<Vector2>();
             player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
         }
 
-        // 单轴摇杆合成：朝目标（0 或 ±1）以对应速率匀速移动。
-        // MoveTowards 一步到位得设大速率 —— 这里速率 = 1/时长，满力恰好 rampUpTime 秒到达
+        // Single-axis stick synthesis: moves toward the target (0 or ±1) at a constant rate.
+        // MoveTowards needs a large rate for one-step arrival — here rate = 1/duration, full strength
+        // reached in exactly rampUpTime seconds
         private float RampAxis(float current, float target, float dt)
         {
             float rate = Mathf.Approximately(target, 0f)
@@ -135,8 +140,9 @@ namespace Inkform.Input
 
         void OnEnable()
         {
-            // 逐个启用而不是 playerInput.Player.Enable()：map 里还留着 Interact / Crouch /
-            // Previous / Next 四个本作没用上的动作，整 map 启用会把它们一起点亮
+            // Enable one by one rather than playerInput.Player.Enable(): the map still holds
+            // Interact / Crouch / Previous / Next — four actions this game does not use; enabling the
+            // whole map would light them up too
             move.Enable();
             aim.Enable();
             jump.Enable();

@@ -6,23 +6,24 @@ using UnityEngine;
 namespace Inkform.Fx
 {
     /// <summary>
-    /// 跟随相机：平滑跟随目标，并按朝向做前瞻偏移。
-    /// 抖动和缩放 punch 是叠加在跟随结果之上的量，不写回基准位置，否则会和跟随互相打架、抖完回不去。
-    /// 抖动走非缩放时间、跟随走缩放时间 —— 于是 hitstop 期间画面「冻住但仍在震」。
+    /// Follow camera: smoothly follows the target with a look-ahead offset toward its facing.
+    /// Shake and zoom punches are amounts layered on top of the follow result, never written back to the
+    /// base position — otherwise they fight the follow and never settle back.
+    /// Shake runs on unscaled time, follow on scaled time — so during hitstop the screen "freezes but still shakes".
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CamHandler : MonoBehaviour
     {
         [Header("Follow setting")]
-        [SerializeField] private Transform target;                  // 拖入 Player，与 InputHandler 的做法一致
+        [SerializeField] private Transform target;                  // drag in the Player, same as InputHandler
         [SerializeField] private Vector2 followOffset = Vector2.zero;
-        [SerializeField] private float followSmooth = 0.18f;        // 常规跟随的 SmoothDamp 时长
-        [SerializeField] private float lookAhead = 1.2f;            // 朝向前瞻距离，0 = 关闭
+        [SerializeField] private float followSmooth = 0.18f;        // SmoothDamp time for normal follow
+        [SerializeField] private float lookAhead = 1.2f;            // look-ahead distance toward facing, 0 = off
         [SerializeField] private float lookAheadSmooth = 0.35f;
 
         [Header("Shake")]
-        [SerializeField] private float traumaDecay = 1.6f;          // trauma 每秒衰减量
-        [SerializeField] private float maxShakeOffset = 0.6f;       // trauma = 1 时的最大位移
+        [SerializeField] private float traumaDecay = 1.6f;          // trauma decay per second
+        [SerializeField] private float maxShakeOffset = 0.6f;       // max offset at trauma = 1
         [SerializeField] private float shakeFrequency = 22f;
 
         private Camera cam;
@@ -45,7 +46,7 @@ namespace Inkform.Fx
             baseZ = transform.position.z;
             baseOrthoSize = cam.orthographicSize;
 
-            // 两轴取不同噪声种子，否则 x/y 完全同相，抖起来是一条斜线
+            // Different noise seeds per axis, or x/y would be perfectly in phase and shake in a line
             seedX = Random.value * 1000f;
             seedY = Random.value * 1000f;
         }
@@ -66,17 +67,17 @@ namespace Inkform.Fx
 
         void Start()
         {
-            // 开局直接吸附到位，免得从 (0,0) 缓缓滑过去
+            // Snap into place at startup rather than sliding over from (0,0)
             SnapToTarget();
         }
 
-        /// <summary>立刻吸附到目标身上。开局和玩家被瞬移（复活）后共用这一条路径。</summary>
+        /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
         private void SnapToTarget()
         {
             if (target == null) return;
 
-            // 三个速度都必须归零：SmoothDamp 的速度是存在字段里的，不清的话
-            // 吸附完这一帧就被残留惯性带着冲过头，看起来像「切过去又弹了一下」
+            // All three velocities must zero: SmoothDamp's velocity lives in fields, and without this
+            // the residual inertia overshoots the frame after snapping — looks like "cut over then bounced"
             followVel = Vector2.zero;
             lookAheadVel = 0f;
             lookAheadNow = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
@@ -85,14 +86,14 @@ namespace Inkform.Fx
             transform.position = new Vector3(want.x, want.y, baseZ);
         }
 
-        // 用 LateUpdate：玩家在 Update 里已经移动完，这一帧跟上去就不会有一帧的滞后抖动
+        // LateUpdate: the player has finished moving in Update, so following this frame avoids a one-frame lag jitter
         void LateUpdate()
         {
             Vector2 basePos = FollowStep();
             Vector2 shakeOffset = ShakeStep();
             ZoomStep();
 
-            // z 必须恒定，否则会破坏 2D 渲染排序
+            // z must stay constant, otherwise 2D render sorting breaks
             transform.position = new Vector3(basePos.x + shakeOffset.x, basePos.y + shakeOffset.y, baseZ);
         }
 
@@ -100,7 +101,7 @@ namespace Inkform.Fx
         {
             if (target == null) return transform.position;
 
-            // 朝向前瞻：直接读总线快照，不需要持有 PlayerHandler 引用
+            // Look-ahead toward facing: read the bus snapshot directly, no PlayerHandler reference needed
             float wantAhead = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
             lookAheadNow = Mathf.SmoothDamp(lookAheadNow, wantAhead, ref lookAheadVel, lookAheadSmooth);
 
@@ -113,11 +114,11 @@ namespace Inkform.Fx
             trauma = Mathf.Max(0f, trauma - traumaDecay * Time.unscaledDeltaTime);
             if (trauma <= 0f) return Vector2.zero;
 
-            // 平方：小 trauma 几乎无感，大的很猛，比线性有层次
+            // Squared: small trauma is barely felt, large is strong — more layered than linear
             float shake = trauma * trauma;
             float t = Time.unscaledTime * shakeFrequency;
 
-            // 用 Perlin 而不是纯随机：相邻帧连续，抖起来是晃动而不是抽搐
+            // Perlin rather than pure random: adjacent frames are continuous, shaking rather than twitching
             return new Vector2(
                 Mathf.PerlinNoise(seedX, t) * 2f - 1f,
                 Mathf.PerlinNoise(seedY, t) * 2f - 1f) * (maxShakeOffset * shake);
@@ -134,7 +135,7 @@ namespace Inkform.Fx
             cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomTimer.Remaining / zoomDuration);
         }
 
-        // 累加而非覆盖：连爆会更猛，而不是每次都从头开始
+        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time
         private void OnShake(float amount)
         {
             trauma = Mathf.Clamp01(trauma + amount);

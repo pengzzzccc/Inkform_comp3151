@@ -1,32 +1,36 @@
 using Inkform.Bus;
-using Inkform.Item;
+using Inkform.Interactable;
 using Inkform.Life;
 using UnityEngine;
 
 namespace Inkform.Player
 {
     /// <summary>
-    /// 叼在嘴里的东西：记住当前持有的物品，攻击时把它吐出去。
-    /// 从 PlayerHandler 拆出来的第四层 —— 吞下这一步不在这里，
-    /// 那是物品自己判定的（见 Bomb.Swallow），本类只等 ItemBus 通知「你吃到了」。
-    /// 玩家死亡时把叼着的东西放回世界，复活后嘴是空的。
+    /// What is held in the mouth: remembers the currently held item and spits it out on attack.
+    /// The fourth layer split from PlayerHandler — the swallowing step is not here: that is the item's
+    /// own decision (see Bomb.Swallow); this class only waits for the ItemBus "you ate it" notice.
+    /// On death the held item is dropped back into the world; the mouth is empty after respawn.
     ///
-    /// 挂在 Player 上。
+    /// Attach to the Player.
     /// </summary>
     public class ItemCarrier : MonoBehaviour
     {
         [Header("Spit")]
-        // 8 向吐出（Q / 右扳机）：方向来自移动输入，吐出点与初速都沿该方向。
-        // spitOffset 必须大于「玩家碰撞体半宽 + 物品半径」，否则出生就重叠、会被物理弹开
+        // 8-way spit (Q / right trigger): direction comes from the move input; the spawn point and
+        // initial velocity both follow that direction. spitOffset must exceed "player collider half
+        // width + item radius", or they overlap at spawn and physics pushes them apart
         [SerializeField] private float spitOffset = 0.9f;
-        // 必须大于冲刺速度，否则吐出去就被自己追上、免疫期一过原地自爆
+        // Must exceed dash speed, or the spit catches itself from behind (for bombs, the immunity
+        // window would expire and it would self-detonate in place)
         [SerializeField] private float spitSpeed = 24f;
 
-        // 叼在嘴里的物品（null = 没叼东西）。不对外暴露查询接口 ——
-        // 「玩家嘴里有没有东西」ItemBus.Held 已经存了一份全局快照，Bomb 用的就是那个
-        private ItemSuper heldItem;
+        // The item held in the mouth (null = nothing). Stores the interface only, never the
+        // implementation — "the player needs only interface storage, concrete logic lives in the
+        // concrete object" (Bomb or CarriablePart both work).
+        // "Does the mouth hold anything" is also snapshotted globally in ItemBus.Held; Bomb uses that one
+        private ICarriable heldItem;
 
-        /// <summary>嘴里有没有东西。Q/右扳机吐炸弹时用。</summary>
+        /// <summary>Whether the mouth holds anything. Used when spitting with Q/right trigger.</summary>
         public bool IsEmpty => heldItem == null;
 
         void OnEnable()
@@ -42,8 +46,8 @@ namespace Inkform.Player
         }
 
         /// <summary>
-        /// 朝 dir 方向吐出叼着的物品（8 向）。返回是否真的吐了 ——
-        /// 调用方据此决定播 Release 还是忽略。
+        /// Spits the held item in dir (8-way). Returns whether it actually spit — the caller decides
+        /// from it whether to play Release or ignore.
         /// </summary>
         public bool TryRelease(Vector2 dir)
         {
@@ -55,15 +59,16 @@ namespace Inkform.Player
             return true;
         }
 
-        // 由 ItemBus 在物品被吃下时回调：只有真实吃到才进入叼着物品状态
-        private void OnItemEaten(ItemSuper item)
+        // Called by ItemBus when an item is eaten: only a real eat enters the held state
+        private void OnItemEaten(ICarriable item)
         {
             heldItem = item;
         }
 
-        // 由 LifeBus 在自己死掉时回调：把叼着的东西放回世界。
-        // 不清理的话复活后会带着一颗隐形、无物理、永不引信的炸弹卡死在 Held 相
-        //（吐出去是走 ItemReleased 的，那条路会点引信，死亡掉落不该点，所以单独处理）
+        // Called by LifeBus when the player dies: drops the held item back into the world.
+        // Without this, respawn carries an invisible, physics-less, fuse-less bomb stuck in the Held
+        // phase (spitting goes through ItemReleased, which lights the fuse; a death drop must not, so
+        // it is handled separately)
         private void OnDied(DeathContext ctx)
         {
             if (ctx.Victim != gameObject) return;

@@ -5,32 +5,37 @@ using UnityEngine;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// 生命总线：死亡 / 复活 / 检查点。死亡是瞬时信号，死亡次数和「现在是不是死着」是持续状态，
-    /// 所以既发事件也存快照 —— 和 PlayerBus 一样由总线自己负责去重。
-    /// 死者靠 ctx.Victim 认领自己，发布方（Spike）不需要认识玩家，玩家也不需要认识 Spike。
+    /// Life bus: death / respawn / checkpoints. Death is an instantaneous signal, while death count and
+    /// "currently dead?" are persistent state — so it raises events and stores snapshots — like PlayerBus,
+    /// the bus itself handles dedup.
+    /// The deceased claims itself via ctx.Victim; the publisher (Spike) never needs to know the player,
+    /// and the player never needs to know the Spike.
     /// </summary>
     public static class LifeBus
     {
-        /// <summary>死亡：ctx 里带着死者、致死点和死因。
-        /// 只有玩家会死，一次死亡恰好发一次，所以震屏/音效这类整体反馈直接听它就行 ——
-        /// 不需要像 HazardBus 那样再分 Exploded（逐受害者）和 Blast（整体）两层。
-        /// 「这次死亡该怎么演」由 DeathDirector 按 ctx.Cause 选策略决定，本总线不关心。</summary>
+        /// <summary>Death: ctx carries the victim, the killing point, and the cause.
+        /// Only the player dies, and each death raises exactly once, so overall feedback like
+        /// screen shake / sound can listen to this directly — no need for the two-layer
+        /// Exploded (per-victim) / Blast (overall) split like HazardBus.
+        /// "How this death should play out" is decided by DeathDirector selecting a strategy per
+        /// ctx.Cause; this bus does not care.</summary>
         public static event Action<DeathContext> Died;
 
-        /// <summary>复活：victim = 复活者，pos = 复活坐标。</summary>
+        /// <summary>Respawn: victim = the one respawning, pos = respawn position.</summary>
         public static event Action<GameObject, Vector2> Respawned;
 
-        /// <summary>检查点被激活：pos = 从此以后的复活坐标。</summary>
+        /// <summary>A checkpoint was activated: pos = the respawn position from now on.</summary>
         public static event Action<Vector2> CheckpointSet;
 
-        // 当前快照：订阅者可随时读取，不必自己跟着记一份
+        // Current snapshot: subscribers may read anytime instead of tracking their own copy
         public static int DeathCount { get; private set; }
         public static bool IsDead { get; private set; }
 
         public static void RaiseDied(in DeathContext ctx)
         {
-            // 去重：同一帧可能有好几块刺同时判定到玩家，不挡的话计数翻倍、碎块也是双份
-            //（和 Bomb.exploded 一个理由，只是那个防的是自己被调两次，这个防的是多个来源）
+            // Dedup: several spikes may hit the player in the same frame; without this, the count
+            // doubles and fragments spawn double (same reason as Bomb.exploded — that one guards
+            // against being called twice, this one against multiple sources)
             if (IsDead) return;
             IsDead = true;
             DeathCount++;
@@ -49,14 +54,16 @@ namespace Inkform.Bus
             CheckpointSet?.Invoke(pos);
         }
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
+        // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             Died = null;
             Respawned = null;
             CheckpointSet = null;
-            // 计数也要清：ScriptableObject 那套「上次运行残留」的坑在静态字段上同样存在
+            // The count must clear too: the ScriptableObject "leftover from previous run" pitfall
+            // exists for static fields as well
             DeathCount = 0;
             IsDead = false;
         }

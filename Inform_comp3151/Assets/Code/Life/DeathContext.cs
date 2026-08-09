@@ -3,21 +3,23 @@ using UnityEngine;
 namespace Inkform.Life
 {
     /// <summary>
-    /// 一次死亡的全部已知事实。策略据此决定这次死亡怎么演。
+    /// All known facts of one death. The strategy decides how this death plays out from them.
     ///
-    /// 用 readonly struct 而不是 class：死亡虽然不频繁，但事件参数走值类型就不会每次都产生垃圾，
-    /// 和 Tool/Timer 用 struct 是同一个取向。传参一律加 in，避免大结构体的隐式拷贝。
+    /// A readonly struct rather than a class: deaths are infrequent, but value-type event parameters
+    /// allocate nothing every time — the same lean as Tool/Timer using structs. Always pass with in to
+    /// avoid implicit copies of a large struct.
     /// </summary>
     public readonly struct DeathContext
     {
-        /// <summary>死者。订阅方靠它认领自己 —— 发布方（Spike）不需要认识玩家。</summary>
+        /// <summary>The deceased. Subscribers claim themselves by it — the publisher (Spike) never needs to know the player.</summary>
         public readonly GameObject Victim;
 
-        /// <summary>致死点。碎块从这里朝外弹，所以必须是真正的接触点而不是发布方的 transform.position
-        /// （一整排刺画在同一张 Tilemap 上时那是网格原点，碎块会齐刷刷朝几十格外飞）。</summary>
+        /// <summary>Kill point. Shards burst outward from here, so it must be the true contact point,
+        /// not the publisher's transform.position (on one Tilemap with a whole row of spikes that would
+        /// be the grid origin, and shards would fly tens of cells away).</summary>
         public readonly Vector2 From;
 
-        /// <summary>死因。DeathDirector 靠它选策略。</summary>
+        /// <summary>Death cause. DeathDirector picks the strategy by it.</summary>
         public readonly DeathCause Cause;
 
         public DeathContext(GameObject victim, Vector2 from, DeathCause cause)

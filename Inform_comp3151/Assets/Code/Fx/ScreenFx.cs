@@ -7,18 +7,19 @@ using UnityEngine.Rendering.Universal;
 namespace Inkform.Fx
 {
     /// <summary>
-    /// 屏幕级特效：卡帧 hitstop 和后处理暗角 punch。
-    /// 两者都只听 FxBus 的命令，不关心是什么游戏事件触发的（实际只有死亡会请求暗角，但本类不需要知道）。
-    /// 计时一律用 UnscaledTimer —— 卡帧期间 Time.time 是冻住的，用普通 Timer 会永远不到期。
+    /// Screen-level FX: hitstop and the post vignette punch.
+    /// Both only listen to FxBus commands, never caring which game event triggered them (only death
+    /// actually requests the vignette, but this class does not need to know).
+    /// Timing always uses UnscaledTimer — Time.time is frozen during hitstop; a plain Timer would never expire.
     /// </summary>
     public class ScreenFx : MonoBehaviour
     {
         [Header("Hit stop")]
-        [SerializeField] private float maxHitStop = 0.25f;      // 安全上限，防止填个大数字把游戏冻太久
+        [SerializeField] private float maxHitStop = 0.25f;      // safety cap, prevents freezing the game too long
 
         [Header("Post punch")]
         [SerializeField] private Volume volume;
-        [SerializeField] private float vignettePunch = 0.35f;   // amount = 1 时的暗角增量
+        [SerializeField] private float vignettePunch = 0.35f;   // vignette increment at amount = 1
 
         private UnscaledTimer stopTimer;
 
@@ -31,9 +32,10 @@ namespace Inkform.Fx
         {
             if (volume != null)
             {
-                // 用 profile 而不是 sharedProfile：profile 的 getter 会自动复制一份专属副本，
-                // 运行时改它不会污染工程里的 Volume Profile 资产；
-                // sharedProfile 才是共享资产本体，改了会写进 .asset 且影响所有用它的 Volume
+                // Use profile rather than sharedProfile: the profile getter automatically copies a
+                // private instance, so runtime changes never pollute the project's Volume Profile asset;
+                // sharedProfile is the shared asset itself — writing it would persist to the .asset and
+                // affect every Volume using it
                 if (volume.profile.TryGet(out vignette)) baseVignette = vignette.intensity.value;
             }
         }
@@ -49,16 +51,17 @@ namespace Inkform.Fx
             FxBus.HitStopRequested -= OnHitStop;
             FxBus.PunchRequested -= OnPunch;
 
-            // 保险：本组件被禁用/销毁时若仍处于卡帧，必须把时间放回去，否则整个游戏永久冻结
+            // Safety: if this component is disabled/destroyed while hitstopped, time must be released,
+            // or the entire game freezes permanently
             if (Time.timeScale == 0f) Time.timeScale = 1f;
 
-            // 后处理值还原，免得停在 punch 峰值上
+            // Restore post values, so it does not sit at the punch peak
             if (vignette != null) vignette.intensity.value = baseVignette;
         }
 
         void Update()
         {
-            // 卡帧到期恢复
+            // restore when hitstop expires
             if (Time.timeScale == 0f && !stopTimer.IsRunning) Time.timeScale = 1f;
 
             PunchStep();
@@ -77,7 +80,7 @@ namespace Inkform.Fx
             if (duration <= 0f) return;
             duration = Mathf.Min(duration, maxHitStop);
 
-            // 重叠请求取更长的那个，别互相打断
+            // Overlapping requests take the longer one; do not interrupt each other
             if (duration <= stopTimer.Remaining) return;
 
             stopTimer.Set(duration);
