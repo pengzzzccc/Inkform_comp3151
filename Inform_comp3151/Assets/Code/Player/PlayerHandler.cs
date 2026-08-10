@@ -82,8 +82,7 @@ namespace Inkform.Player
         {
             if (LifeBus.IsDead) return;     // dead: neither facing nor velocity changes
 
-            lastMoveInput = input;          // fallback source for spit direction
-            ropeGun?.SetMoveInput(input);   // rope gun: fire-direction source without aim input
+            lastMoveInput = input;          // fallback source for spit direction (when no rope gun)
 
             // Facing: input always wins (applies even during move lockout); without input keep the current facing
             if (input.x > 0.01f) anim.SetFace(FaceDirection.R);
@@ -136,8 +135,8 @@ namespace Inkform.Player
         }
 
         /// <summary>SpitBomb action (Q / right trigger): spits the bomb, direction = the rope gun's
-        /// effective fire direction (toward the reticle with aim input, otherwise the move direction
-        /// tilted 30° up); without a rope gun falls back to the 8-way move input, then to the facing.</summary>
+        /// effective fire direction (always exactly toward the reticle); without a rope gun falls back
+        /// to the 8-way move input, then to the facing.</summary>
         public void SpitBomb()
         {
             if (LifeBus.IsDead) return;
