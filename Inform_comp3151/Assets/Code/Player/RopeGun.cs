@@ -98,6 +98,8 @@ namespace Inkform.Player
 
         private ICarriable grapple;        // eat-pull target; null = plain terrain pull
         private Vector2 pullTarget;     // anchor: terrain hit point / carriable's current position
+        private Collider2D anchor;      // the collider the terrain hook is attached to; null = static anchor
+        private Vector2 anchorLocal;    // hit point in the anchor collider's local space, so the hook follows moving terrain
         private float lastPullDist;     // pull-stuck detection: distance to the anchor last physics step
         private float pullStuck;        // accumulated time the distance has stopped dropping
 
@@ -215,7 +217,6 @@ namespace Inkform.Player
                 Cancel();           // pressing again = cancel this shot / release the rope
                 return;
             }
-            if (ItemBus.Held != null) return;   // cannot fire with something in the mouth
 
             // Always exactly toward the reticle (EffectiveFireDir), no movement-direction fallback
             Vector2 fireDir = EffectiveFireDir;
@@ -307,6 +308,11 @@ namespace Inkform.Player
             }
 
             pullTarget = hitPoint;
+            // Terrain may move (PatrolMover platforms, spinners, ...): keep the anchor attached to the
+            // hit collider's local point so hook + rope follow the object instead of hanging in space.
+            // Static terrain colliders never move, so this local-space bookkeeping is a no-op there
+            anchor = collision.collider;
+            anchorLocal = anchor.transform.InverseTransformPoint(hitPoint);
             AnchorHook();
             motor?.SetMoveLocked(true);
 
@@ -373,6 +379,7 @@ namespace Inkform.Player
                 grapple.ClearRopeGrappled();
             }
             grapple = null;
+            anchor = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
             DespawnHook();
@@ -464,7 +471,9 @@ namespace Inkform.Player
                         break;
                     }
 
-                    // Terrain pull: static anchor, release on arrival
+                    // Terrain pull: the anchor follows the hit collider (static terrain never moves;
+                    // moving platforms/spinners carry the hook with them), release on arrival
+                    if (anchor != null) pullTarget = anchor.transform.TransformPoint(anchorLocal);
                     if (PullStep(pullTarget, dt) <= arrivalDistance)
                     {
                         // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
@@ -620,9 +629,9 @@ namespace Inkform.Player
         {
             if (phase == RopePhase.Idle) return;
 
-            // A hook attached to a carriable follows the target (eat-pull has the hook's physics off;
-            // synced manually)
-            if (hookGo != null && hookBody != null && !hookBody.simulated && grapple != null)
+            // A hook with physics off follows the live anchor — eat-pull follows the carriable, terrain
+            // pull follows the moving collider (both synced manually; static terrain never moves)
+            if (hookGo != null && hookBody != null && !hookBody.simulated)
                 hookGo.transform.position = pullTarget;
 
             // Rope rendering: a straight span between the two ends — the rope gun uses no rope

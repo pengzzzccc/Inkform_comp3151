@@ -117,7 +117,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01d213b5ad474a33aa776b4170384ba9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnImpact
-  threshold: 5
+  threshold: 3
   impactMask:
     serializedVersion: 2
     m_Bits: 10304

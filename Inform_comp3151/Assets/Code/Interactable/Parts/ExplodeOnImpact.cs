@@ -53,7 +53,6 @@ namespace Inkform.Interactable.Parts
             if ((impactMask.value & (1 << other.gameObject.layer)) == 0 ) return false;
             if (body.linearVelocity.magnitude < threshold) return false;
 
-            Debug.Log("Yes I did");
             explode.Explode();
             return true;    // handled: short-circuit later parts
         }

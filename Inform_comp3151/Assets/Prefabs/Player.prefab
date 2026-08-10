@@ -187,7 +187,7 @@ MonoBehaviour:
   pullSpeed: 16
   arrivalDistance: 0.7
   stuckTime: 0.25
-  swallowDistance: 0.75
+  swallowDistance: 1.1
   detachDistance: 0.5
   reelSpeed: 22
   hitStopTime: 0.06
@@ -216,7 +216,7 @@ Rigidbody2D:
     m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!95 &7876590005240165724
 Animator:
