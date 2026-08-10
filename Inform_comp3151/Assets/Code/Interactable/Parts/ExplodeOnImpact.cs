@@ -50,8 +50,8 @@ namespace Inkform.Interactable.Parts
             if (threshold <= 0f || explode == null) return false;
             // Layer gate ahead of the speed test: speed is not sufficient on its own, and this is the
             // cheaper check of the two (magnitude costs a square root)
-            if ((impactMask.value & (1 << other.gameObject.layer)) == 0 || body.linearVelocity.magnitude > threshold) return false;
-            // if (body.linearVelocity.magnitude < threshold) return false;
+            if ((impactMask.value & (1 << other.gameObject.layer)) == 0 ) return false;
+            if (body.linearVelocity.magnitude < threshold) return false;
 
             Debug.Log("Yes I did");
             explode.Explode();
