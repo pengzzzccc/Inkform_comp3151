@@ -22,8 +22,8 @@ namespace Inkform.Player
     /// feeds out of the muzzle as a straight line to the hook — no Verlet simulation for the rope gun
     /// (bomb hanging chains still use it).
     /// Hit: terrain → short hitstop, then pulls the player along a straight line toward the anchor
-    /// (Pulling); pressing fire or jump mid-pull stops the force and reels the rope in; reaching near
-    /// the anchor releases automatically.
+    /// (Pulling); pressing fire or jump mid-pull releases the rope outright; reaching near the anchor
+    /// releases automatically.
     /// Miss / cancel: reel in — the hook is dragged back in a straight line to the muzzle (no rope
     /// solve, collider off, catches nothing on the way).
     ///
@@ -42,7 +42,7 @@ namespace Inkform.Player
         private enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
-        [SerializeField] private float maxRange = 4.2f;                     // default max range (also reticle radius / rope length cap)
+        [SerializeField] private float maxRange = 4.2f;                     // default max range (also reticle radius / hook travel cap)
         [SerializeField] private LayerMask hitMask = (1 << 6) | (1 << 11);  // Terrain | Breakable
 
         [Header("Projectile")]
@@ -79,12 +79,11 @@ namespace Inkform.Player
         [SerializeField] private float detachDistance = 0.5f;               // miss recovery: release distance from the muzzle
 
         [Header("Reel & hit")]
-        [SerializeField] private float reelSpeed = 5f;                      // miss/cancel: rope shortening speed (hook recovery)
+        [SerializeField] private float reelSpeed = 5f;                      // miss recovery: straight-line hook pull-back speed
         [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
-        private bool ropeTaut;          // hook is stretched against the range circle (truly recovers only on the second consecutive frame, see FixedUpdate)
 
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
@@ -223,7 +222,6 @@ namespace Inkform.Player
                 out Vector2 v0, out _);
 
             phase = RopePhase.Flying;
-            ropeTaut = false;
 
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
@@ -320,9 +318,9 @@ namespace Inkform.Player
         // Miss / cancel recovery: the hook is dragged straight back to the muzzle. Collider off — no
         // wall-sliding, no bumping bombs, no contact callbacks at all, it just rides the rope end
         // straight back (passes through geometry). The next shot creates a fresh hook with the collider on.
+        // All callers guarantee the hook is still Flying when this runs.
         private void StartMiss()
         {
-            if (phase == RopePhase.Miss) return;
             phase = RopePhase.Miss;
 
             if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
@@ -340,12 +338,12 @@ namespace Inkform.Player
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
         }
 
-        // Hook becomes a static anchor: physics off, collision callbacks off, collider off — no longer
-        // participates in any physical interaction
+        // Hook becomes a static anchor: physics and collider off — no longer participates in any
+        // physical interaction (the collider being off already blocks all contact callbacks, so the
+        // hook's own collision component needs no toggle)
         private void AnchorHook()
         {
             hookBody.simulated = false;
-            hookHit.enabled = false;
             if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
         }
 
@@ -360,7 +358,6 @@ namespace Inkform.Player
             grapple = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
-            ropeTaut = false;
             DespawnHook();
             ropeLine.enabled = false;
         }
@@ -393,32 +390,14 @@ namespace Inkform.Player
             switch (phase)
             {
                 case RopePhase.Flying:
-                    // Range cap: the rope never feeds out past currentMaxRange (fixed rope cap)
-                    float hookDist = Vector2.Distance(origin, hookBody.position);
-                    if (hookDist >= currentMaxRange)
+                    // Range cap: reaching the range circle is a miss — recovery starts immediately,
+                    // no grace frame for an edge-of-range hook (the hook must physically hit terrain
+                    // while still inside the range to ever pull)
+                    if (Vector2.Distance(origin, hookBody.position) >= currentMaxRange)
                     {
-                        // Physical rope length limit: the hook is stretched onto the range circle,
-                        // removing only the outward radial velocity, keeping the tangential (like
-                        // hitting the end of the rope)
-                        Vector2 d = hookBody.position - origin;
-                        Vector2 dir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
-                        hookBody.position = origin + dir * currentMaxRange;
-                        float radialOut = Vector2.Dot(hookBody.linearVelocity, dir);
-                        if (radialOut > 0f) hookBody.linearVelocity -= dir * radialOut;
-                        hookBody.angularVelocity = 0f;
-
-                        // The first taut frame does not recover: OnCollisionEnter2D runs after
-                        // FixedUpdate, and switching to Miss that same frame would drop the
-                        // immediately-arriving legal terrain collision in OnHookTerrainHit's phase
-                        // check — hitting a wall at the range edge would "touch but only miss". Leave
-                        // one full step for the collision callback; only the second consecutive taut
-                        // frame truly recovers.
-                        if (ropeTaut) StartMiss();
-                        else ropeTaut = true;
+                        StartMiss();
                         break;
                     }
-
-                    ropeTaut = false;
 
                     CutChainsNearHook();
                     if (DetectCarriable()) return;

@@ -7849,7 +7849,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Spawner
   spawnTimer: 5
-  spawnObject: {fileID: 4647962266277644580, guid: 581d7f245b5b47540b68d3ded198ecdb, type: 3}
+  spawnObject: {fileID: 2329586824147779645, guid: 4d1d4cf98ba47444d908f50b998c268a, type: 3}
 --- !u!4 &1236585734
 Transform:
   m_ObjectHideFlags: 0
