@@ -141,14 +141,25 @@ namespace Inkform.Interactable.Parts
             // Overall blast signal: exactly once per explosion; screen shake and such are driven by it
             HazardBus.RaiseBlast(center, blastRadius, blastForce);
 
-            // Hide the body before shattering (Destroy only applies at frame end; without hiding, body
-            // and shards overlap for one frame)
-            if (body != null) body.enabled = false;
-            foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            // Restorable items are not destroyed — the part hides them and respawn brings them back.
+            // Everything else hides before the shards render (Destroy only applies at frame end, so
+            // without hiding the body overlaps the shards for one frame), then is destroyed outright
+            // (same as Bomb)
+            bool restorable = root.TryGetPart(out RestorablePart restore);
+
+            if (restorable)
+                restore.HideForRestore();
+            else
+            {
+                if (body != null) body.enabled = false;
+                foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            }
+
+            // The shatter look plays for restorable items too (same as BreakableWall)
+            Shatter.Burst(breakCue, bounds, center, blastForce);
 
             // Explosives are unrecoverable (same as Bomb): shattered and destroyed outright
-            Shatter.Burst(breakCue, bounds, center, blastForce);
-            Destroy(root.gameObject);
+            if (!restorable) Destroy(root.gameObject);
         }
     }
 }
