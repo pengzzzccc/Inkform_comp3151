@@ -50,6 +50,7 @@ namespace Inkform.Player
         [SerializeField] private float bulletGravityScale = 1f;
         [SerializeField] private float bulletRadius = 0.12f;
         [SerializeField] private Sprite bulletSprite;                       // swappable
+        [SerializeField] private float spriteAngleOffset = 0f;              // hook sprite facing offset (degrees); 0 = art points right (+X)
         [SerializeField] private float muzzleOffset = 0.5f;                 // hook spawn point moved forward along the aim, avoids overlapping the player
         [SerializeField] private float bombDetectRadius = 0.55f;            // bomb-probe radius while the hook flies
 
@@ -65,7 +66,8 @@ namespace Inkform.Player
         [SerializeField] private float previewStepDt = 1f / 30f;            // trajectory sample step for the hit prediction
 
         [Header("Rope")]
-        [SerializeField] private Material ropeMaterial;
+        [SerializeField] private Sprite ropeSegmentSprite;                  // vertical rope strip: the art runs along the sprite's +Y, tiled along the rope's length
+        [SerializeField] private Material ropeMaterial;                     // optional; null = the SpriteRenderer default (Sprites-Default)
         [SerializeField] private float ropeWidth = 0.06f;
         [SerializeField] private int ropeSortingOrder = -5;
         [SerializeField] private float anchorClearance = 0.04f;             // hook anchor offset outward from the contact surface (keeps a bit of rope out of the wall)
@@ -99,7 +101,9 @@ namespace Inkform.Player
         private float lastPullDist;     // pull-stuck detection: distance to the anchor last physics step
         private float pullStuck;        // accumulated time the distance has stopped dropping
 
-        private LineRenderer ropeLine;
+        private Transform ropeTf;
+        private SpriteRenderer ropeRenderer;
+        private float ropeTileWidth;    // world size of one tile across the rope's width; derived from the sprite once in Awake
 
         private Transform reticle;
         private SpriteRenderer reticleSprite;
@@ -157,7 +161,7 @@ namespace Inkform.Player
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
 
-            ropeLine = CreateLine("RopeLine", ropeMaterial, ropeWidth, ropeSortingOrder);
+            CreateRope();
 
             aimOffset = Vector2.right * currentMaxRange * 0.6f;
         }
@@ -238,10 +242,11 @@ namespace Inkform.Player
             sr.sprite = bulletSprite != null ? bulletSprite : DiscSprite;
             sr.sortingOrder = 15;
             hookBody.linearVelocity = v0;
+            FaceHookRotation(v0);
             hookHit = hookGo.AddComponent<HookHit>();
             hookHit.Init(this);
 
-            ropeLine.enabled = true;
+            ropeRenderer.enabled = true;
         }
 
         /// <summary>Called by PlayerHandler on jump press: during a pull, release the rope and let the jump happen.</summary>
@@ -330,9 +335,21 @@ namespace Inkform.Player
         {
             target.MarkRopeGrappled();
             grapple = target;
+
+            // The anchor must be live before the phase flips: LateUpdate draws the rope (and snaps the
+            // hook) from pullTarget, but FixedUpdate only refreshes it on the NEXT physics step — and
+            // the hitstop below zeroes timeScale, which suspends FixedUpdate entirely. A stale
+            // pullTarget would therefore hang the rope off the previous shot's anchor (or the world
+            // origin on the first grab) for the whole freeze, not just one frame.
+            pullTarget = target.transform.position;
             phase = RopePhase.Pulling;
             AnchorHook();
             motor?.SetMoveLocked(true);
+
+            // Same reset as the terrain path: a stuck-timeout release leaves pullStuck at the limit,
+            // and without clearing it the very first PullStep would trip the timeout and cancel the grab
+            lastPullDist = float.MaxValue;
+            pullStuck = 0f;
 
             // Grabbing a carriable is also a "hit", same brief hitstop
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
@@ -359,7 +376,7 @@ namespace Inkform.Player
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
             DespawnHook();
-            ropeLine.enabled = false;
+            ropeRenderer.enabled = false;
         }
 
         private void DespawnHook()
@@ -368,6 +385,15 @@ namespace Inkform.Player
             hookGo = null;
             hookBody = null;
             hookHit = null;
+        }
+
+        // Rotates the hook's sprite to face a direction (+X = 0°). Written to the rigidbody, not the
+        // transform: with m_AutoSyncTransforms = 0 a direct transform write would be overwritten by
+        // the next physics sync
+        private void FaceHookRotation(Vector2 dir)
+        {
+            if (dir.sqrMagnitude <= 0.0001f) return;
+            hookBody.rotation = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + spriteAngleOffset;
         }
 
         // ---- Frame loop ----
@@ -398,6 +424,10 @@ namespace Inkform.Player
                         StartMiss();
                         break;
                     }
+
+                    // The parabola bends under gravity: keep the sprite facing the current motion
+                    // direction every physics step
+                    FaceHookRotation(hookBody.linearVelocity);
 
                     CutChainsNearHook();
                     if (DetectCarriable()) return;
@@ -595,8 +625,8 @@ namespace Inkform.Player
             if (hookGo != null && hookBody != null && !hookBody.simulated && grapple != null)
                 hookGo.transform.position = pullTarget;
 
-            // Rope rendering: a straight line between the two ends — the rope gun uses no rope
-            // simulation, so the line is always straight (no sag)
+            // Rope rendering: a straight span between the two ends — the rope gun uses no rope
+            // simulation, so the rope is always straight (no sag)
             Vector2 a, b;
             if (phase == RopePhase.Pulling)
             {
@@ -609,9 +639,22 @@ namespace Inkform.Player
                 b = hookBody != null ? hookBody.position : a;
             }
 
-            ropeLine.positionCount = 2;
-            ropeLine.SetPosition(0, a);
-            ropeLine.SetPosition(1, b);
+            Vector2 d = b - a;
+            float len = d.magnitude;
+            if (len < 0.0001f)
+            {
+                // Hook still sitting on the muzzle: the direction is undefined, so draw nothing rather
+                // than flash a rope at an arbitrary angle
+                ropeRenderer.enabled = false;
+                return;
+            }
+
+            ropeRenderer.enabled = true;
+            ropeTf.position = (a + b) * 0.5f;                    // the sprite's pivot is Center
+            // The art runs along the sprite's own +Y, so aiming +Y down the rope is a -90° offset
+            ropeTf.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg - 90f);
+            ropeTf.localScale = new Vector3(ropeWidth / ropeTileWidth, 1f, 1f);
+            ropeRenderer.size = new Vector2(ropeTileWidth, len); // tiles along the length: fixed spacing
         }
 
         // ---- Bus callbacks ----
@@ -654,20 +697,29 @@ namespace Inkform.Player
             return go.transform;
         }
 
-        private LineRenderer CreateLine(string name, Material material, float width, int sortingOrder)
+        // Rope rendering is a tiled SpriteRenderer, not a LineRenderer: a LineRenderer maps the
+        // texture's U axis along the line's length, but the rope art is a narrow vertical strip inside
+        // a mostly-empty atlas, so the line sampled the atlas's blank columns and only a fifth of it
+        // ever showed pixels. A SpriteRenderer samples the sprite's sub-rect instead — the strip is
+        // all there is. The strip is turned along the rope by rotating the transform, and
+        // SpriteDrawMode.Tiled repeats it so the link spacing holds at any rope length.
+        private void CreateRope()
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(transform, false);
-            var line = go.AddComponent<LineRenderer>();
-            line.useWorldSpace = true;
-            line.alignment = LineAlignment.TransformZ;
-            line.loop = false;
-            line.widthMultiplier = width;
-            line.sortingOrder = sortingOrder;
-            line.material = material;   // null = default solid color
-            line.positionCount = 0;
-            line.enabled = false;
-            return line;
+            ropeTf = CreateFx("Rope", out ropeRenderer,
+                ropeSegmentSprite != null ? ropeSegmentSprite : DiscSprite, ropeSortingOrder);
+            ropeRenderer.drawMode = SpriteDrawMode.Tiled;
+            ropeRenderer.tileMode = SpriteTileMode.Continuous;  // trailing part-tile just clips; spacing stays exact
+            // sharedMaterial, not material: nothing here writes to the material, so there is no reason
+            // to instantiate a per-player copy of it
+            if (ropeMaterial != null) ropeRenderer.sharedMaterial = ropeMaterial;
+            ropeRenderer.enabled = false;
+
+            // Tiled mode clips any axis sized under one whole tile, so the rope's width must hold
+            // exactly one tile and the visual thickness comes from localScale instead (applied in
+            // LateUpdate, so ropeWidth stays tunable in play mode) — that keeps the sprite's
+            // pixels-per-unit (link spacing) and ropeWidth (thickness) independent of each other.
+            Sprite s = ropeRenderer.sprite;
+            ropeTileWidth = s.rect.width / s.pixelsPerUnit;
         }
 
         void OnDrawGizmosSelected()
