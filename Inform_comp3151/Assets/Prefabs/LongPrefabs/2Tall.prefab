@@ -158,31 +158,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 7955599647040009443, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2430035251266965544}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
 --- !u!4 &104917808955066088 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3115157136134797734, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
   m_PrefabInstance: {fileID: 3048933485645889358}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &4911187915939089325 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7955599647040009443, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
-  m_PrefabInstance: {fileID: 3048933485645889358}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2430035251266965544
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4911187915939089325}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 46de82177e4568048aa64ff993cc9914, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.BreakableWall
-  breakCue: {fileID: 11400000, guid: c81e5a3f96d2b7448ae03f21c65d9b7e, type: 2}
