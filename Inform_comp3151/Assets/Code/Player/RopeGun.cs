@@ -2,7 +2,6 @@ using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
-using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -12,20 +11,21 @@ namespace Inkform.Player
     /// line — no hanging, no swinging.
     ///
     /// Aiming: the reticle is a free cursor, driven by mouse delta / right stick (the Aim action),
-    /// moving freely around the player within the range radius; the muzzle and reticle solve an initial
-    /// velocity that passes through the reticle (ballistic solve); the bullet flies along that parabola
-    /// — the dashed line samples the same trajectory, truncated at the hit point when terrain
-    /// intercepts (green = will hook), drawn to the reticle when clear (red = will miss → reel in).
+    /// moving freely around the player within the range radius, always visible — firing and spitting
+    /// always go exactly toward it, no movement-direction fallback. The muzzle and reticle solve an
+    /// initial velocity that passes through the reticle (ballistic solve); the bullet flies along that
+    /// parabola — the reticle is tinted green when the trajectory is intercepted by terrain before it
+    /// (will hook), red when clear (will miss → reel in).
     ///
     /// Flight: the bullet is a real rigidbody (gravity, initial velocity = solve result, damping 0
     /// matches the preview; excludeLayers excludes the player/bombs etc., terrain only); the rope
-    /// feeds out of the muzzle with its end pinned to the hook, sagging under the solve — heavier rope
-    /// (ropeGravityScale) sags more.
+    /// feeds out of the muzzle as a straight line to the hook — no Verlet simulation for the rope gun
+    /// (bomb hanging chains still use it).
     /// Hit: terrain → short hitstop, then pulls the player along a straight line toward the anchor
-    /// (Pulling); pressing fire or jump mid-pull stops the force and reels the rope in; reaching near
-    /// the anchor releases automatically.
-    /// Miss / cancel: reel in — anchor = muzzle, end attached to the bullet rigidbody pulling it back
-    /// (the same Verlet solve as bomb hanging chains).
+    /// (Pulling); pressing fire or jump mid-pull releases the rope outright; reaching near the anchor
+    /// releases automatically.
+    /// Miss / cancel: reel in — the hook is dragged back in a straight line to the muzzle (no rope
+    /// solve, collider off, catches nothing on the way).
     ///
     /// Special hits:
     /// ① carriable objects (objects implementing ICarriable: Bomb, CarriablePart-mounted objects, etc.):
@@ -39,10 +39,10 @@ namespace Inkform.Player
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        private enum RopePhase { Idle, Flying, ReelIn, Pulling, PullingEat }
+        private enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
-        [SerializeField] private float maxRange = 4.2f;                     // default max range (also reticle radius / rope length cap)
+        [SerializeField] private float maxRange = 4.2f;                     // default max range (also reticle radius / hook travel cap)
         [SerializeField] private LayerMask hitMask = (1 << 6) | (1 << 11);  // Terrain | Breakable
 
         [Header("Projectile")]
@@ -56,77 +56,53 @@ namespace Inkform.Player
         [Header("Aim")]
         [SerializeField] private float mouseAimSensitivity = 1f;
         [SerializeField] private float stickAimSpeed = 5f;
-        [SerializeField] private float mouseShowThreshold = 0.5f;           // mouse |delta| (pixels) above this counts as "aiming input"
-        [SerializeField] private float stickShowThreshold = 0.1f;           // right stick |delta| above this counts as "aiming input"
-        [SerializeField] private float aimShowTime = 0.15f;                 // delay hiding the preview after input stops (debounce; 0 = hide immediately)
-        [SerializeField] private float aimFallbackElevation = 30f;          // fire direction tilt upward (degrees) without aiming input
         [SerializeField] private Sprite crosshairSprite;                    // reticle, swappable
         [SerializeField] private float crosshairSize = 0.6f;
         [SerializeField] private Color hitColor = new Color(0.35f, 1f, 0.35f);
         [SerializeField] private Color missColor = new Color(1f, 0.35f, 0.35f);
 
-        [Header("Parabola preview")]
-        [SerializeField] private Material dashMaterial;                     // dashed-line material (per-unit tiling), swappable
-        [SerializeField] private float dashWidth = 0.05f;
-        [SerializeField] private float dashUnitScale = 0.5f;                // texture repeat spacing (world units)
-        [SerializeField] private int dashSortingOrder = 10;
-        [SerializeField] private float previewStepDt = 1f / 30f;
+        [Header("Reticle prediction")]
+        [SerializeField] private float previewStepDt = 1f / 30f;            // trajectory sample step for the hit prediction
 
         [Header("Rope")]
-        [SerializeField] private VerletRope.Settings ropeSettings = VerletRope.Settings.Default();
-        [SerializeField] private LayerMask ropeCollisionMask = (1 << 6) | (1 << 11);  // rope segment collision layers (default Terrain|Breakable)
-        [SerializeField] private float ropeGravityScale = 2.5f;                // rope weight: segment gravity factor, larger = sags more
         [SerializeField] private Material ropeMaterial;
         [SerializeField] private float ropeWidth = 0.06f;
         [SerializeField] private int ropeSortingOrder = -5;
+        [SerializeField] private float anchorClearance = 0.04f;             // hook anchor offset outward from the contact surface (keeps a bit of rope out of the wall)
         [SerializeField] private float chainCutRadius = 0.35f;              // how close the hook must be to a bomb chain segment to sever it
 
         [Header("Pull")]
         [SerializeField] private float pullSpeed = 16f;                     // hard-velocity pull (terrain hit / bomb grab shared): must beat the player's 3x gravity or upward pulls fail
         [SerializeField] private float arrivalDistance = 0.7f;              // arrival-at-contact-point threshold (blocked by a wall, the center sits ≈0.5 from the wall; 0.7 = arrived)
         [SerializeField] private float stuckTime = 0.25f;                   // pull-stuck fallback: distance stops dropping this long → release the rope
-        [SerializeField] private float tautRopeGravity = 0.15f;             // rope gravity factor while pulling: low = taut, near-straight line
         [SerializeField] private float swallowDistance = 0.75f;             // distance to a bomb that triggers swallowing
-        [SerializeField] private float detachDistance = 0.5f;               // reel-in release distance
-        [SerializeField] private float reelTimeout = 2.5f;                  // reel-in timeout: forced recovery when the hook is stuck in a corner
+        [SerializeField] private float detachDistance = 0.5f;               // miss recovery: release distance from the muzzle
 
         [Header("Reel & hit")]
-        [SerializeField] private float reelSpeed = 5f;                      // miss/cancel: rope shortening speed (hook recovery)
+        [SerializeField] private float reelSpeed = 5f;                      // miss recovery: straight-line hook pull-back speed
         [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
-        private float ropeLength;       // current rope length (absolute cap = currentMaxRange); reel-in drives it shorter
-        private Timer reelTimer;        // reel-in timeout: forced recovery when the hook is stuck in a corner
-        private bool ropeTaut;          // hook is stretched against the range circle (truly reels only on the second consecutive frame, see FixedUpdate)
 
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
 
         private Vector2 aimOffset;      // aim cursor offset from the player (world units), free-moving around the player
-        private Vector2 moveInput;      // latest frame's move input (forwarded by PlayerHandler): fire-direction source without aiming input
-        private Timer aimShowTimer;     // refreshed while aiming input exists; expired = hide preview + fire falls back to move direction tilted up
-        private bool previewVisible;    // preview show/hide dedup
 
         private GameObject hookGo;
         private Rigidbody2D hookBody;
         private HookHit hookHit;
 
-        private ICarriable grapple;        // PullingEat target (interface only, never knows the implementation)
+        private ICarriable grapple;        // eat-pull target; null = plain terrain pull
         private Vector2 pullTarget;     // anchor: terrain hit point / carriable's current position
         private float lastPullDist;     // pull-stuck detection: distance to the anchor last physics step
         private float pullStuck;        // accumulated time the distance has stopped dropping
 
-        private readonly VerletRope rope = new VerletRope();
         private LineRenderer ropeLine;
 
         private Transform reticle;
         private SpriteRenderer reticleSprite;
-        private LineRenderer dashLine;
-
-        // Preview parabola sample points (max 64 steps + start), avoids per-frame allocation
-        private readonly Vector2[] arcPoints = new Vector2[65];
-        private int arcCount;
 
         private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
 
@@ -154,32 +130,20 @@ namespace Inkform.Player
             }
         }
 
-        /// <summary>Latest frame's move input (forwarded every frame by PlayerHandler, incl. keyboard stick synthesis / left stick).
-        /// Without aiming input, the fire and spit direction = it tilted up aimFallbackElevation°.</summary>
-        public void SetMoveInput(Vector2 input) => moveInput = input;
-
         /// <summary>
-        /// Effective fire direction: with aiming input → precisely toward the reticle; otherwise → the
-        /// current move direction (or the facing direction) tilted aimFallbackElevation° toward straight
-        /// up (never past it). Shared by rope-gun firing and bomb spitting.
+        /// Effective fire direction: always exactly toward the reticle (the persistent aim cursor),
+        /// whether or not the player recently moved it — no movement-direction fallback. Shared by
+        /// rope-gun firing and bomb spitting.
         /// </summary>
         public Vector2 EffectiveFireDir
         {
             get
             {
-                if (aimShowTimer.IsRunning && aimOffset.sqrMagnitude > 0.0001f)
-                    return aimOffset.normalized;
+                if (aimOffset.sqrMagnitude > 0.0001f) return aimOffset.normalized;
 
-                Vector2 d = moveInput.sqrMagnitude > 0.01f
-                    ? moveInput.normalized
-                    : (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left);
-
-                float angle = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
-                float elevated = angle < 90f
-                    ? Mathf.Min(angle + aimFallbackElevation, 90f)
-                    : Mathf.Max(angle - aimFallbackElevation, 90f);
-                float rad = elevated * Mathf.Deg2Rad;
-                return new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+                // aimOffset is initialized to a non-zero value and only ever clamped to a range ≥ 0.1,
+                // so this path is unreachable in practice — defensive fallback only
+                return PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
             }
         }
 
@@ -193,7 +157,6 @@ namespace Inkform.Player
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
 
-            dashLine = CreateLine("RopeDashLine", dashMaterial, dashWidth, dashSortingOrder);
             ropeLine = CreateLine("RopeLine", ropeMaterial, ropeWidth, ropeSortingOrder);
 
             aimOffset = Vector2.right * currentMaxRange * 0.6f;
@@ -218,8 +181,7 @@ namespace Inkform.Player
         // ---- Input entries (forwarded by PlayerHandler) ----
 
         /// <summary>Aiming input. pixelDelta = mouse pixel delta (needs conversion to world units by screen
-        /// height), otherwise a right-stick analog value (speed × dt). Refreshes the preview-show timer
-        /// when the input passes the device threshold.</summary>
+        /// height), otherwise a right-stick analog value (speed × dt). Moves the always-visible reticle.</summary>
         public void Aim(Vector2 delta, bool pixelDelta)
         {
             if (phase != RopePhase.Idle || LifeBus.IsDead) return;
@@ -231,14 +193,10 @@ namespace Inkform.Player
                     ? cam.orthographicSize * 2f / Mathf.Max(1f, Screen.height)
                     : 0.01f;
                 aimOffset += delta * worldPerPixel * mouseAimSensitivity;
-                if (Mathf.Abs(delta.x) > mouseShowThreshold || Mathf.Abs(delta.y) > mouseShowThreshold)
-                    aimShowTimer.Set(aimShowTime);
             }
             else
             {
                 aimOffset += delta * (stickAimSpeed * Time.deltaTime);
-                if (delta.sqrMagnitude > stickShowThreshold * stickShowThreshold)
-                    aimShowTimer.Set(aimShowTime);
             }
 
             if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
@@ -255,19 +213,15 @@ namespace Inkform.Player
             }
             if (ItemBus.Held != null) return;   // cannot fire with something in the mouth
 
-            // With aiming input → precisely toward the reticle; when hidden → move direction tilted up (EffectiveFireDir)
+            // Always exactly toward the reticle (EffectiveFireDir), no movement-direction fallback
             Vector2 fireDir = EffectiveFireDir;
             Vector2 origin = playerBody.position + fireDir * muzzleOffset;
-            // Ballistic target: while aiming = the reticle point (passes through it exactly); hidden = along the effective direction to the range
-            Vector2 target = aimShowTimer.IsRunning
-                ? playerBody.position + aimOffset
-                : origin + fireDir * currentMaxRange;
+            // Ballistic target = the reticle point: the bullet passes through it exactly
+            Vector2 target = playerBody.position + aimOffset;
             SolveBallistic(origin, target, launchSpeed, Physics2D.gravity * bulletGravityScale,
                 out Vector2 v0, out _);
 
             phase = RopePhase.Flying;
-            ropeTaut = false;
-            SetPreviewShown(false);
 
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
@@ -287,28 +241,17 @@ namespace Inkform.Player
             hookHit = hookGo.AddComponent<HookHit>();
             hookHit.Init(this);
 
-            rope.Init(RopeCfg(), origin, origin);
             ropeLine.enabled = true;
         }
 
         /// <summary>Called by PlayerHandler on jump press: during a pull, release the rope and let the jump happen.</summary>
         public void DetachOnJump()
         {
-            if (phase == RopePhase.Idle || phase == RopePhase.ReelIn || phase == RopePhase.Flying) return;
+            if (phase != RopePhase.Pulling) return;
             Finish();
         }
 
         // ---- Internal flow ----
-
-        // Merges the serialized rope collision layers and weight into the solver config (rope segments
-        // collide with terrain, sag heavier; bomb chains keep it off)
-        private VerletRope.Settings RopeCfg()
-        {
-            var s = ropeSettings;
-            s.collisionMask = ropeCollisionMask;
-            s.gravityScale = ropeGravityScale;
-            return s;
-        }
 
         private void Cancel()
         {
@@ -316,10 +259,10 @@ namespace Inkform.Player
             {
                 case RopePhase.Idle: return;
                 case RopePhase.Flying:
-                    StartReelIn();
+                    StartMiss();
                     return;
-                case RopePhase.ReelIn:
-                    return;                         // already reeling
+                case RopePhase.Miss:
+                    return;                         // already recovering
                 default:
                     Finish();                       // pulling: release and recover the rope outright
                     return;
@@ -340,29 +283,27 @@ namespace Inkform.Player
 
             ContactPoint2D contact = collision.GetContact(0);
 
-            // Move the anchor outward by half a rope width along the contact normal: the contact point
-            // itself sits on the terrain surface, a segment CircleCast starting there would spawn
-            // overlapping (the project has QueriesStartInColliders on), and it keeps a small bit of
-            // rope from rendering inside the wall. The normal direction convention is easy to get
-            // backwards — check the sign with the hook's actual position.
+            // Move the anchor outward from the contact surface: the contact point itself sits on the
+            // terrain, and a small offset keeps a bit of rope from rendering inside the wall. The
+            // normal direction convention is easy to get backwards — check the sign with the hook's
+            // actual position.
             Vector2 outward = contact.normal;
             if (Vector2.Dot(outward, hookBody.position - contact.point) < 0f) outward = -outward;
-            Vector2 hitPoint = contact.point + outward * Mathf.Max(ropeSettings.collisionRadius, 0.01f);
+            Vector2 hitPoint = contact.point + outward * Mathf.Max(anchorClearance, 0.01f);
 
             // The hit point sits on the hook's surface, another bulletRadius beyond the hook center
             // (plus the normal offset above) — hitting a wall at the edge of the range without this
             // slack would mark a legal hit as over-range
-            float rangeSlack = bulletRadius + Mathf.Max(ropeSettings.collisionRadius, 0.01f);
+            float rangeSlack = bulletRadius + Mathf.Max(anchorClearance, 0.01f);
             if (Vector2.Distance(playerBody.position, hitPoint) > currentMaxRange + rangeSlack)
             {
-                StartReelIn();      // beyond range: treat as a miss
+                StartMiss();        // beyond range: treat as a miss
                 return;
             }
 
             pullTarget = hitPoint;
             AnchorHook();
             motor?.SetMoveLocked(true);
-            reelTimer.Clear();      // hooked now, no longer a reel flow — do not leak the expiry time into the next shot
 
             // Brief hitstop at the hit moment: impact feel. Via FxBus; ScreenFx restores timeScale
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
@@ -374,25 +315,22 @@ namespace Inkform.Player
             pullStuck = 0f;
         }
 
-        private void StartReelIn()
+        // Miss / cancel recovery: the hook is dragged straight back to the muzzle. Collider off — no
+        // wall-sliding, no bumping bombs, no contact callbacks at all, it just rides the rope end
+        // straight back (passes through geometry). The next shot creates a fresh hook with the collider on.
+        // All callers guarantee the hook is still Flying when this runs.
+        private void StartMiss()
         {
-            if (phase == RopePhase.ReelIn) return;
-            phase = RopePhase.ReelIn;
-            reelTimer.Set(reelTimeout);
+            phase = RopePhase.Miss;
 
-            // Rope length starts from the current hook distance and shortens by reelSpeed — the hook is
-            // dragged back BY the rope; writing velocity directly would snap to full speed (reeling
-            // "whoosh" with no rope-drag feel)
-            if (hookBody != null)
-                ropeLength = Mathf.Min(Vector2.Distance(playerBody.position, hookBody.position), currentMaxRange);
-            // Reel-in keeps the collider: the hook slides back along walls without clipping (corners are covered by reelTimeout)
+            if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
         }
 
         private void StartPullingCarriable(ICarriable target)
         {
             target.MarkRopeGrappled();
             grapple = target;
-            phase = RopePhase.PullingEat;
+            phase = RopePhase.Pulling;
             AnchorHook();
             motor?.SetMoveLocked(true);
 
@@ -400,12 +338,12 @@ namespace Inkform.Player
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
         }
 
-        // Hook becomes a static anchor: physics off, collision callbacks off, collider off — no longer
-        // participates in any physical interaction
+        // Hook becomes a static anchor: physics and collider off — no longer participates in any
+        // physical interaction (the collider being off already blocks all contact callbacks, so the
+        // hook's own collision component needs no toggle)
         private void AnchorHook()
         {
             hookBody.simulated = false;
-            hookHit.enabled = false;
             if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
         }
 
@@ -420,11 +358,8 @@ namespace Inkform.Player
             grapple = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
-            reelTimer.Clear();
-            ropeTaut = false;
             DespawnHook();
             ropeLine.enabled = false;
-            // Preview show/hide is left to Update's input timer (stays hidden without input)
         }
 
         private void DespawnHook()
@@ -435,26 +370,14 @@ namespace Inkform.Player
             hookHit = null;
         }
 
-        private void SetPreviewShown(bool shown)
-        {
-            if (shown == previewVisible) return;    // dedup: per-frame driving never SetActive every frame
-            previewVisible = shown;
-            if (reticle != null) reticle.gameObject.SetActive(shown);
-            dashLine.enabled = shown;
-        }
-
         // ---- Frame loop ----
 
         void Update()
         {
             if (LifeBus.IsDead) return;
-            if (phase == RopePhase.Idle)
-            {
-                // Preview only computes and shows with aiming input: the hidden state does not waste
-                // ballistic solves and raycasts
-                if (aimShowTimer.IsRunning) UpdatePreview();
-                SetPreviewShown(aimShowTimer.IsRunning);
-            }
+            // The reticle is always visible: it updates every frame while idle, so the player always
+            // knows exactly where the next shot will go
+            if (phase == RopePhase.Idle) UpdatePreview();
         }
 
         void FixedUpdate()
@@ -467,87 +390,65 @@ namespace Inkform.Player
             switch (phase)
             {
                 case RopePhase.Flying:
-                    // Rope feeds out of the muzzle after the hook, never past currentMaxRange (fixed rope cap)
-                    float hookDist = Vector2.Distance(origin, hookBody.position);
-                    if (hookDist >= currentMaxRange)
+                    // Range cap: reaching the range circle is a miss — recovery starts immediately,
+                    // no grace frame for an edge-of-range hook (the hook must physically hit terrain
+                    // while still inside the range to ever pull)
+                    if (Vector2.Distance(origin, hookBody.position) >= currentMaxRange)
                     {
-                        // Physical rope length limit: the hook is stretched onto the range circle,
-                        // removing only the outward radial velocity, keeping the tangential (like
-                        // hitting the end of the rope)
-                        Vector2 d = hookBody.position - origin;
-                        Vector2 dir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
-                        hookBody.position = origin + dir * currentMaxRange;
-                        float radialOut = Vector2.Dot(hookBody.linearVelocity, dir);
-                        if (radialOut > 0f) hookBody.linearVelocity -= dir * radialOut;
-                        hookBody.angularVelocity = 0f;
-                        ropeLength = currentMaxRange;
-                        rope.SetLength(ropeLength);
-                        rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
-
-                        // The first taut frame does not reel: OnCollisionEnter2D runs after FixedUpdate,
-                        // and switching to ReelIn that same frame would drop the immediately-arriving
-                        // legal terrain collision in OnHookTerrainHit's phase check — hitting a wall at
-                        // the range edge would "touch but only reel". Leave one full step for the
-                        // collision callback; only the second consecutive taut frame truly reels.
-                        if (ropeTaut) StartReelIn();
-                        else ropeTaut = true;
+                        StartMiss();
                         break;
                     }
-
-                    ropeTaut = false;
-                    rope.SetLength(hookDist);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
 
                     CutChainsNearHook();
                     if (DetectCarriable()) return;
                     break;
 
-                case RopePhase.ReelIn:
-                    // Reeling = the rope reels in: length shortens by reelSpeed, the hook rides the rope
-                    // end being dragged back (sagging with gravity)
-                    if (!reelTimer.IsRunning) { Finish(); break; }      // corner-stuck timeout: forced recovery
-
-                    ropeLength = Mathf.Max(0f, ropeLength - reelSpeed * dt);
-                    var reel = RopeCfg();
-                    rope.Configure(reel);
-                    rope.SetLength(ropeLength);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, hookBody, null);
-                    if (ropeLength <= detachDistance
-                        || Vector2.Distance(origin, hookBody.position) <= detachDistance)
+                case RopePhase.Miss:
+                    // Miss recovery = the hook is dragged back to the muzzle in a straight line at
+                    // reelSpeed (no rope solve: position written directly, velocity zeroed so gravity
+                    // never curves the path; the collider is off so nothing can block it)
+                    hookBody.position = Vector2.MoveTowards(
+                        hookBody.position, origin, reelSpeed * dt);
+                    hookBody.linearVelocity = Vector2.zero;
+                    if (Vector2.Distance(origin, hookBody.position) <= detachDistance)
                         Finish();
                     break;
 
-                case RopePhase.PullingEat:
-                    // The interface has no Unity fake-null overload: cast to MonoBehaviour first to
-                    // recognize a blasted-away target
-                    if (grapple as MonoBehaviour == null) { Finish(); break; }
-                    pullTarget = grapple.transform.position;
-
-                    float eatDist = PullStep(pullTarget, dt);
-
-                    if (eatDist <= swallowDistance)
+                case RopePhase.Pulling:
+                    if (grapple != null)
                     {
-                        if (grapple.TrySwallowByRope(transform)) Finish();
-                        else Finish();      // cannot swallow (mouth full etc.): release the rope, do not stall
+                        // Eat-pull: the anchor follows the target; swallowing ends the pull.
+                        // The interface has no Unity fake-null overload: cast to MonoBehaviour first
+                        // to recognize a blasted-away target
+                        if (grapple as MonoBehaviour == null) { Finish(); break; }
+                        pullTarget = grapple.transform.position;
+
+                        if (PullStep(pullTarget, dt) <= swallowDistance)
+                        {
+                            grapple.TrySwallowByRope(transform);   // cannot swallow (mouth full etc.): release the rope, do not stall
+                            Finish();
+                            break;
+                        }
+
+                        if (pullStuck >= stuckTime) Finish();   // target behind a wall and unreachable: timeout release
                         break;
                     }
 
-                    if (pullStuck >= stuckTime) Finish();   // target behind a wall and unreachable: timeout release
-                    break;
-
-                case RopePhase.Pulling:
-                    float dist = PullStep(pullTarget, dt);
-
-                    // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
-                    // release, keep momentum
-                    if (dist <= arrivalDistance) { Finish(); break; }
+                    // Terrain pull: static anchor, release on arrival
+                    if (PullStep(pullTarget, dt) <= arrivalDistance)
+                    {
+                        // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
+                        // release, keep momentum
+                        Finish();
+                        break;
+                    }
                     if (pullStuck >= stuckTime) Finish();   // stuck fallback: sliding along a wall keeps distance dropping, not stuck
                     break;
             }
         }
 
-        // Single pull step (terrain Pulling and carriable PullingEat share it):
-        // hard velocity write-back (beats gravity, straight line) + taut rope + stuck-distance advance.
+        // Single pull step (terrain Pulling and eat Pulling share it):
+        // hard velocity write-back (beats gravity, straight line) + stuck-distance advance.
         // Returns the current distance to the target; the endpoint decision is the caller's.
         private float PullStep(Vector2 target, float dt)
         {
@@ -558,14 +459,6 @@ namespace Inkform.Player
             // The player's 3x gravity (≈29.4 m/s²) would crush an acceleration-style pull (upward
             // pulls would fail entirely); hard-writing beats gravity, path near-straight
             playerBody.linearVelocity = to / dist * pullSpeed;
-
-            // Rope taut: the pulling phase solves with low-gravity config, near-straight line;
-            // flight/reel-in still use the heavy sagging rope
-            var taut = RopeCfg();
-            taut.gravityScale = tautRopeGravity;
-            rope.Configure(taut);
-            rope.SetLength(dist);
-            rope.SolveFixed(dt, target, rope.SegmentCount, null, playerBody.position);
 
             // Stuck advance: distance stops dropping (sliding along a wall keeps it dropping, not
             // stuck) → accumulated timeout releases the rope
@@ -607,10 +500,10 @@ namespace Inkform.Player
             }
         }
 
-        // Aim preview: reticle = free cursor (around the player); trajectory = the parabola solved to
-        // pass through the reticle, raycast segment by segment — terrain blocking before the reticle →
-        // dashed line truncated at the hit point (green = will hook); clear → drawn to the reticle
-        // (red = will miss, reel in)
+        // Aim prediction: reticle = free cursor (around the player); the trajectory is the parabola
+        // solved to pass through the reticle, sampled segment by segment — terrain blocking before the
+        // reticle → green (will hook); clear → red (will miss, reel in). The reticle is always visible;
+        // firing and spitting always go exactly toward it.
         private void UpdatePreview()
         {
             Vector2 aim = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : Vector2.right;
@@ -623,18 +516,14 @@ namespace Inkform.Player
             SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0, out float flightTime);
 
             float maxT = Mathf.Max(flightTime, previewStepDt);
-            arcPoints[0] = origin;
-            arcCount = 1;
             Vector2 last = origin;
             bool hit = false;
 
             // Sample slightly past the reticle (inertia continues past it and may hit farther terrain)
-            for (int i = 1; i < arcPoints.Length; i++)
+            for (float t = previewStepDt; ; t += previewStepDt)
             {
-                float t = i * previewStepDt;
                 if (t > maxT + 0.25f) break;
                 Vector2 p = origin + v0 * t + 0.5f * g * t * t;
-                arcPoints[arcCount++] = p;
 
                 Vector2 seg = p - last;
                 float segLen = seg.magnitude;
@@ -643,7 +532,6 @@ namespace Inkform.Player
                     RaycastHit2D rh = Physics2D.Raycast(last, seg / segLen, segLen, hitMask);
                     if (rh.collider != null)
                     {
-                        arcPoints[arcCount - 1] = rh.point;
                         hit = true;
                         break;
                     }
@@ -659,14 +547,6 @@ namespace Inkform.Player
             reticleSprite.color = hit ? hitColor : missColor;
             float s = crosshairSize * (hit ? 1.25f : 1f);
             reticle.localScale = new Vector3(s, s, 1f);
-
-            // Dashed line: parabola sample points; texture spread at per-unit density
-            float totalLen = 0f;
-            for (int i = 1; i < arcCount; i++) totalLen += Vector2.Distance(arcPoints[i - 1], arcPoints[i]);
-            dashLine.positionCount = arcCount;
-            for (int i = 0; i < arcCount; i++) dashLine.SetPosition(i, arcPoints[i]);
-            dashLine.textureScale = new Vector2(
-                dashUnitScale > 0.001f ? totalLen / dashUnitScale : totalLen, 1f);
         }
 
         /// <summary>
@@ -710,15 +590,28 @@ namespace Inkform.Player
         {
             if (phase == RopePhase.Idle) return;
 
-            // A hook attached to a carriable follows the target (PullingEat has the hook's physics off;
+            // A hook attached to a carriable follows the target (eat-pull has the hook's physics off;
             // synced manually)
-            if (hookGo != null && hookBody != null && !hookBody.simulated && phase == RopePhase.PullingEat)
+            if (hookGo != null && hookBody != null && !hookBody.simulated && grapple != null)
                 hookGo.transform.position = pullTarget;
 
-            // Rope rendering
-            ropeLine.positionCount = rope.SegmentCount + 1;
-            for (int i = 0; i <= rope.SegmentCount; i++)
-                ropeLine.SetPosition(i, rope.GetPoint(i));
+            // Rope rendering: a straight line between the two ends — the rope gun uses no rope
+            // simulation, so the line is always straight (no sag)
+            Vector2 a, b;
+            if (phase == RopePhase.Pulling)
+            {
+                a = pullTarget;                 // anchor: terrain hit point / carriable position
+                b = playerBody.position;
+            }
+            else
+            {
+                a = playerBody.position;        // muzzle
+                b = hookBody != null ? hookBody.position : a;
+            }
+
+            ropeLine.positionCount = 2;
+            ropeLine.SetPosition(0, a);
+            ropeLine.SetPosition(1, b);
         }
 
         // ---- Bus callbacks ----
@@ -740,16 +633,13 @@ namespace Inkform.Player
             // Finish is idempotent: clears the grapple mark, unlocks movement, resets state, destroys
             // the hook — all in one
             Finish();
-            // Update is blocked by IsDead during death, so the preview show/hide gate never runs —
-            // must hide explicitly here
-            SetPreviewShown(false);
         }
 
         private void OnRespawned(GameObject victim, Vector2 pos)
         {
             if (victim != gameObject) return;
             aimOffset = (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left) * currentMaxRange * 0.6f;
-            // Preview is decided by Update's input timer: stays hidden without input
+            // The reticle repositions from the new aimOffset on the next UpdatePreview
         }
 
         // ---- Runtime objects ----

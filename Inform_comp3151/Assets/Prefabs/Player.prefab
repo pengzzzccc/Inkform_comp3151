@@ -160,60 +160,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58f88b8f3a15c8b43aaa48fc6b2100fd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.RopeGun
-  maxRange: 6
+  maxRange: 4
   hitMask:
     serializedVersion: 2
     m_Bits: 2112
   launchSpeed: 22
-  bulletGravityScale: 1
+  bulletGravityScale: 2.7
   bulletRadius: 0.12
   bulletSprite: {fileID: 0}
   muzzleOffset: 0.5
   bombDetectRadius: 0.55
   mouseAimSensitivity: 1
   stickAimSpeed: 15
-  mouseShowThreshold: 0.5
-  stickShowThreshold: 0.1
-  aimShowTime: 0.15
-  aimFallbackElevation: 30
   crosshairSprite: {fileID: 0}
   crosshairSize: 0.6
   hitColor: {r: 0.35, g: 1, b: 0.35, a: 1}
   missColor: {r: 1, g: 0.35, b: 0.35, a: 1}
-  dashMaterial: {fileID: 0}
-  dashWidth: 0.05
-  dashUnitScale: 0.5
-  dashSortingOrder: 10
   previewStepDt: 0.033333335
-  ropeSettings:
-    segmentLength: 0.25
-    maxSegments: 32
-    solverIterations: 6
-    gravityScale: 1
-    damping: 0.99
-    attachStiffness: 0.6
-    attachDamping: 0.25
-    maxCorrectionSpeed: 20
-    collisionMask:
-      serializedVersion: 2
-      m_Bits: 2112
-    collisionRadius: 0.04
-  ropeCollisionMask:
-    serializedVersion: 2
-    m_Bits: 2112
-  ropeGravityScale: 2.5
   ropeMaterial: {fileID: 0}
   ropeWidth: 0.06
   ropeSortingOrder: -5
+  anchorClearance: 0.04
   chainCutRadius: 0.35
-  pullSpeed: 12
+  pullSpeed: 16
   arrivalDistance: 0.7
   stuckTime: 0.25
-  tautRopeGravity: 0.15
   swallowDistance: 0.75
   detachDistance: 0.5
-  reelTimeout: 2.5
-  reelSpeed: 5
+  reelSpeed: 22
   hitStopTime: 0.06
 --- !u!50 &2846290267072033032
 Rigidbody2D:

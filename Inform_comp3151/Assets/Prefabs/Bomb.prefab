@@ -178,8 +178,7 @@ MonoBehaviour:
   chainDelay: 0.1
   blastMask:
     serializedVersion: 2
-    m_Bits: 2049
-  frontEpsilon: 0.05
+    m_Bits: 2057
   triggerFrames:
   - {fileID: -43189483694800998, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: 2626840833397699699, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
@@ -192,14 +191,19 @@ MonoBehaviour:
   hangingPointSpacing: {x: 0.6, y: 0}
   hangingPointHeight: 3
   chainSettings:
-    segmentLength: 0.25
-    maxSegments: 32
-    solverIterations: 6
-    chainGravityScale: 1
-    damping: 0.99
-    attachStiffness: 0.6
-    maxCorrectionSpeed: 20
-    playerCutRadius: 0.8
+    solver:
+      segmentLength: 0.25
+      maxSegments: 32
+      solverIterations: 6
+      gravityScale: 1
+      damping: 0.99
+      attachStiffness: 0.6
+      attachDamping: 0.25
+      maxCorrectionSpeed: 20
+      collisionMask:
+        serializedVersion: 2
+        m_Bits: 0
+      collisionRadius: 0.04
     lineWidth: 0.08
     sortingOrder: -1
   speedExplodeThreshold: 1
