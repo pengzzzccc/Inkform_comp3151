@@ -56,6 +56,7 @@ GameObject:
   - component: {fileID: 4871721654905530798}
   - component: {fileID: 2249788208766235142}
   - component: {fileID: 2769999579370683145}
+  - component: {fileID: 3662244816408108976}
   - component: {fileID: 2696659522719923365}
   - component: {fileID: 5595121835468972452}
   - component: {fileID: 49043683053676636}
@@ -114,6 +115,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.CarriablePart
   eatAble: 1
   spitArmTime: 1
+--- !u!114 &3662244816408108976
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2329586824147779645}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3ef71459cee344c3901e9474491580a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnBlast
+  chainDelay: 0.1
 --- !u!114 &2696659522719923365
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -151,7 +165,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01d213b5ad474a33aa776b4170384ba9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnImpact
-  threshold: 4
+  threshold: 3
+  impactMask:
+    serializedVersion: 2
+    m_Bits: 10305
 --- !u!114 &49043683053676636
 MonoBehaviour:
   m_ObjectHideFlags: 0
