@@ -6,19 +6,21 @@ using UnityEngine;
 namespace Inkform.Item
 {
     /// <summary>
-    /// Verlet 绳索链：连接炸弹与悬挂锚点（悬挂点的世界坐标）的可切断链条。
-    /// 解算本体在 VerletRope（与绳索枪共用），本类只保留：
-    /// ① 切断（CutAt / CutAll）；
-    /// ② 切断途径：爆炸（HazardBus.Blast）波及 / 绳索枪飞行命中（静态注册表逐段检测）；
-    /// ③ LineRenderer 渲染。
-    /// 注：dash 已是纯冲刺，不再有 Eat 攻击状态 —— 玩家攻击切断已被移除。
+    /// Verlet rope chain: a severable chain connecting a bomb to its hanging anchor (the hanging
+    /// point's world coordinate). The solver body lives in VerletRope (shared with the rope gun);
+    /// this class keeps only:
+    /// ① severing (CutAt / CutAll);
+    /// ② severing paths: blast waves (HazardBus.Blast) / rope-gun flight hits (the static registry is
+    ///    probed segment by segment);
+    /// ③ LineRenderer rendering.
+    /// Note: dash is now pure dash, the Eat attack state was removed — player-attack severing is gone.
     /// </summary>
     [RequireComponent(typeof(LineRenderer))]
     public class Chain : MonoBehaviour
     {
         /// <summary>
-        /// 链条调参包。由 Bomb 在 Inspector 里配好后经 Configure 推给运行时新建的链，
-        /// 这样链的组件本身不需要在场景里预先摆放。
+        /// Chain tuning pack. Configured by Bomb in the Inspector and pushed to chains created at
+        /// runtime via Configure, so chain components never need to be pre-placed in the scene.
         /// </summary>
         [System.Serializable]
         public class Settings
@@ -27,20 +29,21 @@ namespace Inkform.Item
 
             [Header("Render")]
             public float lineWidth = 0.08f;
-            public int sortingOrder = -1;               // 默认画在炸弹背后
+            public int sortingOrder = -1;               // default draws behind the bomb
         }
 
         private readonly VerletRope rope = new VerletRope();
-        private Rigidbody2D body;       // 末端绑定的炸弹刚体
-        private Vector2 anchor;         // 世界固定锚点：悬挂点的初始世界坐标，不随炸弹移动
-        private Vector2 attachOffset;   // 挂点相对刚体位置的局部偏移（随刚体旋转），默认零 = 挂在质心
+        private Rigidbody2D body;       // attached bomb rigidbody at the end
+        private Vector2 anchor;         // world-fixed anchor: the hanging point's initial world position, does not move with the bomb
+        private Vector2 attachOffset;   // attach offset relative to the body position (rotates with the body), zero = center of mass
         private LineRenderer line;
 
         private Settings cfg = new Settings();
-        private int segmentCount;       // 链段总数
-        private int intactEnd;          // 仍完整的末端点下标：segmentCount = 未断，0 = 全断
+        private int segmentCount;       // total segment count
+        private int intactEnd;          // index of the last still-intact endpoint: segmentCount = intact, 0 = fully severed
 
-        // 所有在世链的注册表：OnEnable/OnDisable 维护，绳索枪飞行时据此做断链检测
+        // Registry of all living chains: maintained via OnEnable/OnDisable; the rope gun probes it
+        // while flying to sever chains
         private static readonly List<Chain> active = new List<Chain>();
         public static IReadOnlyList<Chain> Active => active;
 
@@ -73,13 +76,20 @@ namespace Inkform.Item
             if (s != null) cfg = s;
         }
 
-        /// <summary>
-        /// 绑定炸弹刚体与锚点，按距离生成链段。必须在 AddComponent 之后立刻调用。
-        /// attachOffset = 挂点相对刚体位置的局部偏移（如墙的右缘），默认零 = 挂在刚体质心。
-        /// </summary>
-        public void Init(Rigidbody2D bombBody, Vector2 anchorPos, Vector2 attachOffset = default)
+        /// <summary>Swaps material. null = keep default; callable before or after Init (material is independent of geometry).</summary>
+        public void SetMaterial(Material material)
         {
-            body = bombBody;
+            if (material != null && line != null) line.material = material;
+        }
+
+        /// <summary>
+        /// Binds the hanging object's rigidbody and anchor, generating segments by distance. Must be
+        /// called immediately after AddComponent.
+        /// attachOffset = attach offset relative to the body position (e.g. a wall's right edge), zero = center of mass.
+        /// </summary>
+        public void Init(Rigidbody2D body, Vector2 anchorPos, Vector2 attachOffset = default)
+        {
+            this.body = body;
             anchor = anchorPos;
             this.attachOffset = attachOffset;
 
@@ -93,7 +103,7 @@ namespace Inkform.Item
             line.enabled = true;
         }
 
-        /// <summary>切断第 segmentIndex 段及以下的所有链段（0 = 最上面那段）。</summary>
+        /// <summary>Severs segment segmentIndex and everything below (0 = the topmost segment).</summary>
         public void CutAt(int segmentIndex)
         {
             if (intactEnd <= 0) return;
@@ -101,14 +111,14 @@ namespace Inkform.Item
             if (intactEnd <= 0) line.enabled = false;
         }
 
-        /// <summary>全部切断：炸弹不再受任何约束，链整体消失。</summary>
+        /// <summary>Severs everything: the bomb is free of all constraints, the chain disappears as a whole.</summary>
         public void CutAll()
         {
             intactEnd = 0;
             line.enabled = false;
         }
 
-        /// <summary>离 point 最近的完整段下标；最近距离超过 maxDist 返回 -1。供绳索枪断链用。</summary>
+        /// <summary>Index of the intact segment nearest to point; -1 when farther than maxDist. Used by the rope gun for severing.</summary>
         public int NearestSegment(Vector2 point, float maxDist)
         {
             if (!IsIntact) return -1;
@@ -141,7 +151,8 @@ namespace Inkform.Item
                             IsIntact ? body : null, null, attachOffset);
         }
 
-        // 爆炸波及：爆心到某段中点 < 爆炸半径就切，且切最靠近爆心的那段
+        // Blast wave: severs when the blast center is within the blast radius of a segment's midpoint,
+        // cutting at the segment nearest the center
         private void OnBlast(Vector2 center, float radius, float force)
         {
             if (!IsIntact) return;
@@ -161,7 +172,7 @@ namespace Inkform.Item
             if (best >= 0) CutAt(best);
         }
 
-        // 渲染放 LateUpdate：位置已由 FixedUpdate 更新完，画出来不抖
+        // Rendering in LateUpdate: positions were updated by FixedUpdate, drawing now does not jitter
         void LateUpdate()
         {
             if (!line.enabled || intactEnd <= 0) return;

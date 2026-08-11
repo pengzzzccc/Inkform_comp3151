@@ -3,14 +3,15 @@ using UnityEngine;
 namespace Inkform.Item
 {
     /// <summary>
-    /// 悬挂点：炸弹悬挂模式下链条的世界固定锚点。
-    /// 由 Bomb 的 [ContextMenu] 在编辑模式生成、作为炸弹子物体摆在场景里任意拖动；
-    /// 运行时 Bomb 在 Awake 取它的世界坐标作为链条锚点（固定，不随炸弹移动）。
-    /// 纯标记组件：无碰撞体、无刚体，只有 Scene 视图里的图标方便定位。
+    /// Hanging point: the world-fixed anchor of a chain in the bomb's hanging mode.
+    /// Generated in edit mode by Bomb's [ContextMenu], placed as a bomb child object and freely
+    /// draggable in the scene; at runtime Bomb takes its world position in Awake as the chain anchor
+    /// (fixed, does not move with the bomb). Pure marker component: no collider, no rigidbody, only a
+    /// Scene-view icon for positioning.
     /// </summary>
     public class HangingPoint : MonoBehaviour
     {
-        [Tooltip("Scene 视图里锚点图标的大小，纯编辑辅助")]
+        [Tooltip("Anchor icon size in the Scene view, purely an editor aid")]
         [SerializeField] private float gizmoSize = 0.25f;
 
         void OnDrawGizmos()

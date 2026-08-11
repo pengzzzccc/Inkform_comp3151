@@ -5,21 +5,22 @@ using Inkform.Player;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// 玩家状态总线：发布方只有 PlayerHandler，订阅方无需持有任何 PlayerHandler 引用。
-    /// 总线负责去重（只在值真的变化时广播），并保存当前快照供订阅者做首次同步。
+    /// Player state bus: the only publisher is PlayerHandler; subscribers need no PlayerHandler reference.
+    /// The bus dedups (only broadcasts when a value actually changes) and keeps the current snapshot
+    /// for subscribers' first-time sync.
     /// </summary>
     public static class PlayerBus
     {
         public static event Action<PlayerState> StateChanged;
         public static event Action<FaceDirection> FaceChanged;
 
-        // 当前快照：订阅者可在 OnEnable 里读取以完成首次同步
+        // Current snapshot: subscribers can read it in OnEnable to complete initial sync
         public static PlayerState State { get; private set; }
         public static FaceDirection Face { get; private set; }
 
         public static void RaiseState(PlayerState state)
         {
-            if (state == State) return;      // 去重：只在变化时广播
+            if (state == State) return;      // dedup: broadcast only on change
             State = state;
             StateChanged?.Invoke(state);
         }
@@ -31,13 +32,14 @@ namespace Inkform.Bus
             FaceChanged?.Invoke(face);
         }
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
+        // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             StateChanged = null;
             FaceChanged = null;
-            // 与 PlayerHandler 的字段默认值保持一致（Idle / R），避免启动时多广播一次
+            // Match PlayerHandler's field defaults (Idle / R) to avoid an extra broadcast at startup
             State = PlayerState.Idle;
             Face = FaceDirection.R;
         }

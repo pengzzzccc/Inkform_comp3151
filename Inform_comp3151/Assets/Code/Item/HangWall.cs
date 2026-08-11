@@ -4,49 +4,54 @@ using UnityEngine;
 namespace Inkform.Item
 {
     /// <summary>
-    /// 合页墙：一端绕世界固定的合页轴旋转，另一端被一条可配置的锁链挂住。
+    /// Hinged wall: one end rotates around a world-fixed hinge axis, the other end is held up by a
+    /// configurable chain.
     ///
-    /// 物理结构全部在 Awake 运行时组装，场景里只需摆好本体和锚点：
-    /// ① HingeJoint2D —— 合页轴 = 墙上的 hingePivot 局部位置，connectedBody = null
-    ///    （世界固定轴，锚点 = 墙摆好时轴端的初始世界坐标），墙受重力绕轴摆动、可被踩/推；
-    /// ② Chain —— 从场景摆的 chainAnchor 垂到墙的 attachPoint（Verlet 附刚体模式），
-    ///    绷紧后吊住墙的自由端。
+    /// The entire physical structure is assembled at runtime in Awake; the scene only needs the body
+    /// and anchors placed:
+    /// ① HingeJoint2D — the hinge axis is the wall's local hingePivot position, connectedBody = null
+    ///    (world-fixed axis; the anchor is the axis end's initial world position when the wall was
+    ///    placed), the wall swings under gravity and can be stood on / pushed;
+    /// ② Chain — from the scene-placed chainAnchor down to the wall's attachPoint (Verlet attached-body
+    ///    mode), holding up the free end when taut.
     ///
-    /// 锁链可配置：Chain.Settings 全参数（链段长/段数/迭代/重力/阻尼/段碰撞/线宽/排序）。
-    /// 锁链可切断：爆炸波及（Chain 已订阅 HazardBus.Blast）和绳索枪飞行
-    /// （Chain.Active 静态注册表已被 RopeGun.CutChainsNearHook 遍历）都能切断，
-    /// 全断后墙只剩合页约束、绕轴自由摆动。断链不可恢复 —— 与 Bomb 悬挂模式一致。
+    /// The chain is configurable: full Chain.Settings (segment length/count/iterations/gravity/
+    /// damping/segment collision/width/sorting). The chain is severable: blast waves (Chain subscribes
+    /// HazardBus.Blast) and rope-gun shots (the Chain.Active static registry is iterated by
+    /// RopeGun.CutChainsNearHook) can cut it; once fully severed the wall is left with only the hinge
+    /// constraint, swinging freely. Severed chains are unrecoverable — same as Bomb's hanging mode.
     ///
-    /// 层建议：放在 Terrain(6) / Breakable(11) 层，玩家四向接触检测和绳索枪
-    /// 地形命中都只认这两层（ContactSensor.terrainMask / RopeGun.hitMask）。
+    /// Layer suggestion: put on Terrain(6) / Breakable(11) — the player's four-way contact probe and
+    /// the rope gun's terrain hits only recognize these two layers
+    /// (ContactSensor.terrainMask / RopeGun.hitMask).
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(Collider2D))]
     public class HangWall : MonoBehaviour
     {
         [Header("Hinge")]
-        [Tooltip("合页轴在墙上的位置（局部坐标，相对质心 = 默认的碰撞体中心）。如左端 = (-半宽, 0)")]
+        [Tooltip("Hinge axis position on the wall (local coordinates, relative to center of mass = the collider center by default). E.g. left end = (-half-width, 0)")]
         [SerializeField] private Vector2 hingePivot = new Vector2(-1f, 0f);
-        [Tooltip("绕合页轴的角度限制（度，相对初始角度）。0 = 不限 —— 正常情况下摆动范围由锁链余长和碰撞决定")]
+        [Tooltip("Angle limit around the hinge (degrees, relative to the initial angle). 0 = unlimited — normally the swing range is decided by chain slack and collisions")]
         [SerializeField] private float angleLimit = 0f;
 
         [Header("Chain")]
-        [Tooltip("锁链挂点位置（局部坐标，相对质心）。如右端 = (半宽, 0)")]
+        [Tooltip("Chain attach position (local coordinates, relative to center of mass). E.g. right end = (half-width, 0)")]
         [SerializeField] private Vector2 attachPoint = new Vector2(1f, 0f);
-        [Tooltip("锁链固定锚点（场景中摆的空物体，Inspector 拖入）。右键本组件 → Create Chain Anchor 可自动生成")]
+        [Tooltip("Fixed chain anchor (an empty object placed in the scene, drag it in the Inspector). Right-click this component → Create Chain Anchor auto-generates one")]
         [SerializeField] private Transform chainAnchor;
-        [Tooltip("锁链配置：链段长/段数/迭代/重力/阻尼/段碰撞/线宽/排序")]
+        [Tooltip("Chain config: segment length/count/iterations/gravity/damping/segment collision/width/sorting")]
         [SerializeField] private Chain.Settings chainSettings = new Chain.Settings();
 
         [Header("Editor")]
-        [Tooltip("仅编辑器用：Create Chain Anchor 菜单按这个高度在挂点正上方生成锚点")]
+        [Tooltip("Editor only: Create Chain Anchor generates the anchor at this height directly above the attach point")]
         [SerializeField] private float anchorHeight = 3f;
 
         private Rigidbody2D body;
         private HingeJoint2D hinge;
         private Chain chain;
 
-        /// <summary>运行时可读：锁链是否完整（未被切断）。</summary>
+        /// <summary>Runtime-readable: whether the chain is intact (not severed).</summary>
         public bool ChainIntact => chain != null && chain.IsIntact;
 
         void Awake()
@@ -56,12 +61,13 @@ namespace Inkform.Item
             BuildChain();
         }
 
-        // 合页：世界固定轴。connectedAnchor = 墙摆好时的轴端世界坐标，之后墙绕它转
+        // Hinge: world-fixed axis. connectedAnchor = the axis end's world position when the wall was
+        // placed; the wall rotates around it from then on
         private void BuildHinge()
         {
             hinge = gameObject.AddComponent<HingeJoint2D>();
             hinge.anchor = hingePivot;
-            hinge.connectedBody = null;         // 锚点钉死在世界，不随任何物体移动
+            hinge.connectedBody = null;         // anchor pinned to the world, does not move with any object
             hinge.connectedAnchor = (Vector2)transform.TransformPoint(hingePivot);
 
             if (angleLimit > 0f)
@@ -71,12 +77,13 @@ namespace Inkform.Item
             }
         }
 
-        // 锁链：从固定锚点垂到墙的自由端挂点，Verlet 附刚体模式（偏移挂点，不挂质心）
+        // Chain: from the fixed anchor down to the wall's free-end attach point, Verlet attached-body
+        // mode (offset attach point, not the center of mass)
         private void BuildChain()
         {
             if (chainAnchor == null)
             {
-                Debug.LogWarning($"{name} 没有配置 chainAnchor：墙将只受合页约束。请拖入锚点或右键执行 Create Chain Anchor", this);
+                Debug.LogWarning($"{name} has no chainAnchor configured: the wall will only be held by the hinge. Drag in an anchor or right-click to run Create Chain Anchor", this);
                 return;
             }
 
@@ -88,26 +95,27 @@ namespace Inkform.Item
             chain.Init(body, chainAnchor.position, attachPoint);
         }
 
-        // ---- 编辑器辅助 ----
+        // ---- Editor helpers ----
 
-        // 在 Scene 视图画出轴/挂点/锁链示意，方便摆关卡时一眼看出墙会怎么动
+        // Draws the axis/attach point/chain hints in the Scene view so level designers see at a glance
+        // how the wall will move
         void OnDrawGizmosSelected()
         {
             Vector3 pivot = transform.TransformPoint(hingePivot);
             Vector3 attach = transform.TransformPoint(attachPoint);
 
-            // 合页轴：橙色十字 —— 墙绕这个点转
+            // Hinge axis: orange cross — the wall rotates around this point
             Gizmos.color = new Color(1f, 0.55f, 0.15f, 0.9f);
             float s = 0.4f;
             Gizmos.DrawLine(pivot + Vector3.left * s, pivot + Vector3.right * s);
             Gizmos.DrawLine(pivot + Vector3.down * s, pivot + Vector3.up * s);
             Gizmos.DrawWireSphere(pivot, s * 0.6f);
 
-            // 挂点：青色圆
+            // Attach point: cyan circle
             Gizmos.color = new Color(0.2f, 0.9f, 0.9f, 0.9f);
             Gizmos.DrawWireSphere(attach, 0.18f);
 
-            // 锁链：锚点到挂点的虚线示意
+            // Chain: dashed hint from anchor to attach point
             if (chainAnchor != null)
             {
                 Gizmos.color = new Color(0.75f, 0.75f, 0.75f, 0.8f);
@@ -115,13 +123,14 @@ namespace Inkform.Item
             }
         }
 
-        // 在挂点正上方生成一个固定锚点空物体并自动接好引用，省得手动摆
+        // Generates a fixed anchor empty object directly above the attach point and wires the
+        // reference, saving manual placement
         [ContextMenu("Create Chain Anchor")]
         private void CreateChainAnchor()
         {
             if (chainAnchor != null)
             {
-                Debug.LogWarning($"{name} 已经有 chainAnchor 了，请先清掉引用再生成", this);
+                Debug.LogWarning($"{name} already has a chainAnchor; clear the reference first", this);
                 return;
             }
 
@@ -129,7 +138,7 @@ namespace Inkform.Item
             go.transform.position = transform.TransformPoint(attachPoint) + Vector3.up * anchorHeight;
             chainAnchor = go.transform;
 
-            Debug.Log($"已生成锚点 {go.name} 并接入 chainAnchor", go);
+            Debug.Log($"Anchor {go.name} generated and wired into chainAnchor", go);
         }
     }
 }

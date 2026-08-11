@@ -4,51 +4,54 @@ using UnityEngine;
 namespace Inkform.Fx
 {
     /// <summary>
-    /// 一种碎裂表现的配置：碎块预制体 + 多张随机外观 + 切分/受力/寿命参数，纯数据资产。
-    /// 在 Assets > Create > Fx > Fragment Cue 创建，由 Bomb / BreakableWall / PlayerDeathFx 在 Inspector 里引用。
-    /// 生成动作本身由 Shatter 负责，本类只描述「该碎成什么样」。
+    /// Config for one shatter look: fragment prefab + multiple random looks + slicing/force/lifetime
+    /// parameters, pure data asset. Created via Assets > Create > Fx > Fragment Cue, referenced by
+    /// Bomb / BreakableWall / PlayerDeathFx in the Inspector. The spawning itself is done by Shatter;
+    /// this class only describes "what the shatter should look like".
     /// </summary>
     [CreateAssetMenu(menuName = "Fx/Fragment Cue")]
     public class FragmentCue : ScriptableObject
     {
         [Header("Look")]
-        [Tooltip("碎块预制体，需带 Rigidbody2D + SpriteRenderer + Fragment")]
+        [Tooltip("Fragment prefab, must carry Rigidbody2D + SpriteRenderer + Fragment")]
         public GameObject prefab;
-        [Tooltip("多张外观，每块碎片随机取一张防重样。留空槽位会被跳过，整个数组为空则沿用预制体自带的图")]
+        [Tooltip("Multiple looks; each shard picks one at random to avoid repetition. Empty slots are skipped; an entirely empty array keeps the prefab's own sprite")]
         public Sprite[] sprites;
-        [Tooltip("在「等比塞进格子」的基础上再乘一次随机系数，让同一次碎裂的块大小不齐")]
+        [Tooltip("Extra random factor on top of 'uniform fit into the cell', so shards from one shatter vary in size")]
         public Vector2 scaleRange = new Vector2(0.85f, 1.1f);
-        [Tooltip("随机水平/垂直翻转，进一步打散重复感")]
+        [Tooltip("Random horizontal/vertical flip, further breaking up repetition")]
         public bool randomFlip = true;
         public Color tint = Color.white;
 
         [Header("Shatter")]
-        public int cellsX = 2;                                  // 横向切几块
-        public int cellsY = 3;                                  // 纵向切几块
-        [Tooltip("碎块速度 = 爆炸推力 × 本系数")]
+        public int cellsX = 2;                                  // how many slices horizontally
+        public int cellsY = 3;                                  // how many slices vertically
+        [Tooltip("Shard velocity = blast force × this factor")]
         [Range(0f, 2f)] public float forceMultiplier = 0.6f;
-        [Tooltip("碎块随机自转的角速度上限")]
+        [Tooltip("Upper bound of random spin angular velocity")]
         public float spinSpeed = 180f;
 
         [Header("Life")]
         public float lifeTime = 3f;
-        public float fadeTime = 1f;                             // 生命末尾的淡出时长
+        public float fadeTime = 1f;                             // fade-out duration at end of life
 
-        // 缩放基准的缓存。ScriptableObject 是资产，实例常驻编辑器内存，所以这份缓存
-        // 不随退出播放模式清零 —— 靠下面的 OnValidate 在 sprites 被改动时作废。
+        // Scale baseline cache. A ScriptableObject is an asset, its instance persists in editor memory,
+        // so this cache does not clear when exiting play mode — invalidated by OnValidate below whenever
+        // sprites change.
         [System.NonSerialized] private Vector2 maxSpriteSize;
         [System.NonSerialized] private bool measured;
 
-        /// <summary>随机取一张外观。数组里的空槽位会被跳过，全空则返回 null（调用方保留预制体原图）。</summary>
+        /// <summary>Picks a random look. Empty slots are skipped; returns null when all are empty (the caller keeps the prefab's original sprite).</summary>
         public Sprite PickSprite() => RandomPick.FromArray(sprites);
 
         public float PickScale() =>
             Random.Range(scaleRange.x, scaleRange.y);
 
         /// <summary>
-        /// 图集里最大那张切片的世界尺寸，碎块缩放以它为基准：
-        /// 最大的块刚好塞满格子，小块按美术画的比例保持小。
-        /// 若改成每块各自塞满格子，6×7 的小碎片会被放大到和 27×20 的一样大，像素明显变糊。
+        /// World size of the largest sprite in the atlas; shard scale is based on it:
+        /// the largest shard exactly fills the cell, smaller shards stay small per the art's proportions.
+        /// If each shard filled its own cell, a 6×7 tiny shard would blow up to match a 27×20 one —
+        /// visibly blurry pixels.
         /// </summary>
         public Vector2 MaxSpriteSize
         {
@@ -57,8 +60,8 @@ namespace Inkform.Fx
                 if (measured) return maxSpriteSize;
                 measured = true;
 
-                // 种子必须是 zero 而不是 one：切片全都小于 1 单位时，
-                // 从 one 起累积的最大值会永远卡在 1，碎块被整体缩小
+                // Seed must be zero, not one: when every slice is under 1 unit, a running max starting
+                // from one would forever sit at 1, shrinking all shards
                 Vector2 max = Vector2.zero;
                 if (sprites != null)
                 {
@@ -74,7 +77,8 @@ namespace Inkform.Fx
             }
         }
 
-        // 在 Inspector 里改完 sprites 后基准必须重算，否则新图还按旧尺寸缩放
+        // After editing sprites in the Inspector the baseline must recompute, or new art still scales
+        // against the old size
         void OnValidate() => measured = false;
     }
 }
