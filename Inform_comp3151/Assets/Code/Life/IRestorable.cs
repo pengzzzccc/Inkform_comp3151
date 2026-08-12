@@ -18,7 +18,7 @@ namespace Inkform.Life
     /// and emptier.
     ///
     /// Implementors note: restoration presupposes the object stays alive. **Never Destroy yourself on
-    /// destruction** — disable the collider + rendering instead (BreakableWall does exactly this).
+    /// destruction** — disable the collider + rendering instead (RestorablePart does exactly this).
     /// </summary>
     public interface IRestorable
     {

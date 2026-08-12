@@ -11,7 +11,7 @@ namespace Inkform.Interactable.Parts
     /// trigger parts (ExplodeOnContact / ExplodeOnBlast / ExplodeAfterDelay / ExplodeOnImpact) call
     /// Explode() when their condition is met.
     ///
-    /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakableWall
+    /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakablePart
     /// shatters, PlayerHandler gets knocked back, other explosives chain) + one RaiseBlast overall
     /// (screen shake / sound / rope cutting) — all listeners already on the bus, zero changes.
     ///
@@ -155,7 +155,8 @@ namespace Inkform.Interactable.Parts
                 foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
             }
 
-            // The shatter look plays for restorable items too (same as BreakableWall)
+            // The shatter look plays for restorable items too: being hidden for restore instead of
+            // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
 
             // Explosives are unrecoverable (same as Bomb): shattered and destroyed outright
