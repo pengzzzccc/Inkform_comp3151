@@ -47,10 +47,8 @@ namespace Inkform.Input
         {
             playerInput = new InputSystem_Actions();
 
-            // Hide the system cursor at game start: aiming uses the rope gun's reticle (the Aim action
-            // keeps working while locked)
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
+            // Cursor visibility/lock is owned by UIManager now (menu shows it, gameplay hides it);
+            // this class only handles gameplay input.
 
             // player input setup
             move = playerInput.Player.Move;
@@ -89,7 +87,10 @@ namespace Inkform.Input
 
         void Update()
         {
-            if (player == null) return;
+            // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
+            // charge, and ReadValue on a disabled action returns default which would push a stale
+            // "no input" into PlayerHandler every frame.
+            if (!actionsEnabled || player == null) return;
 
             Vector2 raw = move.ReadValue<Vector2>();
 
@@ -161,6 +162,33 @@ namespace Inkform.Input
             // not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
 
+            EnableActions();
+        }
+
+        void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
+            DisableActions();
+        }
+
+        /// <summary>
+        /// Toggles gameplay input. Called by UIManager on pause/resume: the pause menu must not let
+        /// move/jump/aim leak into the frozen game. Both EnableActions/DisableActions are idempotent
+        /// (guarded by actionsEnabled) and own the event subscriptions, so pause→resume round-trips
+        /// cannot double-subscribe the performed callbacks.
+        /// </summary>
+        public void SetPlaying(bool playing)
+        {
+            if (playing) { EnableActions(); }
+            else { DisableActions(); }
+        }
+
+        private void EnableActions()
+        {
+            if (actionsEnabled) return;
+            actionsEnabled = true;
+
             // Enable one by one rather than playerInput.Player.Enable(): the map still holds
             // Interact / Crouch / Previous / Next — four actions this game does not use; enabling the
             // whole map would light them up too
@@ -178,9 +206,10 @@ namespace Inkform.Input
             spitBomb.performed += OnSpitBomb;
         }
 
-        void OnDisable()
+        private void DisableActions()
         {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (!actionsEnabled) return;
+            actionsEnabled = false;
 
             move.Disable();
             aim.Disable();
@@ -195,5 +224,7 @@ namespace Inkform.Input
             ropeFire.performed -= OnRopeFire;
             spitBomb.performed -= OnSpitBomb;
         }
+
+        private bool actionsEnabled;
     }
 }

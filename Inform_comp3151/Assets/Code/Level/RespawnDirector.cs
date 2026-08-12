@@ -2,6 +2,7 @@ using Inkform.Bus;
 using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Inkform.Level
 {
@@ -43,19 +44,39 @@ namespace Inkform.Level
             }
         }
 
+        // Set by sceneLoaded, consumed one frame later in Update. See OnSceneLoaded for why.
+        private bool sceneInitPending;
+
         void OnEnable()
         {
             LifeBus.Died += OnDied;
             LifeBus.CheckpointSet += OnCheckpointSet;
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         void OnDisable()
         {
             LifeBus.Died -= OnDied;
             LifeBus.CheckpointSet -= OnCheckpointSet;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        void Start()
+        // The GameManager hosting this survives scene switches (AudioManager calls DontDestroyOnLoad on
+        // its own host), so Start() only ever ran against the *first* scene. Booting straight into a
+        // level hid that, but the menu flow made MainMenu the first scene: no player was found there,
+        // Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying in a level before
+        // touching any checkpoint teleported the player to the world origin.
+        //
+        // Deferred by a frame rather than run here: sceneLoaded fires before the new scene's Start()
+        // methods, and the init below actually teleports the player and snaps the camera — doing that
+        // ahead of the player's own Start() risks being overwritten. Update runs after all Starts,
+        // matching the timing this used to have.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => sceneInitPending = true;
+
+        // sceneLoaded never fires for the startup scene, so the first scene is initialized here
+        void Start() => InitForScene();
+
+        private void InitForScene()
         {
             GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
             if (player == null) return;
@@ -77,6 +98,15 @@ namespace Inkform.Level
 
         void Update()
         {
+            // Runs before the respawn pump: a scene switch invalidates `checkpoint`, and a death
+            // pending from the previous scene must never be resurrected against the new one
+            if (sceneInitPending)
+            {
+                sceneInitPending = false;
+                pending = null;
+                InitForScene();
+            }
+
             if (pending == null) return;
             if (respawnTimer.IsRunning) return;
 
