@@ -102,7 +102,7 @@ Unity 会为新位置生成一个全新 GUID，所有引用它的场景和预制
 | `Prefabs/WallBase.prefab` | 无场景实例 |
 | `Prefabs/MainCamera.prefab` | 无场景实例（场景各自持有自己的相机） |
 | `Prefabs/LongPrefabs/Bomb.prefab` | 无场景实例，同目录其余 6 个均在用 |
-| `Scenes/Level1/B1.unity` | 不在 Build Settings，也没有任何 `SceneLoader` 指向它 |
+| `Scenes/Level1/B1.unity` | 不在 Build Settings，也没有任何 `SceneLoader` 指向它。**另外它引用了一个已不存在的脚本**（guid `3e3afedb9c811354c8fd20bb930784ef`，Assets 与包缓存里都找不到），打开该场景会看到 Missing (Mono Script)。这是既有问题，2026-08-12 整理前就已存在 |
 
 `Scenes/Test/` 下的场景不在 Build Settings 属正常——它们供编辑器内手动调试用。
 
