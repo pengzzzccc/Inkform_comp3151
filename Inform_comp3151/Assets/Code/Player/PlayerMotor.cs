@@ -263,7 +263,7 @@ namespace Inkform.Player
                 if (contact.OnGround) updateBuffer.Set(0.1f);
             }
 
-            if (contact.OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+            if ((contact.OnGround || contact.OnCeiling) && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
         }
     }
 }
