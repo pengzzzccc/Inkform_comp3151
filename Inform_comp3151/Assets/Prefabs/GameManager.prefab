@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7085439240873709234}
   - component: {fileID: 8232150284752385224}
   - component: {fileID: 3644243482193096029}
+  - component: {fileID: 6402705293193736749}
   - component: {fileID: 1644368403275166719}
   - component: {fileID: 6602841937450123776}
   - component: {fileID: 9903000001}
@@ -113,6 +114,30 @@ MonoBehaviour:
   land: {fileID: 0}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 0}
+--- !u!114 &6402705293193736749
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174349163457537239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60be3a14fc1fb4044b170de2661afd40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Fx.RumbleManager
+  enableRumble: 0
+  landStrength: 0.35
+  landDuration: 0.12
+  blastStrength: 1
+  blastDuration: 0.22
+  blastFalloff: 20
+  shockSpeed: 30
+  playerHalfWidth: 0.5
+  fireStrength: 0.2
+  fireDuration: 0.08
+  hitStrength: 0.55
+  hitDuration: 0.15
 --- !u!114 &1644368403275166719
 MonoBehaviour:
   m_ObjectHideFlags: 0

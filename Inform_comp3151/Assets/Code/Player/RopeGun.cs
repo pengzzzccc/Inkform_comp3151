@@ -228,6 +228,8 @@ namespace Inkform.Player
 
             phase = RopePhase.Flying;
 
+            RopeGunBus.RaiseFired(fireDir);
+
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
             hookBody = hookGo.AddComponent<Rigidbody2D>();
@@ -316,6 +318,9 @@ namespace Inkform.Player
             AnchorHook();
             motor?.SetMoveLocked(true);
 
+            // Direction from the player toward the anchor, for directional feedback (haptics, ...)
+            RopeGunBus.RaiseHit((hookBody.position - playerBody.position).normalized);
+
             // Brief hitstop at the hit moment: impact feel. Via FxBus; ScreenFx restores timeScale
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
 
@@ -351,6 +356,9 @@ namespace Inkform.Player
             phase = RopePhase.Pulling;
             AnchorHook();
             motor?.SetMoveLocked(true);
+
+            // Same directional feedback as the terrain hit: from the player toward the grabbed target
+            RopeGunBus.RaiseHit(((Vector2)target.transform.position - playerBody.position).normalized);
 
             // Same reset as the terrain path: a stuck-timeout release leaves pullStuck at the limit,
             // and without clearing it the very first PullStep would trip the timeout and cancel the grab
