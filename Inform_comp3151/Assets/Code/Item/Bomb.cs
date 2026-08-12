@@ -1,6 +1,7 @@
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Interactable;
+using Inkform.Interactable.Parts;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
@@ -18,7 +19,7 @@ namespace Inkform.Item
     /// Two modes:
     /// Normal — the behavior above, identical to the old version.
     /// Hanging — hanging mode: Awake generates a physical chain (Chain, Verlet rope) per hanging point
-    /// (HangingPoint child, editor-generated, draggable), the anchor = the hanging point's initial
+    /// (HangAnchor child, editor-generated, draggable), the anchor = the hanging point's initial
     /// world position (fixed); chains can be severed by the player's attacks or explosions; when all
     /// are severed the bomb free-falls. Hanging-mode state is unrecoverable (severed chains, spit out
     /// after being swallowed, explosion destruction) — the player dying and respawning does not reset
@@ -110,7 +111,7 @@ namespace Inkform.Item
         // bomb children, moving the bomb does not move the anchors
         private void BuildHangingMode()
         {
-            HangingPoint[] pts = GetComponentsInChildren<HangingPoint>(true);
+            HangAnchor[] pts = GetComponentsInChildren<HangAnchor>(true);
             if (pts.Length == 0)
             {
                 Debug.LogWarning($"{name} is in Hanging mode but has no hanging points; right-click in the Inspector and run Generate Hanging Points", this);
@@ -118,7 +119,7 @@ namespace Inkform.Item
             }
 
             chains.Clear();
-            foreach (HangingPoint pt in pts)
+            foreach (HangAnchor pt in pts)
             {
                 GameObject chainGo = new GameObject($"Chain_{pt.name}");
                 chainGo.transform.SetParent(pt.transform, false);
@@ -418,9 +419,9 @@ namespace Inkform.Item
             if (mode == BombMode.Hanging)
             {
                 // Blue dashed = chain positions from hanging points to the bomb, for dragging points in the Scene view
-                HangingPoint[] pts = GetComponentsInChildren<HangingPoint>(true);
+                HangAnchor[] pts = GetComponentsInChildren<HangAnchor>(true);
                 Gizmos.color = new Color(0.2f, 0.7f, 1f, 0.6f);
-                foreach (HangingPoint pt in pts)
+                foreach (HangAnchor pt in pts)
                 {
                     Gizmos.DrawLine(pt.transform.position, transform.position);
                 }
@@ -447,7 +448,7 @@ namespace Inkform.Item
             {
                 GameObject go = new GameObject($"HangingPoint_{i + 1}");
                 go.transform.SetParent(transform, false);
-                go.AddComponent<HangingPoint>();
+                go.AddComponent<HangAnchor>();
 
                 // Evenly spaced horizontally around the bomb, raised to hangingPointHeight; drag them
                 // in the Scene view afterwards
@@ -459,8 +460,8 @@ namespace Inkform.Item
         [ContextMenu("Clear Hanging Points")]
         private void ClearHangingPoints()
         {
-            HangingPoint[] old = GetComponentsInChildren<HangingPoint>(true);
-            foreach (HangingPoint o in old)
+            HangAnchor[] old = GetComponentsInChildren<HangAnchor>(true);
+            foreach (HangAnchor o in old)
             {
                 if (Application.isPlaying) Destroy(o.gameObject);
                 else DestroyImmediate(o.gameObject);
