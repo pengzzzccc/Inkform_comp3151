@@ -174,7 +174,7 @@ MonoBehaviour:
   mouseAimSensitivity: 1
   stickAimSpeed: 15
   crosshairSprite: {fileID: 4521880829696946994, guid: 710eb778f56883341bc4aa12ba3a73fd, type: 3}
-  crosshairSize: 0.6
+  crosshairSize: 1.4
   hitColor: {r: 0.35, g: 1, b: 0.35, a: 1}
   missColor: {r: 1, g: 0.35, b: 0.35, a: 1}
   previewStepDt: 0.033333335

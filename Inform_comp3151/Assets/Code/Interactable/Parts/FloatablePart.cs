@@ -10,6 +10,12 @@ namespace Inkform.Interactable.Parts
     /// direction. A resistance-driven deceleration (linear interpolation of velocity toward zero)
     /// guarantees it always comes to rest — this part is a braking device, not a boundary.
     ///
+    /// The object also snaps back home: the first physics frame captures a snapshot of its
+    /// transform position (re-captured whenever simulation restarts, e.g. after a RestorablePart
+    /// hide/restore). Every FixedUpdate checks the offset from that anchor; once displaced it
+    /// slowly drifts back via MovePosition until it settles inside homeRadius, where velocity is
+    /// zeroed. The return path respects collisions — a wall can hold it away from home.
+    ///
     /// maxRadius is a designer aid only: OnDrawGizmosSelected draws the circle so the effective
     /// knockback range is visible in the Scene view. Nothing clamps at it; resistance is what
     /// actually stops the object.
@@ -21,8 +27,10 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private float maxRadius = 3f;
         [Tooltip("Deceleration strength: linear interpolation of velocity toward zero, per second")]
         [SerializeField] private float resistance = 2f;
-        [Tooltip("Speed below which the object counts as stopped; avoids eternal micro-drift")]
-        [SerializeField] private float stopSpeed = 0.05f;
+        [Tooltip("Speed at which the object drifts back toward its home snapshot, per second")]
+        [SerializeField] private float returnSpeed = 2f;
+        [Tooltip("Distance from the home snapshot below which the object counts as returned; avoids eternal micro-drift")]
+        [SerializeField] private float homeRadius = 0.05f;
         [Tooltip("Knockback force applied when caught in an explosion")]
         [SerializeField] private float knockForce = 8f;
         [Tooltip("Push force applied on player contact")]
@@ -30,6 +38,8 @@ namespace Inkform.Interactable.Parts
 
         private Interactable root;
         private Rigidbody2D body;
+        private Vector2 homePos;        // home snapshot: transform position captured at first physics frame
+        private bool wasSimulated;      // detects simulation restart (hide/restore) to re-capture the snapshot
 
         public void Attach(Interactable root)
         {
@@ -71,21 +81,38 @@ namespace Inkform.Interactable.Parts
             body.linearVelocity = direction * force;
         }
 
-        // Deceleration via linear interpolation: velocity lerps toward zero with a per-second
-        // resistance factor, so the object stops instead of drifting forever. Skipped while hidden
-        // (swallowed / restorable-gone): simulated is off then anyway
+        // Snap-back home: capture the transform position at the first physics frame (and re-capture
+        // whenever simulation restarts, e.g. a RestorablePart hide/restore) — the drift target. Every
+        // step checks the offset; once displaced the object slowly returns via MovePosition, with the
+        // same resistance deceleration, until it settles inside homeRadius where velocity is zeroed.
+        // Skipped while hidden (swallowed / restorable-gone): simulated is off then anyway
         void FixedUpdate()
         {
-            if (body == null || !body.simulated) return;
+            if (body == null) return;
 
-            Vector2 v = body.linearVelocity;
-            if (v.sqrMagnitude <= stopSpeed * stopSpeed)
+            if (!body.simulated)
             {
-                body.linearVelocity = Vector2.zero;     // dead zone: fully stopped, no eternal crawl
+                wasSimulated = false;   // forget the snapshot while hidden; re-capture on the next wake
                 return;
             }
 
-            body.linearVelocity = Vector2.Lerp(v, Vector2.zero, resistance * Time.fixedDeltaTime);
+            if (!wasSimulated)
+            {
+                wasSimulated = true;
+                homePos = transform.position;
+            }
+
+            Vector2 toHome = homePos - (Vector2)transform.position;
+            if (toHome.sqrMagnitude <= homeRadius * homeRadius)
+            {
+                body.linearVelocity = Vector2.zero;     // back home: fully stopped, no eternal crawl
+                return;
+            }
+
+            body.linearVelocity = Vector2.Lerp(body.linearVelocity, Vector2.zero, resistance * Time.fixedDeltaTime);
+
+            Vector2 step = toHome.normalized * (returnSpeed * Time.fixedDeltaTime);
+            body.MovePosition((Vector2)transform.position + (toHome.sqrMagnitude <= step.sqrMagnitude ? toHome : step));
         }
 
         // In the editor Attach never ran; draw the aid circle from the current transform.position
