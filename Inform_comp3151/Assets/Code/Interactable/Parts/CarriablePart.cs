@@ -94,7 +94,6 @@ namespace Inkform.Interactable.Parts
             // (same semantics as Bomb)
             if (root.TryGetPart(out HangingChain hanging)) hanging.CutAllChains();
 
-            Debug.Log("I swallowed");
             ItemBus.RaiseItemEaten(this);
         }
 
