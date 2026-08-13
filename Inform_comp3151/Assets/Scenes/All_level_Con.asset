@@ -9,8 +9,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2ee91c56c11d4f2d929cada7952c8343, type: 3}
-  m_Name: New Level Scene
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelScene
-  sceneName: 
-  connections: []
+  m_Script: {fileID: 11500000, guid: d5a4c3f4de0d4082b54fa09997c56038, type: 3}
+  m_Name: All_level_Con
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelFlow
+  mainMenuSceneName: MainMenu
+  entryLevel: {fileID: 0}
+  levels: []
