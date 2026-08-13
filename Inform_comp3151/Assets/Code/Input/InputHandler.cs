@@ -2,17 +2,24 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Inkform.Player;
+using Inkform.Settings;
 
 namespace Inkform.Input
 {
     /// <summary>
-    /// Input layer: forwards the actions from the InputSystem_Actions asset to PlayerHandler.
+    /// Input layer: forwards the actions from the shared InputActions asset to PlayerHandler.
     ///
     /// Key bindings have a single source — the InputSystem_Actions.inputactions asset (rebind there;
-    /// Unity regenerates InputSystem_Actions.cs). No runtime action patching or binding edits here.
+    /// Unity regenerates InputSystem_Actions.cs). User remaps live as the official runtime binding
+    /// override layer on top of it, loaded into the shared asset at startup and edited in the
+    /// Controls tab — this class never patches bindings, it only reads the resulting actions.
+    ///
+    /// Device filtering lives here as the single choke point: the Controls tab picks one input family
+    /// (KeyboardMouse or Gamepad), and every forwarded action on the other family is ignored.
     /// </summary>
     public class InputHandler : MonoBehaviour
     {
+        // Shared wrapper (InputActions) — not `new`ed here anymore, see InputActions.
         private InputSystem_Actions playerInput;
 
         // The six actions actually used in this game from the Player map, all taken straight from the
@@ -45,7 +52,7 @@ namespace Inkform.Input
         /// </summary>
         void Awake()
         {
-            playerInput = new InputSystem_Actions();
+            playerInput = InputActions.Wrapper;
 
             // Cursor visibility/lock is owned by UIManager now (menu shows it, gameplay hides it);
             // this class only handles gameplay input.
@@ -69,8 +76,8 @@ namespace Inkform.Input
 
         void OnDestroy()
         {
-            // The generated wrapper holds an InputActionAsset implementing IDisposable — not disposing leaks
-            playerInput?.Dispose();
+            // No Dispose here: the wrapper is the shared InputActions instance, releasing it would
+            // kill the asset under UIManager's UI module too. It is static and ends with play mode.
         }
 
         // The persistent GameManager survives scene switches (AudioManager calls DontDestroyOnLoad on
@@ -92,31 +99,50 @@ namespace Inkform.Input
             // "no input" into PlayerHandler every frame.
             if (!actionsEnabled || player == null) return;
 
-            Vector2 raw = move.ReadValue<Vector2>();
-
-            // Non-keyboard devices (gamepad sticks) already output analog values; pass through raw,
-            // bypassing the keyboard synthesis
-            InputControl control = move.activeControl;
-            if (control != null && !(control.device is Keyboard))
+            // Device filter: the Controls tab picks one input family; the other family's controls are
+            // ignored so a gamepad left in the drawer cannot drive the player (and vice versa). The
+            // move and aim axes are filtered independently — a stick drifting on a disabled family
+            // must not bleed into an enabled keyboard, and vice versa.
+            if (DeviceMatches(move.activeControl))
             {
-                player.Move(raw);
+                Vector2 raw = move.ReadValue<Vector2>();
+
+                // Non-keyboard devices (gamepad sticks) already output analog values; pass through raw,
+                // bypassing the keyboard synthesis
+                InputControl control = move.activeControl;
+                if (control != null && !(control.device is Keyboard))
+                {
+                    player.Move(raw);
+                }
+                else
+                {
+                    // Keyboard: each axis ramps up by press duration / recenters on release
+                    stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
+                    stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
+
+                    player.Move(new Vector2(
+                        Mathf.Sign(stick.x) * stickCurve.Evaluate(Mathf.Abs(stick.x)),
+                        Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
+                }
             }
-            else
+
+            if (DeviceMatches(aim.activeControl))
             {
-                // Keyboard: each axis ramps up by press duration / recenters on release
-                stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
-                stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
-
-                player.Move(new Vector2(
-                    Mathf.Sign(stick.x) * stickCurve.Evaluate(Mathf.Abs(stick.x)),
-                    Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
+                // Aiming: the Aim action (mouse delta / right stick). Mouse deltas are in pixels, sticks
+                // are analog — the pixelDelta flag distinguishes them, conversion happens in RopeGun
+                InputControl aimControl = aim.activeControl;
+                Vector2 aimValue = aim.ReadValue<Vector2>();
+                player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
             }
+        }
 
-            // Aiming: the Aim action (mouse delta / right stick). Mouse deltas are in pixels, sticks are
-            // analog — the pixelDelta flag distinguishes them, conversion happens in RopeGun
-            InputControl aimControl = aim.activeControl;
-            Vector2 aimValue = aim.ReadValue<Vector2>();
-            player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
+        /// <summary>True when the control's device family matches the selected input device; a null
+        /// control (no active input) is always allowed through so nothing stalls.</summary>
+        private static bool DeviceMatches(InputControl control)
+        {
+            if (control == null) return true;
+            bool isGamepad = control.device is Gamepad;
+            return SettingsStore.Device == SettingsStore.InputDevice.KeyboardMouse ? !isGamepad : isGamepad;
         }
 
         // Single-axis stick synthesis: moves toward the target (0 or ±1) at a constant rate.
@@ -132,26 +158,31 @@ namespace Inkform.Input
 
         private void OnJumpPressed(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.JumpPressed();
         }
 
         private void OnJumpReleased(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.JumpReleased();
         }
 
         private void OnDash(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.Dash();
         }
 
         private void OnRopeFire(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.RopeFire();
         }
 
         private void OnSpitBomb(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.SpitBomb();
         }
 
@@ -161,6 +192,7 @@ namespace Inkform.Input
             // AudioManager's DontDestroyOnLoad) must keep routing input to the current scene's player,
             // not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
+            SettingsStore.Changed += OnSettingsChanged;
 
             EnableActions();
         }
@@ -168,8 +200,17 @@ namespace Inkform.Input
         void OnDisable()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            SettingsStore.Changed -= OnSettingsChanged;
 
             DisableActions();
+        }
+
+        // Any settings change clears the synthesized stick. Overkill for most edits, but the one case
+        // that matters — switching input device mid-run — must not leave a stale keyboard ramp that
+        // fires the first time the new device is touched; zeroing is cheap and harmless otherwise.
+        private void OnSettingsChanged()
+        {
+            stick = Vector2.zero;
         }
 
         /// <summary>

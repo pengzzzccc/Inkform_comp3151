@@ -2,6 +2,7 @@ using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
+using Inkform.Settings;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -87,6 +88,11 @@ namespace Inkform.Player
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
 
+        // Sensitivity bases: the serialized values are the designers' tuning. The user setting is a
+        // multiplier applied on top, captured once in Awake before SettingsStore overrides the fields.
+        private float mouseSensitivityBase;
+        private float stickAimSpeedBase;
+
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
 
@@ -159,6 +165,9 @@ namespace Inkform.Player
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
 
+            mouseSensitivityBase = mouseAimSensitivity;
+            stickAimSpeedBase = stickAimSpeed;
+
             reticle = CreateFx("RopeReticle", out reticleSprite,
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
@@ -174,6 +183,11 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored += OnRangeRestored;
             LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
+
+            // SettingsStore is static and always loaded, so subscription needs no instance guard.
+            // Re-apply here too: after a scene reload this RopeGun is fresh while the settings live on.
+            SettingsStore.Changed += OnSettingsChanged;
+            ApplySensitivity();
         }
 
         void OnDisable()
@@ -182,6 +196,15 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored -= OnRangeRestored;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
+            SettingsStore.Changed -= OnSettingsChanged;
+        }
+
+        private void OnSettingsChanged() => ApplySensitivity();
+
+        private void ApplySensitivity()
+        {
+            mouseAimSensitivity = mouseSensitivityBase * SettingsStore.MouseSensitivity;
+            stickAimSpeed = stickAimSpeedBase * SettingsStore.StickSensitivity;
         }
 
         // ---- Input entries (forwarded by PlayerHandler) ----

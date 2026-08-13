@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Player;
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -135,17 +136,19 @@ namespace Inkform.Fx
             cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomTimer.Remaining / zoomDuration);
         }
 
-        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time
+        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
+        // Scaled by the user's FX intensity at request time (read-style like AudioManager's volume):
+        // intensity 0 = the camera never shakes; a later change affects new requests, not current trauma.
         private void OnShake(float amount)
         {
-            trauma = Mathf.Clamp01(trauma + amount);
+            trauma = Mathf.Clamp01(trauma + amount * SettingsStore.FxIntensity);
         }
 
         private void OnZoom(float amount, float duration)
         {
             if (duration <= 0f) return;
 
-            zoomAmount = amount;
+            zoomAmount = amount * SettingsStore.FxIntensity;
             zoomDuration = duration;
             zoomTimer.Set(duration);
         }

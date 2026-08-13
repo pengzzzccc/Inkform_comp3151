@@ -118,6 +118,25 @@ namespace Inkform.Level
             FxBus.RaiseSnap();
         }
 
+        /// <summary>
+        /// Puts the player back on the last checkpoint on demand — the Controls tab's Unstuck button,
+        /// for when a bug wedges the slime somewhere it cannot leave. Reuses the death path's teleport
+        /// rather than moving the transform here, so anything listening for a respawn (camera snap,
+        /// state reset) sees the same event it always does.
+        ///
+        /// Clears any death still waiting out its delay: that pending respawn would otherwise fire a
+        /// second later against a player who has already been moved, teleporting them again.
+        /// </summary>
+        public void RespawnNow()
+        {
+            GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
+            if (player == null) return;     // no player in this scene (the menu) — nobody to rescue
+
+            pending = null;
+            LifeBus.RaiseRespawned(player, checkpoint);
+            FxBus.RaiseSnap();
+        }
+
         private void OnCheckpointSet(Vector2 pos)
         {
             checkpoint = pos;

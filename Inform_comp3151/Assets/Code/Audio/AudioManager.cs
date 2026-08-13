@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Inkform.Settings;
 using UnityEngine.Audio;
 using UnityEngine;
 
@@ -143,7 +144,13 @@ namespace Inkform.Audio
             // All three presentations share this one value
             float t = Falloff(cue, position);
 
-            src.volume = cue.volume * Mathf.Lerp(1f, cue.minVolume, t);
+            // Settings volume reads per Play rather than by subscription: values are plain floats,
+            // reading them is cheaper than tracking the Changed event on a static class across scenes.
+            float trackVolume = cue.category == SoundCue.Category.Music
+                ? SettingsStore.MusicVolume
+                : SettingsStore.SfxVolume;
+
+            src.volume = cue.volume * SettingsStore.MasterVolume * trackVolume * Mathf.Lerp(1f, cue.minVolume, t);
             s.lpf.cutoffFrequency = Mathf.Lerp(FullBandwidth, cue.minCutoff, t);
             src.outputAudioMixerGroup = PickGroup(cue, t);
 

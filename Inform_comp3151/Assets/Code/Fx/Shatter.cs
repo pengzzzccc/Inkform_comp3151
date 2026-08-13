@@ -1,3 +1,4 @@
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -52,7 +53,8 @@ namespace Inkform.Fx
             // The project sets m_AutoSyncTransforms = 0, so sync the rigidbody after touching the
             // transform — same reason as Bomb.OnItemReleased
             body.position = pos;
-            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier);
+            // FX intensity scales the launch speed (0 = shards drop in place); spin stays natural
+            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier * SettingsStore.FxIntensity);
             body.angularVelocity = Random.Range(-cue.spinSpeed, cue.spinSpeed);
         }
 

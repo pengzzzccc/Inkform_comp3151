@@ -22220,10 +22220,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1698302144}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a77beb6b16f859c4bb8d30adde2102dc, type: 3}
+  m_Script: {fileID: 11500000, guid: 4fe8e4c40f7244a3a8c734fd3eea4b8b, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SceneLoader
-  sceneName: B2
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelExit
+  exitId: 
 --- !u!61 &1698302146
 BoxCollider2D:
   m_ObjectHideFlags: 0

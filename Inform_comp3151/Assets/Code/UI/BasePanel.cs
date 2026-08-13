@@ -79,21 +79,34 @@ namespace Inkform.UI
         // ---- Child lookup, shared by every panel ----
 
         /// <summary>
-        /// Finds a Button among the panel's **direct** children by exact name; missing returns null.
-        /// Direct children only is deliberate: UIBuilder parents every button straight onto the panel
-        /// root, so a name that fails to resolve means the name is wrong, not that it is nested deeper.
+        /// Finds a Button among the panel's children by name; missing returns null. The name may be a
+        /// relative path ("Content_Sound/Sld_Master") for controls nested under a content pane —
+        /// transform.Find resolves paths natively. UIBuilder parents top-level buttons straight onto
+        /// the panel root and settings controls onto their content pane, so a name that fails to
+        /// resolve means the name is wrong, not that it is nested somewhere unexpected.
         /// </summary>
-        protected Button FindButton(string name)
-        {
-            Transform t = transform.Find(name);
-            return t != null ? t.GetComponent<Button>() : null;
-        }
+        protected Button FindButton(string name) => FindChildComponent<Button>(name);
+
+        /// <summary>Finds a Slider by name or relative path; missing returns null.</summary>
+        protected Slider FindSlider(string name) => FindChildComponent<Slider>(name);
+
+        /// <summary>Finds a Toggle by name or relative path; missing returns null.</summary>
+        protected Toggle FindToggle(string name) => FindChildComponent<Toggle>(name);
+
+        /// <summary>Finds a Text label by name or relative path; missing returns null.</summary>
+        protected Text FindText(string name) => FindChildComponent<Text>(name);
 
         /// <summary>Finds a direct child GameObject by exact name; missing returns null.</summary>
         protected GameObject FindChild(string name)
         {
             Transform t = transform.Find(name);
             return t != null ? t.gameObject : null;
+        }
+
+        private T FindChildComponent<T>(string name) where T : Component
+        {
+            Transform t = transform.Find(name);
+            return t != null ? t.GetComponent<T>() : null;
         }
 
         /// <summary>

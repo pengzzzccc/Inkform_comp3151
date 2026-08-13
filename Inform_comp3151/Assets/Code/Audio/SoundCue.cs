@@ -12,9 +12,13 @@ namespace Inkform.Audio
     [CreateAssetMenu(menuName = "Audio/Sound Cue")]
     public class SoundCue : ScriptableObject
     {
+        public enum Category { Sfx, Music }
+
         public AudioClip[] clips;                    // variants, picked randomly to avoid repetition fatigue
         public AudioMixerGroup output;
         [Range(0f, 1f)] public float volume = 1f;
+        [Tooltip("Which settings track scales this sound (AudioManager reads SettingsStore). Music needs a music playback path — none exists yet; the track exists so Cue assets can be tagged ahead of time")]
+        public Category category = Category.Sfx;
         [Tooltip("Random pitch range. Never set either end to 0 — a source at pitch 0 never finishes playing and permanently occupies a pool slot")]
         public Vector2 pitchRange = new Vector2(0.95f, 1.05f);
         public bool loop;
