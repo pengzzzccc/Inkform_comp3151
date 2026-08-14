@@ -55,7 +55,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55683f0f44f56974f9b26c8391479896, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Input.InputHandler
-  player: {fileID: 0}
+  player: {fileID: 7099724744160094467, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
   rampUpTime: 0.15
   rampDownTime: 0.1
   stickCurve:
@@ -94,7 +94,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0d5f5cddd86a04408b909cbf845883e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AniHandler
-  animations: {fileID: 0}
+  animations: {fileID: 7876590005240165724, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
   sprite: {fileID: 0}
 --- !u!114 &3644243482193096029
 MonoBehaviour:
@@ -215,6 +215,19 @@ MonoBehaviour:
   clickCue: {fileID: 11400000, guid: 390adebeb5deeed4aa95918eee10f655, type: 2}
   toggleOnCue: {fileID: 11400000, guid: 63f54ceb8946dba4eaf667dd184541ce, type: 2}
   toggleOffCue: {fileID: 11400000, guid: 20bead21cf678e740adbc223eb85daa9, type: 2}
+--- !u!114 &7645394820213847150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174349163457537239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2ded585db074b079de7258b4165ae7d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.SceneDirector
+  flow: {fileID: 11400000, guid: 086e07c8366dfb244b5047d4ca6de0a1, type: 2}
 --- !u!114 &1503010808642312737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -243,16 +256,3 @@ MonoBehaviour:
   cursorSprite: {fileID: 4521880829696946994, guid: 710eb778f56883341bc4aa12ba3a73fd, type: 3}
   cursorSpeed: 1000
   cursorSize: 40
---- !u!114 &7645394820213847150
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3174349163457537239}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f2ded585db074b079de7258b4165ae7d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.SceneDirector
-  flow: {fileID: 0}
