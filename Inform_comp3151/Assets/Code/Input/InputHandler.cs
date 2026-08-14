@@ -32,6 +32,9 @@ namespace Inkform.Input
         private InputAction ropeFire;
         private InputAction spitBomb;
 
+        // Held-button actions feeding the device auto-detection (a held button = deliberate input)
+        private InputAction[] pressButtons;
+
         // Get player
         [SerializeField] private PlayerHandler player;
 
@@ -66,6 +69,8 @@ namespace Inkform.Input
             ropeFire = playerInput.Player.RopeFire;
             spitBomb = playerInput.Player.SpitBomb;
 
+            pressButtons = new[] { jump, dash, ropeFire, spitBomb };
+
             // The serialized reference (scene instance override on the GameManager prefab) only points
             // at the scene the GameManager was spawned in. The GameManager itself survives scene
             // switches via AudioManager's DontDestroyOnLoad, so after a change the old player becomes a
@@ -97,6 +102,8 @@ namespace Inkform.Input
 
         void Update()
         {
+            AutoSwitchDevice();   // before filtering: the active family follows whichever device produced input
+
             // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
             // charge, and ReadValue on a disabled action returns default which would push a stale
             // "no input" into PlayerHandler every frame.
@@ -137,6 +144,30 @@ namespace Inkform.Input
                 Vector2 aimValue = aim.ReadValue<Vector2>();
                 player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
             }
+        }
+
+        /// <summary>
+        /// Auto device switching: whichever family actually produced gameplay input becomes the active
+        /// one, so a connected pad "just works" without visiting the Controls tab. Drift is ignored —
+        /// only input past the noise threshold counts; a manual pick in settings still wins until the
+        /// other family acts.
+        /// </summary>
+        private void AutoSwitchDevice()
+        {
+            if (move.activeControl != null && move.ReadValue<Vector2>().sqrMagnitude > 0.01f)
+            { SwitchTo(move.activeControl.device); return; }
+            if (aim.activeControl != null && aim.ReadValue<Vector2>().sqrMagnitude > 0.01f)
+            { SwitchTo(aim.activeControl.device); return; }
+            foreach (InputAction action in pressButtons)
+                if (action.activeControl != null) { SwitchTo(action.activeControl.device); return; }
+        }
+
+        private static void SwitchTo(InputDevice device)
+        {
+            SettingsStore.InputDevice expected = device is Gamepad
+                ? SettingsStore.InputDevice.Gamepad
+                : SettingsStore.InputDevice.KeyboardMouse;
+            if (SettingsStore.Device != expected) SettingsStore.SetDevice(expected);
         }
 
         /// <summary>True when the control's device family matches the selected input device; a null

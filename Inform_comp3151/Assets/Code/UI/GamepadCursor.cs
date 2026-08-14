@@ -9,8 +9,9 @@ namespace Inkform.UI
 {
     /// <summary>
     /// Gamepad virtual cursor: Apex-style UI control for the menu layer. The left stick drives an
-    /// on-screen cursor (the same aim_cursor art the rope gun reticle uses), and the west face button
-    /// (<Gamepad>/buttonWest) is the click. Movement speed scales with SettingsStore.StickSensitivity.
+    /// on-screen cursor (the same aim_cursor art the rope gun reticle uses), and the south face button
+    /// (<Gamepad>/buttonSouth, A) is the click. Movement speed scales with SettingsStore.StickSensitivity.
+    /// The right stick scrolls the ScrollRect under the cursor (the settings tabs).
     ///
     /// This replaces the stock focus-highlight navigation for gamepads: the shared input asset's UI map
     /// no longer binds any Gamepad/Joystick controls (see InputSystem_Actions), so the EventSystem never
@@ -35,6 +36,12 @@ namespace Inkform.UI
         [SerializeField] private float cursorSpeed = 1000f;  // reference-space units/sec at StickSensitivity = 1
         [SerializeField] private float cursorSize = 40f;     // reference-space size of the cursor image
 
+        /// <summary>Right-stick scroll speed in normalized ScrollRect units per second at sensitivity 1.</summary>
+        private const float ScrollSpeed = 1.2f;
+
+        /// <summary>The sprite this cursor renders (aim_cursor); UIManager reuses it for the OS pointer.</summary>
+        public Sprite CursorSprite => cursorSprite;
+
         private GameObject root;
         private RectTransform cursorRect;
         private Vector2 localPos;
@@ -58,7 +65,7 @@ namespace Inkform.UI
 
             Canvas canvas = root.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 200;   // above the menu Canvas (100)
+            canvas.sortingOrder = 30000;   // always above every other Canvas (menu 100, FpsDisplay 50)
 
             CanvasScaler scaler = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -96,6 +103,13 @@ namespace Inkform.UI
                 EventSystem.current.SetSelectedGameObject(null);
 
             Vector2 stick = gamepad.leftStick.ReadValue();
+
+            // A pad driving the cursor is the strongest possible "gamepad user" signal: flip the
+            // input family now so it is already correct when gameplay starts (menu -> level is seamless)
+            if ((stick.sqrMagnitude > 0.0001f || gamepad.buttonSouth.wasPressedThisFrame)
+                && SettingsStore.Device != SettingsStore.InputDevice.Gamepad)
+                SettingsStore.SetDevice(SettingsStore.InputDevice.Gamepad);
+
             if (stick.sqrMagnitude > 0.0001f)
             {
                 localPos += stick * cursorSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime;
@@ -109,7 +123,19 @@ namespace Inkform.UI
 
             UpdateHover();
 
-            if (gamepad.buttonWest.wasPressedThisFrame)
+            // Right stick scrolls the ScrollRect under the cursor (the settings tabs are ScrollRects);
+            // a 0.2 deadzone keeps drift from scrolling. Only runs while a panel is open (see above).
+            Vector2 rstick = gamepad.rightStick.ReadValue();
+            if (Mathf.Abs(rstick.y) > 0.2f && hovered != null)
+            {
+                ScrollRect scroll = hovered.GetComponentInParent<ScrollRect>();
+                if (scroll != null && scroll.vertical)
+                    scroll.verticalNormalizedPosition = Mathf.Clamp01(
+                        scroll.verticalNormalizedPosition
+                        + rstick.y * ScrollSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime);
+            }
+
+            if (gamepad.buttonSouth.wasPressedThisFrame)
                 Click();
         }
 

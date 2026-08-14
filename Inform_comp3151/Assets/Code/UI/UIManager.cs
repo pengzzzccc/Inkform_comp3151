@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Input;
+using Inkform.Settings;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -129,12 +130,22 @@ namespace Inkform.UI
 
         void Update()
         {
-            // Escape is a system-level UI key, intentionally read directly rather than via an action
-            // in the input asset: adding a Pause action would require regenerating the generated
-            // wrapper (the project treats it as hand-off). This must not run while the pause key is
-            // also bound to gameplay — it is not (the asset's Player map binds no Escape).
-            if (Keyboard.current == null) return;
-            if (!Keyboard.current.escapeKey.wasPressedThisFrame) return;
+            // Pause is read directly rather than via an action in the input asset: adding a Pause
+            // action would require regenerating the generated wrapper (the project treats it as
+            // hand-off). Esc (keyboard) and Start (gamepad) both back out one sheet; neither is bound
+            // to gameplay (the Player map binds no Escape or Start).
+            bool keyboard = Keyboard.current != null;
+            bool gamepad = Gamepad.current != null;
+            if (!keyboard && !gamepad) return;
+
+            // Start on a pad is also the clearest "playing with a pad" signal: flip the input family
+            // now, so the gamepad auto-detection does not wait for the first movement input
+            if (gamepad && Gamepad.current.startButton.wasPressedThisFrame)
+                SettingsStore.SetDevice(SettingsStore.InputDevice.Gamepad);
+
+            bool pausePressed = (keyboard && Keyboard.current.escapeKey.wasPressedThisFrame)
+                             || (gamepad && Gamepad.current.startButton.wasPressedThisFrame);
+            if (!pausePressed) return;
 
             // Innermost sheet first, then outwards — Escape always backs out one level
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
@@ -404,7 +415,37 @@ namespace Inkform.UI
         {
             Cursor.visible = visible;
             Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
+
+            // Same aim_cursor art as the gamepad cursor and rope reticle: swap the OS pointer too.
+            // The source texture imports as non-readable, so a CPU-readable copy is made once.
+            if (aimCursorCache == null) aimCursorCache = GetComponent<GamepadCursor>()?.CursorSprite;
+            if (aimCursorCache != null)
+            {
+                if (aimCursorTexture == null) aimCursorTexture = MakeReadable(aimCursorCache.texture);
+                Cursor.SetCursor(visible ? aimCursorTexture : null, CursorHotspot(aimCursorCache), CursorMode.Auto);
+            }
         }
+
+        // pivot is normalized (0..1); aim_cursor is center-aimed, so the hotspot is the art's center
+        private static Vector2 CursorHotspot(Sprite s) => new Vector2(s.pivot.x * s.texture.width, s.pivot.y * s.texture.height);
+
+        // The aim_cursor source imports as non-readable (fine for rendering, but Cursor.SetCursor
+        // demands CPU access) — copy it once into a readable texture
+        private static Texture2D MakeReadable(Texture2D src)
+        {
+            RenderTexture rt = RenderTexture.GetTemporary(src.width, src.height, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(src, rt);
+            var readable = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
+            RenderTexture.active = rt;
+            readable.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
+            readable.Apply();
+            RenderTexture.active = null;
+            RenderTexture.ReleaseTemporary(rt);
+            return readable;
+        }
+
+        private Sprite aimCursorCache;       // lazily read from the GamepadCursor component
+        private Texture2D aimCursorTexture;  // CPU-readable copy of the cursor sprite's texture
 
         /// <summary>Idempotent self-install of the gamepad virtual cursor, same as EnsureEventSystem.
         /// UIBuilder also adds the component (to wire the aim_cursor sprite); this guarantee means the
