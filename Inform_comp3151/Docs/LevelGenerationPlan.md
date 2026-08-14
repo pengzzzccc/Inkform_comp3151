@@ -66,7 +66,7 @@ LevelFlow (SO 资产 Assets/Scenes/All_level_Con.asset)
 
 > 地面/台阶/尖刺**不再用预制体**（WallBase / Spike 已被默认色块取代，见 §4.1），仅由 `MakeBlock` 生成。
 
-> **场景内接线（必做，`WirePlayerReferences`）**：GameManager 实例需场景覆盖 `InputHandler.player` → 本场景 Player 的 PlayerHandler、`AniHandler.animations` → 本场景 Player 的 Animator——预制体内的跨预制体引用（指向 Player.prefab 内部组件）加载后**不会自动重映射**到场景实例，否则 AniHandler 从不播放动画（动画机"坏"）；相机须为 Player 的**子对象**且 `CamHandler.target` = Player Transform，否则相机不跟随（对照可工作场景 `Level1.unity:22342-22349,22666`）。
+> **场景内接线（已由运行时自解析取代，`WirePlayerReferences` 已退役）**：早期版本在生成场景写入 `InputHandler.player` / `AniHandler.animations` / `CamHandler.target` 场景级覆盖 + 相机子对象化——但 GameManager 是 `DontDestroyOnLoad`（AudioManager.cs:72-74），切换关卡后**存活的是起始场景的旧实例**，其序列化引用指向已卸载场景的 Player（Unity fake-null），动画机/相机随即失效（输入靠 InputHandler 的 sceneLoaded 重绑才正常）。**根治方案**：当前场景 Player 由 `PlayerHandler` 在 Awake 注册进静态 `PlayerBus.Player`（OnDestroy 注销），`AniHandler`/`CamHandler`/`InputHandler` 一律运行时从 `PlayerBus.Player` 解析——持久对象不再持有任何序列化场景引用，切换关卡自动跟随新场景 Player，相机为独立对象由 CamHandler 平滑跟随（对照 `Level1.unity:22342-22349,22666` 的运行时行为）。
 
 > 注：`Assets/Editor/UIBuilder.cs:37` 的 `GameManagerPrefabPath = "Assets/Prefabs/GameManager.prefab"` 已过时，真实路径在 `Control/` 子目录下，**不要照抄该常量**。
 
@@ -155,6 +155,7 @@ LevelFlow (SO 资产 Assets/Scenes/All_level_Con.asset)
   - `BoxCollider2D`：`isTrigger = true`，`size = (1.2, 2)`；
   - `LevelExit`：`exitId = 邻居场景名`（经 `SerializedObject.FindProperty("exitId")` 设置，`LevelExit.cs:22`）。
 - 门牌：子对象 **Canvas + uGUI Text**，文本 = **纯场景名**（如 `L1_B1`，无箭头——BombSlimeFonts.ttf 无 `→` 字形），fontSize 36 / canvasScale 0.025（≈0.9 世界单位），z=-1。
+- **门侧出生点**：每个门旁实例化 `Checkpoint.prefab`（`isStartPoint = false`）命名 **`Spawn_<邻居场景名>`**，位置 = 门位 + 内侧偏移（右墙/顶部 `dx=-1.5`、左墙 `dx=+1.5`，`dy=-0.5`，落门内侧平台顶）——跨关进入时玩家出生在此门旁而非房间起始点（`RespawnDirector` 经 `SceneDirector.ConsumePendingSpawnFrom()` 按来源场景名查找）；**偏移必须保证出生点距门触发器 ≥0.9**（触发器 1.2 宽），否则出生即触发切回、死循环。
 - 门由 `LevelExit.OnTriggerEnter2D` 触发，`SceneDirector.OnCompleted` 解析后加载邻居场景；未知出口（图未接线时）回落主菜单并告警（`SceneDirector.cs:148-151`）。
 
 ### 4.3 房间名牌与门牌（世界空间 Canvas + uGUI Text）
@@ -199,9 +200,9 @@ private static readonly RoomData[] Rooms = { /* §3.2 表逐行录入，共 22 �
 
 1. `EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()`，用户取消则整体 `return`；
 2. `EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single)`；
-3. 逐个 `PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path), scene)` 并按 §4.1 设置 `transform.position`：GameManager / Player / MainCamera / GlobalVolume / Checkpoint；地面/台阶/尖刺由 `MakeBlock` 生成默认色块（SpriteRenderer + BoxCollider2D + layer 6，§4.1b 三模板轮换）；实例化后调用 `WirePlayerReferences(gameManager, player, camera)` 完成场景内接线（§2.3）；
+3. 逐个 `PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath<GameObject>(path), scene)` 并按 §4.1 设置 `transform.position`：GameManager / Player / MainCamera / GlobalVolume / Checkpoint；地面/台阶/尖刺由 `MakeBlock` 生成默认色块（SpriteRenderer + BoxCollider2D + layer 6，§4.1b 三模板轮换）。**不做任何场景内接线**——管理器与相机运行时经 `PlayerBus.Player` 自解析（§2.3，旧 `WirePlayerReferences` 已退役）；
 4. Checkpoint 实例：`SerializedObject.FindProperty("isStartPoint").boolValue = true` + `ApplyModifiedPropertiesWithoutUndo()`（同 UIBuilder.cs:920-935 模式）；
-5. 按 §4.2 生成每个门（含 `LevelExit.exitId` 与门牌）、按 §4.3 生成房间名牌；
+5. 按 §4.2 生成每个门（含 `LevelExit.exitId`、门牌与 **门侧出生点 `Spawn_<邻居>`**）、按 §4.3 生成房间名牌；
 6. `EditorSceneManager.SaveScene(scene, $"Assets/Scenes/Generated/{sceneName}.unity")`；
 7. 全部完成后 `AssetDatabase.SaveAssets()` + 打印 22 个场景路径。
 
@@ -272,9 +273,11 @@ PrefabUtility.UnloadPrefabContents(root);
 2. **场景必须进 Build Settings**：`SceneManager.LoadScene(name)` 按名匹配，未入 Build 的场景加载报 "has not been added to the build settings"（§5.6 解决）。
 3. **exitId 拼写契约**：`LevelExit.exitId` 与 `LevelConnection.id` 必须逐字节一致（`LevelExit.cs:13-14`）。二者由同一 `neighbors` 字符串生成 ⇒ 天然一致；**改数据表后必须整跑 `Build All`**（场景与图同步重建）。
 4. **每房间放 GameManager 实例（刻意为之）**：现有场景均含其实例；`SceneDirector.Awake` 单例去重（`SceneDirector.cs:34-38`）会在从菜单进入房间时自毁房间内副本，无冲突；而**编辑器直接打开房间 F5 测试时**，本房间的 GameManager 成为唯一实例，UIManager/Respawn 才能工作——验证步骤①依赖此设计。切场景瞬间短暂双实例靠 Awake 自毁，无害。
-5. **InputHandler 不烘焙玩家引用**：`InputHandler` 在 Awake 与 sceneLoaded 时 `FindAnyObjectByType<PlayerHandler>()` 重绑玩家（`InputHandler.cs:90-93`），工具**绝不**在 GameManager 上写 player 引用。
+5. **持久管理器不持有场景引用**：`PlayerHandler` 在 Awake 注册进静态 `PlayerBus.Player`（OnDestroy 注销），`InputHandler`/`AniHandler`/`CamHandler` 一律运行时从总线解析当前场景 Player（`InputHandler.cs:90-93` 的 sceneLoaded 重绑保留）；工具**绝不**在 GameManager/相机上写序列化场景引用（旧 `WirePlayerReferences` 已退役，见 §2.3）。
 6. **标签用 uGUI 而非 legacy TextMesh**：`font.material` 序列化为内建引用，场景重开文字消失、须手动重选字体（§4.3）；世界空间 Canvas + uGUI Text 是项目 UI 同款机制，运行时自动解析字体材质。
 7. **遗留场景**：旧 `Level1/B1/B2.unity` 不并入新图；`B1.unity` 有历史 Missing 脚本引用，勿触碰。
 8. **Build Settings 清洁**：`AnimationTest` 调试场景仍在 Build Settings，建议在出包前移除（README.md:103-105 已提示）。
 9. **纯 ASCII 文本**：门牌/名牌一律 ASCII（自定义字体无 `→` 等非 ASCII 字形），需要指示符号时用 ASCII 替代。
 10. **sceneName 持久化与 Build Profile**（关卡切换失效的两大隐蔽原因）：① `LevelScene.sceneName` 直接字段赋值曾丢失（全部资产空 sceneName，`FindBySceneName` 永不匹配）——必须经 SerializedObject 写入并保留工具自校验；② Unity 6000 下 `m_OverrideGlobalSceneList: 1` 的 Build Profile 覆盖全局场景列表——`LoadScene` 按名加载必须在 profile 的 `m_Scenes` 中也存在。
+11. **DontDestroyOnLoad 对象上的序列化场景引用必然失效**：GameManager 整个实例跨场景存活（AudioManager.cs:72-74 单例去重，新场景副本被销毁），其序列化字段（`AniHandler.animations`、`InputHandler.player` 等）指向起始场景的 Player——场景一卸载变 Unity fake-null（`==` 可拦截、`?.` 不能），动画机/相机随即失效。**根治**：场景对象引用一律改运行时从 `PlayerBus.Player` 解析，绝不序列化进持久对象（§2.3 架构决策）。
+12. **门侧出生点必须在门触发器外**：`Spawn_<邻居>` 检查点（§4.2）若落在门触发器（1.2×2）内，玩家出生即触发 `LevelExit` 切回上一场景（死循环）——内侧偏移（右墙/顶部 -1.5、左墙 +1.5）保证 ≥0.9 距离；调整门位时必须同步核对出生点。

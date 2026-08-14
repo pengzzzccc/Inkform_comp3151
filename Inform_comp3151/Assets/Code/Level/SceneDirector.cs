@@ -31,6 +31,10 @@ namespace Inkform.Level
         // Set by sceneLoaded, consumed one frame later in Update. See OnSceneLoaded for why.
         private bool sceneInitPending;
 
+        // Set on LevelBus.Completed, consumed by RespawnDirector on the next scene's init: spawn the
+        // player beside the door that leads back to the scene we came from, instead of the level start point
+        private string pendingSpawnFrom;
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -151,7 +155,17 @@ namespace Inkform.Level
                 return;
             }
 
+            pendingSpawnFrom = current.sceneName;   // the new scene spawns the player at this room's door
             LoadLevel(target);
+        }
+
+        /// <summary>The scene we came from (set by OnCompleted); null when no door was taken, e.g. a
+        /// fresh run from the menu. Cleared on read so it applies to exactly one scene init.</summary>
+        public string ConsumePendingSpawnFrom()
+        {
+            string v = pendingSpawnFrom;
+            pendingSpawnFrom = null;
+            return v;
         }
 
         // ---- Accessors for UIManager (scene-name policy lives here, not duplicated in the UI layer) ----

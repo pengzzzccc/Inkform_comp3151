@@ -1,9 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
-using Inkform.Fx;
-using Inkform.Input;
 using Inkform.Level;
-using Inkform.Player;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -292,14 +289,16 @@ namespace Inkform.EditorTools
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            GameObject gameManager = Instantiate(scene, GameManagerPrefabPath, "GameManager", new Vector3(0f, 0f, 0f));
-            GameObject player = Instantiate(scene, PlayerPrefabPath, "Player", new Vector3(4.5f, 2.5f, 0f));
-            GameObject camera = Instantiate(scene, CameraPrefabPath, "Main Camera", new Vector3(10f, 5.5f, -10f));
+            Instantiate(scene, GameManagerPrefabPath, "GameManager", new Vector3(0f, 0f, 0f));
+            Instantiate(scene, PlayerPrefabPath, "Player", new Vector3(4.5f, 2.5f, 0f));
+            Instantiate(scene, CameraPrefabPath, "Main Camera", new Vector3(10f, 5.5f, -10f));
             Instantiate(scene, VolumePrefabPath, "GlobalVolume", new Vector3(10f, 5.5f, 0f));
 
-            WirePlayerReferences(gameManager, player, camera);
+            // No scene-instance wiring: the persistent managers (InputHandler / AniHandler on the
+            // DontDestroyOnLoad GameManager) and the follow camera resolve the player at runtime via
+            // PlayerBus.Player, so serialized references cannot go stale across scene switches.
 
-            BuildChallenge(room);
+            BuildChallenge(scene, room);
 
             GameObject checkpoint = Instantiate(scene, CheckpointPrefabPath, "Checkpoint", new Vector3(4.5f, 2f, 0f));
             SerializedObject soCp = new SerializedObject(checkpoint.GetComponent<Checkpoint>());
@@ -309,41 +308,6 @@ namespace Inkform.EditorTools
             BuildRoomLabel(room);
 
             EditorSceneManager.SaveScene(scene, $"{ScenesDir}/{room.sceneName}.unity");
-        }
-
-        /// <summary>
-        /// Scene-instance wiring the hand-built scenes carry: the follow camera must be the player's
-        /// child with CamHandler.target set, and the GameManager's InputHandler.player /
-        /// AniHandler.animations must point at THIS scene's Player — the prefab's cross-prefab
-        /// references (into Player.prefab) do not remap to the scene instance on load, leaving the
-        /// animator undriven (player never animates) and the camera stationary otherwise.
-        /// </summary>
-        private static void WirePlayerReferences(GameObject gameManager, GameObject player, GameObject camera)
-        {
-            camera.transform.SetParent(player.transform, true);
-            CamHandler cam = camera.GetComponent<CamHandler>();
-            if (cam != null)
-            {
-                SerializedObject soCam = new SerializedObject(cam);
-                soCam.FindProperty("target").objectReferenceValue = player.transform;
-                soCam.ApplyModifiedPropertiesWithoutUndo();
-            }
-
-            InputHandler input = gameManager.GetComponent<InputHandler>();
-            if (input != null)
-            {
-                SerializedObject soIn = new SerializedObject(input);
-                soIn.FindProperty("player").objectReferenceValue = player.GetComponent<PlayerHandler>();
-                soIn.ApplyModifiedPropertiesWithoutUndo();
-            }
-
-            AniHandler ani = gameManager.GetComponent<AniHandler>();
-            if (ani != null)
-            {
-                SerializedObject soAni = new SerializedObject(ani);
-                soAni.FindProperty("animations").objectReferenceValue = player.GetComponent<Animator>();
-                soAni.ApplyModifiedPropertiesWithoutUndo();
-            }
         }
 
         /// <summary>The challenge variant of a room: its index in the Rooms table modulo 3.</summary>
@@ -358,7 +322,7 @@ namespace Inkform.EditorTools
 
         /// <summary>Shared floor plus the variant's blocks; the four directional door slots are then
         /// filled in order by the room's neighbors (S0 right-ground, S1 right-high, S2 left-ground, S3 top).</summary>
-        private static void BuildChallenge(RoomData room)
+        private static void BuildChallenge(Scene scene, RoomData room)
         {
             MakeBlock("Floor", 11f, 1.5f, 22f, 1f, FloorColor);
 
@@ -395,10 +359,10 @@ namespace Inkform.EditorTools
             }
 
             Vector2[] slots = { new Vector2(20.5f, 2.5f), highDoor, new Vector2(1.5f, 2.5f), topDoor };
-            BuildDoors(room, slots);
+            BuildDoors(scene, room, slots);
         }
 
-        private static void BuildDoors(RoomData room, Vector2[] slots)
+        private static void BuildDoors(Scene scene, RoomData room, Vector2[] slots)
         {
             for (int k = 0; k < room.neighbors.Length && k < slots.Length; k++)
             {
@@ -423,6 +387,12 @@ namespace Inkform.EditorTools
                 float labelOffset = k == 3 ? -2f : 2f;
                 labelGo.transform.localPosition = new Vector3(0f, labelOffset, -1f);
                 MakeLabel(labelGo, target, 36, 0.025f);
+
+                // Door-side spawn point (Checkpoint, not a start point): entering from `target`
+                // spawns the player beside this door instead of the room's start point. Placed on the
+                // inside floor, ≥0.9 from the door trigger (1.2 wide) so spawning cannot re-trigger it.
+                float dx = k == 2 ? 1.5f : -1.5f;   // the left-wall door opens inward to the right; the rest open left
+                Instantiate(scene, CheckpointPrefabPath, $"Spawn_{target}", new Vector3(pos.x + dx, pos.y - 0.5f, 0f));
             }
         }
 

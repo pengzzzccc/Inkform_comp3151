@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using Inkform.Bus;
 using Inkform.Player;
 using Inkform.Settings;
 
@@ -89,7 +90,9 @@ namespace Inkform.Input
 
         private void ResolvePlayer()
         {
-            player = FindAnyObjectByType<PlayerHandler>();
+            // The bus holds the current scene's live player (registered by PlayerHandler on Awake);
+            // a scene without a player (menu) leaves it null and the next sceneLoaded re-resolves
+            player = PlayerBus.Player;
         }
 
         void Update()

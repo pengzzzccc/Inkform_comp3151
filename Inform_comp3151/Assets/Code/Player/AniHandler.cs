@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Inkform.Player
 {
@@ -8,17 +9,14 @@ namespace Inkform.Player
         [SerializeField] private Animator animations;
         [SerializeField] private SpriteRenderer sprite;
 
-        void Awake()
-        {
-            // The clip curves use an empty path, so the SpriteRenderer must sit on the same object as
-            // the Animator
-            if (sprite == null && animations != null) sprite = animations.GetComponent<SpriteRenderer>();
-        }
-
         void OnEnable()
         {
             PlayerBus.StateChanged += OnState;
             PlayerBus.FaceChanged += OnFace;
+            // Rebind on every scene load: the persistent GameManager hosting this survives scene
+            // switches, and the bus snapshot (deduped to change-only broadcasts) may not fire for the
+            // new scene's player — Refresh here guarantees the animation targets the live player
+            SceneManager.sceneLoaded += OnSceneLoaded;
             Refresh();                       // initial sync from the snapshot
         }
 
@@ -26,13 +24,23 @@ namespace Inkform.Player
         {
             PlayerBus.StateChanged -= OnState;
             PlayerBus.FaceChanged -= OnFace;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         private void OnState(PlayerState state) => Refresh();
         private void OnFace(FaceDirection face) => Refresh();
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => Refresh();
 
         private void Refresh()
         {
+            // Always rebind from the bus's live player: a serialized Animator (GameManager.prefab
+            // carries a stale reference into Player.prefab's internal Animator that resolves to a
+            // non-instance object == null cannot catch) must never be used — the live player's
+            // Animator is the only valid target across scene switches
+            PlayerHandler player = PlayerBus.Player;
+            if (player == null) return;
+            animations = player.GetComponent<Animator>();
+            sprite = player.GetComponent<SpriteRenderer>();
             if (animations == null) return;   // HasState needs it; guard first
 
             bool faceL = PlayerBus.Face == FaceDirection.L;
