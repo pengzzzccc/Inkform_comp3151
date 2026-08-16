@@ -37,6 +37,9 @@ namespace Inkform.Player
 
         void Awake()
         {
+            // Register before broadcasting: subscribers' first Refresh reads PlayerBus.Player
+            PlayerBus.RegisterPlayer(this);
+
             contact = GetComponent<ContactSensor>();
             motor = GetComponent<PlayerMotor>();
             anim = GetComponent<AnimStateResolver>();
@@ -60,6 +63,11 @@ namespace Inkform.Player
             HazardBus.Exploded -= OnExploded;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
+        }
+
+        void OnDestroy()
+        {
+            PlayerBus.UnregisterPlayer(this);
         }
 
         void Update()

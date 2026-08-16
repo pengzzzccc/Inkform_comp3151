@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Player;
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -40,6 +41,11 @@ namespace Inkform.Fx
 
         private float lookAheadNow, lookAheadVel;
 
+        // Follow target = the current scene's live player, resolved from the bus at use time so
+        // follow/snap survive scene switches; the serialized field only serves as a fallback for
+        // scenes without a player (menus) and for older scene data
+        private Transform Target => PlayerBus.Player != null ? PlayerBus.Player.transform : target;
+
         void Awake()
         {
             cam = GetComponent<Camera>();
@@ -74,6 +80,7 @@ namespace Inkform.Fx
         /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
         private void SnapToTarget()
         {
+            Transform target = Target;
             if (target == null) return;
 
             // All three velocities must zero: SmoothDamp's velocity lives in fields, and without this
@@ -99,6 +106,7 @@ namespace Inkform.Fx
 
         private Vector2 FollowStep()
         {
+            Transform target = Target;
             if (target == null) return transform.position;
 
             // Look-ahead toward facing: read the bus snapshot directly, no PlayerHandler reference needed
@@ -135,17 +143,19 @@ namespace Inkform.Fx
             cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomTimer.Remaining / zoomDuration);
         }
 
-        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time
+        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
+        // Scaled by the user's FX intensity at request time (read-style like AudioManager's volume):
+        // intensity 0 = the camera never shakes; a later change affects new requests, not current trauma.
         private void OnShake(float amount)
         {
-            trauma = Mathf.Clamp01(trauma + amount);
+            trauma = Mathf.Clamp01(trauma + amount * SettingsStore.FxIntensity);
         }
 
         private void OnZoom(float amount, float duration)
         {
             if (duration <= 0f) return;
 
-            zoomAmount = amount;
+            zoomAmount = amount * SettingsStore.FxIntensity;
             zoomDuration = duration;
             zoomTimer.Set(duration);
         }

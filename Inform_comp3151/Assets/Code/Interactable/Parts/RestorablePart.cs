@@ -6,9 +6,9 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Restorable behavior: a set-piece item that comes back every time the player dies and respawns.
-    /// Implemented as an IRestorable originator exactly like BreakableWall — LevelMemento scans for
-    /// IRestorable at startup, captures it on checkpoint touch, and restores it on death respawn, so
-    /// a restorable item needs zero changes to LevelMemento.
+    /// Implemented as an IRestorable originator: LevelMemento scans for IRestorable at startup,
+    /// captures it on checkpoint touch, and restores it on death respawn, so a restorable item needs
+    /// zero changes to LevelMemento.
     ///
     /// This is why a restorable item must never destroy itself: a destroyed object cannot be brought
     /// back. ExplodePart calls HideForRestore() instead of Destroy when this part is present — the
@@ -45,7 +45,8 @@ namespace Inkform.Interactable.Parts
         public IMemento Capture() => new RestorableMemento(this, gone, transform.position, transform.rotation);
 
         // The single gone/whole switch, shared by hiding and restoring — maintaining the enabled
-        // toggles separately on both paths would eventually miss one (same shape as BreakableWall)
+        // toggles separately on both paths would eventually miss one (same shape as
+        // BreakablePart.SetBroken)
         private void SetGone(bool value)
         {
             gone = value;

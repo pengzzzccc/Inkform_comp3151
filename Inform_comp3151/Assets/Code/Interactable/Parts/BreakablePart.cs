@@ -6,8 +6,9 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Breakable behavior: when caught in a blast, shatters into grid pieces, then hides (collider +
-    /// all renderers off). The framework counterpart of BreakableWall with one deliberate difference —
-    /// no IRestorable: this object does not come back on respawn, LevelMemento never collects it.
+    /// all renderers off). Deliberately **not** IRestorable: this object does not come back on respawn,
+    /// LevelMemento never collects it. Set pieces that must come back go through ExplodePart +
+    /// RestorablePart instead — that is the only restorable path in the framework.
     ///
     /// Purely a listener: HandleContact never consumes contacts; blast resolution arrives via
     /// HazardBus.Exploded self-claiming (the blast's victim is the hit collider's GameObject, which
@@ -73,7 +74,7 @@ namespace Inkform.Interactable.Parts
         }
 
         // The single broken/whole switch: every object state toggle lives here, never scattered
-        // across call sites (same shape as BreakableWall.SetBroken)
+        // across call sites (same shape as RestorablePart.SetGone)
         private void SetBroken(bool value)
         {
             broken = value;

@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -91,7 +92,8 @@ namespace Inkform.Fx
         {
             if (duration <= 0f) return;
 
-            punchAmount = Mathf.Clamp01(amount);
+            // FX intensity scales the visual punch; hitstop (a duration) stays untouched
+            punchAmount = Mathf.Clamp01(amount * SettingsStore.FxIntensity);
             punchDuration = duration;
             punchTimer.Set(duration);
         }

@@ -2,6 +2,7 @@ using Inkform.Bus;
 using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Inkform.Level
 {
@@ -43,19 +44,39 @@ namespace Inkform.Level
             }
         }
 
+        // Set by sceneLoaded, consumed one frame later in Update. See OnSceneLoaded for why.
+        private bool sceneInitPending;
+
         void OnEnable()
         {
             LifeBus.Died += OnDied;
             LifeBus.CheckpointSet += OnCheckpointSet;
+            SceneManager.sceneLoaded += OnSceneLoaded;
         }
 
         void OnDisable()
         {
             LifeBus.Died -= OnDied;
             LifeBus.CheckpointSet -= OnCheckpointSet;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        void Start()
+        // The GameManager hosting this survives scene switches (AudioManager calls DontDestroyOnLoad on
+        // its own host), so Start() only ever ran against the *first* scene. Booting straight into a
+        // level hid that, but the menu flow made MainMenu the first scene: no player was found there,
+        // Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying in a level before
+        // touching any checkpoint teleported the player to the world origin.
+        //
+        // Deferred by a frame rather than run here: sceneLoaded fires before the new scene's Start()
+        // methods, and the init below actually teleports the player and snaps the camera — doing that
+        // ahead of the player's own Start() risks being overwritten. Update runs after all Starts,
+        // matching the timing this used to have.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => sceneInitPending = true;
+
+        // sceneLoaded never fires for the startup scene, so the first scene is initialized here
+        void Start() => InitForScene();
+
+        private void InitForScene()
         {
             GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
             if (player == null) return;
@@ -64,19 +85,36 @@ namespace Inkform.Level
             // player there; with none checked the game still plays — falls back to "wherever the
             // player was placed in the scene"
             Checkpoint start = FindStartPoint();
-            if (start == null)
+
+            // Door-side spawn: entering from another room puts the player beside that room's door in
+            // this scene (SceneDirector records the source scene on LevelBus.Completed) rather than
+            // the level start point, so direction stays intuitive across level transitions
+            string from = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnFrom() : null;
+            Checkpoint spawn = from != null ? FindDoorSpawn(from) : null;
+            if (spawn == null) spawn = start;
+
+            if (spawn == null)
             {
                 checkpoint = player.transform.position;
                 return;
             }
 
-            checkpoint = start.SpawnPos;
+            checkpoint = spawn.SpawnPos;
             LifeBus.RaiseRespawned(player, checkpoint);   // reuse the same respawn path instead of a second teleport implementation
             FxBus.RaiseSnap();
         }
 
         void Update()
         {
+            // Runs before the respawn pump: a scene switch invalidates `checkpoint`, and a death
+            // pending from the previous scene must never be resurrected against the new one
+            if (sceneInitPending)
+            {
+                sceneInitPending = false;
+                pending = null;
+                InitForScene();
+            }
+
             if (pending == null) return;
             if (respawnTimer.IsRunning) return;
 
@@ -85,6 +123,25 @@ namespace Inkform.Level
 
             // The player was just teleported; without a snap the camera drags its follow inertia all
             // the way from the death point
+            FxBus.RaiseSnap();
+        }
+
+        /// <summary>
+        /// Puts the player back on the last checkpoint on demand — the Controls tab's Unstuck button,
+        /// for when a bug wedges the slime somewhere it cannot leave. Reuses the death path's teleport
+        /// rather than moving the transform here, so anything listening for a respawn (camera snap,
+        /// state reset) sees the same event it always does.
+        ///
+        /// Clears any death still waiting out its delay: that pending respawn would otherwise fire a
+        /// second later against a player who has already been moved, teleporting them again.
+        /// </summary>
+        public void RespawnNow()
+        {
+            GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
+            if (player == null) return;     // no player in this scene (the menu) — nobody to rescue
+
+            pending = null;
+            LifeBus.RaiseRespawned(player, checkpoint);
             FxBus.RaiseSnap();
         }
 
@@ -114,6 +171,20 @@ namespace Inkform.Level
             foreach (Checkpoint c in all)
             {
                 if (c.IsStartPoint) return c;
+            }
+            return null;
+        }
+
+        // The door-side spawn point generated by RoomBuilder as "Spawn_<sceneName>" (a Checkpoint
+        // beside the door whose exitId is that scene); matching by name keeps it a pure editor-side
+        // convention — no new component, no scene wiring
+        private Checkpoint FindDoorSpawn(string fromScene)
+        {
+            string want = $"Spawn_{fromScene}";
+            Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
+            foreach (Checkpoint c in all)
+            {
+                if (c.gameObject.name == want) return c;
             }
             return null;
         }
