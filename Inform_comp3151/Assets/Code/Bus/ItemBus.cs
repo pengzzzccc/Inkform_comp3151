@@ -7,7 +7,7 @@ namespace Inkform.Bus
     /// <summary>
     /// Item bus: published by the item itself when eaten, subscribed by PlayerHandler.
     /// The player side only deals with the ICarriable interface — concrete implementations
-    /// (Bomb / CarriablePart) never need to be known. Item prefabs therefore need no serialized
+    /// (CarriablePart) never need to be known. Item prefabs therefore need no serialized
     /// scene references and can be freely Instantiated at runtime.
     /// </summary>
     public static class ItemBus

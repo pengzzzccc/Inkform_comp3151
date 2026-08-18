@@ -182,6 +182,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Life.DeathDirector
   strategies:
   - {fileID: 11400000, guid: 15d7179a7ee5d3a8e194bda46e6a846e, type: 2}
+  - {fileID: 11400000, guid: bbbf25940ba664c4619113689b3e5802, type: 2}
+  - {fileID: 11400000, guid: 89a42ff6a133486a524c40929cb8f536, type: 2}
   fallback: {fileID: 11400000, guid: 15d7179a7ee5d3a8e194bda46e6a846e, type: 2}
 --- !u!114 &9903000002
 MonoBehaviour:

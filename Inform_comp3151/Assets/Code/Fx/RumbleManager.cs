@@ -12,7 +12,7 @@ namespace Inkform.Fx
     /// Gamepad haptics: translates "what happened in the game" into left/right motor rumble. Pure
     /// event-driven — subscribes to buses, never polls. Same director pattern as FxDirector /
     /// AudioDirector: tuning for "how strong each event rumbles" is centralized in this one Inspector;
-    /// Bomb / RopeGun / PlayerHandler never need to know haptics exist.
+    /// RopeGun / PlayerHandler never need to know haptics exist.
     ///
     /// Motor direction semantics (Xbox / most gamepads: big motor left, small motor right):
     ///  - land (directionless): both motors split the strength evenly
@@ -241,7 +241,7 @@ namespace Inkform.Fx
 
         // Player transform: the GameManager hosting this survives scene switches, so after a change
         // the old reference is a Unity fake-null and is re-looked-up on next use (same pattern as
-        // Bomb.Player / AudioManager.Listener)
+        // PlayerBus.Player / AudioManager.Listener)
         private static Transform playerCache;
 
         private static Transform Player

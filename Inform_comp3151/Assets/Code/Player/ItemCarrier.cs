@@ -8,7 +8,7 @@ namespace Inkform.Player
     /// <summary>
     /// What is held in the mouth: remembers the currently held item and spits it out on attack.
     /// The fourth layer split from PlayerHandler — the swallowing step is not here: that is the item's
-    /// own decision (see Bomb.Swallow); this class only waits for the ItemBus "you ate it" notice.
+    /// own decision (see CarriablePart.Swallow); this class only waits for the ItemBus "you ate it" notice.
     /// On death the held item is dropped back into the world; the mouth is empty after respawn.
     ///
     /// Attach to the Player.
@@ -26,8 +26,8 @@ namespace Inkform.Player
 
         // The item held in the mouth (null = nothing). Stores the interface only, never the
         // implementation — "the player needs only interface storage, concrete logic lives in the
-        // concrete object" (Bomb or CarriablePart both work).
-        // "Does the mouth hold anything" is also snapshotted globally in ItemBus.Held; Bomb uses that one
+        // concrete object" (CarriablePart and the former Bomb both work).
+        // "Does the mouth hold anything" is also snapshotted globally in ItemBus.Held; the former Bomb uses that one
         private ICarriable heldItem;
 
         /// <summary>Whether the mouth holds anything. Used when spitting with Q/right trigger.</summary>

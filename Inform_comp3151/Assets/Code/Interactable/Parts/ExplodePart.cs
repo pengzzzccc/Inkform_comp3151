@@ -17,7 +17,7 @@ namespace Inkform.Interactable.Parts
     ///
     /// Proximity warning animation: with triggerFrames + proximityRadius configured, the frame
     /// sequence advances as the player approaches (closer = later frame, 0 = normal), raising Ticked
-    /// on change (AudioDirector plays the tick sound) — same origin as Bomb's proximity logic,
+    /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
     /// distance-driven branch only.
     /// </summary>
     public class ExplodePart : MonoBehaviour, IInteractablePart
@@ -47,7 +47,7 @@ namespace Inkform.Interactable.Parts
 
         // All explosives share one player reference. After the player is destroyed or the scene
         // changes it becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics
-        // needed (same as Bomb)
+        // needed (same as the former Bomb monolith)
         private static Transform playerCache;
 
         private static Transform Player
@@ -144,7 +144,7 @@ namespace Inkform.Interactable.Parts
             // Restorable items are not destroyed — the part hides them and respawn brings them back.
             // Everything else hides before the shards render (Destroy only applies at frame end, so
             // without hiding the body overlaps the shards for one frame), then is destroyed outright
-            // (same as Bomb)
+            // (same as the former Bomb monolith)
             bool restorable = root.TryGetPart(out RestorablePart restore);
 
             if (restorable)
@@ -159,7 +159,7 @@ namespace Inkform.Interactable.Parts
             // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
 
-            // Explosives are unrecoverable (same as Bomb): shattered and destroyed outright
+            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright
             if (!restorable) Destroy(root.gameObject);
         }
     }

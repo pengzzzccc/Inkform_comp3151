@@ -51,7 +51,7 @@ namespace Inkform.Fx
             if (!frag.TryGetComponent(out Rigidbody2D body)) return;
 
             // The project sets m_AutoSyncTransforms = 0, so sync the rigidbody after touching the
-            // transform — same reason as Bomb.OnItemReleased
+            // transform — same reason as ItemBus.RaiseItemReleased
             body.position = pos;
             // FX intensity scales the launch speed (0 = shards drop in place); spin stays natural
             body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier * SettingsStore.FxIntensity);

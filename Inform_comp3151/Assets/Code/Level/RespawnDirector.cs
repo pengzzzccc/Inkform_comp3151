@@ -28,7 +28,7 @@ namespace Inkform.Level
         // waiting forever
         private UnscaledTimer respawnTimer;
 
-        // Same lazy cache as Bomb.Player / AudioManager.Listener: after a scene change the old
+        // Same lazy cache as PlayerBus.Player / AudioManager.Listener: after a scene change the old
         // reference becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics needed
         private DeathDirector deathCache;
 

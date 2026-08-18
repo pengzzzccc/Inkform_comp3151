@@ -8,7 +8,7 @@ namespace Inkform.Fx
     /// Subscribes HazardBus.Blast (exactly once per explosion), attenuates by distance from the blast
     /// center to the camera, then raises the matching FxBus commands.
     /// Tuning for "how much an explosion shakes" is centralized in this one Inspector —
-    /// Bomb never needs to know FX exist, and CamHandler / ScreenFx never need to know explosions exist.
+    /// explosives never need to know FX exist, and CamHandler / ScreenFx never need to know explosions exist.
     /// The post vignette is death-exclusive, so no RaisePunch here — explosions only shake / hitstop / zoom.
     ///
     /// Death feedback is not here either: it dispatches by cause rather than by concern, the whole

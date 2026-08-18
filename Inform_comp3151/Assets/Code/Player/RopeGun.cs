@@ -29,7 +29,7 @@ namespace Inkform.Player
     /// solve, collider off, catches nothing on the way).
     ///
     /// Special hits:
-    /// ① carriable objects (objects implementing ICarriable: Bomb, CarriablePart-mounted objects, etc.):
+    /// ① carriable objects (objects implementing ICarriable: CarriablePart-mounted objects, etc.):
     ///    short hitstop, then pulls the player toward the target, swallowing on arrival
     ///    (ICarriable.TrySwallowByRope);
     /// ② bomb hanging chains: severs at the hit point (Chain.CutAt, probing the Chain static registry
@@ -540,8 +540,8 @@ namespace Inkform.Player
 
         // During flight, probes for carriables segment by segment: the hook physically does not touch
         // Default-layer objects (bombs etc.); found via the probe. The probe is layer-agnostic —
-        // TryGetComponent recognizes the interface; both Bomb (direct implementation) and CarriablePart
-        // (framework objects) hit
+        // TryGetComponent recognizes the interface; both the former Bomb (direct implementation) and
+        // CarriablePart (framework objects) hit
         private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(

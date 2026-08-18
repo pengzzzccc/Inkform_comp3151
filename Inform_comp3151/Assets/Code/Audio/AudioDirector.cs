@@ -8,7 +8,7 @@ namespace Inkform.Audio
     /// <summary>
     /// Audio director: translates "what happened in the game" into "which sound to play".
     /// Same pattern as FxDirector — subscribes to buses, centralizes which SoundCue each event maps to
-    /// in this one Inspector; Bomb / PlayerHandler / BreakablePart never need to know the audio system exists.
+    /// in this one Inspector; PlayerHandler / BreakablePart never need to know the audio system exists.
     /// Leaving a slot empty is legal: AudioManager skips it silently; drop a Cue into the slot later and
     /// it sounds without touching code.
     /// </summary>

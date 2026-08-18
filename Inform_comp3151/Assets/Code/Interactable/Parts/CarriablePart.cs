@@ -7,10 +7,10 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Carriable part: an object that can be swallowed after the rope gun hits it, carried in the
-    /// mouth, spit out, and dropped on death. The common behavior of Bomb.Swallow / DropAt /
-    /// OnItemReleased, extracted (minus the bomb-specific fuse) — "swallowed then put back into the
-    /// world" is the same lifecycle for any carriable; detonating and the like are the concrete
-    /// object's own business.
+    /// mouth, spit out, and dropped on death. The common behavior of the former Bomb's Swallow /
+    /// DropAt / OnItemReleased, extracted (minus the bomb-specific fuse) — "swallowed then put back
+    /// into the world" is the same lifecycle for any carriable; detonating and the like are the
+    /// concrete object's own business.
     ///
     /// The player side only knows the ICarriable interface: ItemCarrier / ItemBus / RopeGun do not
     /// know this class. Requires: Rigidbody2D on the Interactable root object (simulated is disabled
@@ -48,15 +48,15 @@ namespace Inkform.Interactable.Parts
         void OnDisable() { ItemBus.ItemReleased -= OnItemReleased; }
 
         // While being pulled (ropeGrappled), contact with the player swallows instead of letting
-        // explosion-type parts detonate (same priority as Bomb). A failed swallow (mouth full, etc.)
-        // does NOT short-circuit — it falls through to later parts; in the original Bomb a full mouth
-        // also detonates on contact while being pulled
+        // explosion-type parts detonate (same priority as the former Bomb). A failed swallow (mouth
+        // full, etc.) does NOT short-circuit — it falls through to later parts; in the former Bomb a
+        // full mouth also detonates on contact while being pulled
         public bool HandleContact(ContactPhase phase, Collider2D other)
         {
             if (phase == ContactPhase.Exit) return false;
 
             // Spit immunity: swallow player contact so it is not detonated right after being spit out
-            // (same as Bomb's ArmTimer). Only blocks the player — impact detonation vs ground/walls
+            // (same as the former Bomb's ArmTimer). Only blocks the player — impact detonation vs ground/walls
             // keeps working
             if (spitTimer.IsRunning && other.CompareTag(Tags.Player)) return true;
 
@@ -91,7 +91,7 @@ namespace Inkform.Interactable.Parts
             transform.localPosition = Vector3.zero;
 
             // Being swallowed cuts all ropes: a hanging carriable becomes a free object once spit out
-            // (same semantics as Bomb)
+            // (same semantics as the former Bomb)
             if (root.TryGetPart(out HangingChain hanging)) hanging.CutAllChains();
 
             ItemBus.RaiseItemEaten(this);
@@ -140,13 +140,13 @@ namespace Inkform.Interactable.Parts
         }
 
         // Pull-mark: after the rope gun hits, the player is reeled in; during that contact with the
-        // player must swallow rather than detonate (same as Bomb)
+        // player must swallow rather than detonate (same as the former Bomb)
         private bool ropeGrappled;
 
         public void MarkRopeGrappled() => ropeGrappled = true;
         public void ClearRopeGrappled() => ropeGrappled = false;
 
-        // Self-deduplicating: same show/hide logic as Bomb's SetVisible (per-frame driving never rewrites)
+        // Self-deduplicating: same show/hide logic as the former Bomb's SetVisible (per-frame driving never rewrites)
         private bool _visible = true;
 
         private void SetVisible(bool visible)

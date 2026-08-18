@@ -5,7 +5,7 @@ namespace Inkform.Interactable.Parts
     /// <summary>
     /// Impact-detonation trigger: contact detonates once velocity reaches the threshold AND the thing
     /// hit is on an impactMask layer. Use with ExplodePart — the framework version of speed detonation
-    /// (Bomb.CheckSpeedExplode), with the mask added because speed alone is not a usable criterion:
+    /// (the former Bomb's CheckSpeedExplode), with the mask added because speed alone is not a usable criterion:
     /// the fastest thing in the game is a spat item (ItemCarrier.spitSpeed), so a bomb leaving the
     /// mouth clears any sane threshold and would detonate on the first floor it touches. The mask is
     /// what keeps terrain out of it; it is not a tag filter, and it does not consult any immunity window.

@@ -19,8 +19,9 @@ namespace Inkform.Item
     public class Chain : MonoBehaviour
     {
         /// <summary>
-        /// Chain tuning pack. Configured by Bomb in the Inspector and pushed to chains created at
-        /// runtime via Configure, so chain components never need to be pre-placed in the scene.
+        /// Chain tuning pack. Configured in the Inspector by the hanging object (e.g. a bomb prefab)
+        /// and pushed to chains created at runtime via Configure, so chain components never need to
+        /// be pre-placed in the scene.
         /// </summary>
         [System.Serializable]
         public class Settings

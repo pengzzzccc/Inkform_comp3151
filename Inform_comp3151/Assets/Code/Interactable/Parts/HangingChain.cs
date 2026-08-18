@@ -6,8 +6,8 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Rope hanging: a physical chain (Chain, Verlet rope) from each hanging anchor (HangAnchor child
-    /// object) down to this object's attach point — the framework version of Bomb's hanging mode
-    /// (Bomb.BuildHangingMode); anchors are collected automatically via the HangAnchor marker
+    /// object) down to this object's attach point — the framework version of the former Bomb's hanging
+    /// mode; anchors are collected automatically via the HangAnchor marker
     /// component, no manual references needed.
     ///
     /// Anchor convention: anchors are **child nodes** of the object carrying HangingChain, recognized
@@ -16,7 +16,7 @@ namespace Inkform.Interactable.Parts
     /// captured at Attach (pinned to the world, does not move with this object).
     /// Chains can be severed by explosions (Chain subscribes HazardBus.Blast) and by rope-gun shots
     /// (Chain.Active static registry); when all are severed the object is left to its own physics.
-    /// Severed chains are unrecoverable — same as Bomb's hanging mode.
+    /// Severed chains are unrecoverable — same as the former Bomb's hanging mode.
     /// </summary>
     public class HangingChain : MonoBehaviour, IInteractablePart
     {
@@ -60,7 +60,7 @@ namespace Inkform.Interactable.Parts
 
             chains.Clear();
             // One chain per anchor: anchored to the world (initial world position), following the object
-            // however it moves. Chains parent under the anchor (same as Bomb): they follow when the
+            // however it moves. Chains parent under the anchor (same as the former Bomb): they follow when the
             // anchor is destroyed/moved, keeping the hierarchy clean
             int index = 0;
             foreach (HangAnchor pt in pts)
@@ -77,7 +77,7 @@ namespace Inkform.Interactable.Parts
             }
         }
 
-        /// <summary>Sever all chains: call when swallowed / released; severed chains are unrecoverable (same hanging semantics as Bomb).</summary>
+        /// <summary>Sever all chains: call when swallowed / released; severed chains are unrecoverable (same hanging semantics as the former Bomb).</summary>
         public void CutAllChains()
         {
             foreach (Chain c in chains) c.CutAll();

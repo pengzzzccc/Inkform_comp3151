@@ -5,13 +5,13 @@ namespace Inkform.Tool
     /// <summary>
     /// Verlet rope solver (pure data class, no component): a chain of distance-constrained
     /// particles with three end modes:
-    /// ① Free (no body, no pin — dangling/swinging, e.g. the remaining segment of a cut bomb chain);
+    /// ① Free (no body, no pin — dangling/swinging, e.g. the remaining segment of a cut chain);
     /// ② Pinned to a point (endPin, follows it without moving it, e.g. an in-flight rope following a bullet);
     /// ③ Attached to a rigidbody (body, zero-length constraint to the end, correction split half/half —
     ///    the rigidbody half is written back as velocity — can hold a body up and swing with it,
     ///    e.g. bomb hanging chains).
     ///
-    /// Bomb hanging chains (Chain) use this solver; the rope gun does not — it draws a straight line.
+    /// Hanging chains (Chain) use this solver; the rope gun does not — it draws a straight line.
     /// Each caller keeps only its own cutting / rendering / event logic. Holds no Unity lifecycle.
     /// </summary>
     public class VerletRope

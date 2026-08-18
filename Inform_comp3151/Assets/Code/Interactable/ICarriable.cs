@@ -8,7 +8,8 @@ namespace Inkform.Interactable
     /// storage; concrete logic lives in the concrete object".
     ///
     /// Implementations:
-    /// ① standalone classes implement it directly (Bomb's method signatures already match, just declare);
+    /// ① standalone classes implement it directly (the former Bomb monolith's method signatures
+    ///    already matched, just declared);
     /// ② framework objects attach it to an Interactable, implemented by CarriablePart — note the
     ///    implementation must sit on the Interactable's **root object** (RopeGun probes with
     ///    GetComponent; a child object would not be found).

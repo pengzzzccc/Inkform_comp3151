@@ -35,7 +35,7 @@
 .vscode/
 .mimocode/
 .workbuddy/
-
+.zcode/
 
 # Gradle cache directory
 .gradle/

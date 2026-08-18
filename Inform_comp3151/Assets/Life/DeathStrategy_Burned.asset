@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e86588c8cc23d147af59e0aff778bc0, type: 3}
+  m_Name: DeathStrategy_Burned
+  m_EditorClassIdentifier: 
+  cause: 3
+  respawnDelay: 1.1
+  pieces: {fileID: 11400000, guid: 2563b3cff52d3cff5f6fe4d9ecafb3ca, type: 2}
+  burstForce: 9
+  trauma: 0.5
+  hitStop: 0.1
+  zoom: -0.4
+  zoomTime: 0.45
+  punch: 0.9
+  punchTime: 0.6
+  deathCue: {fileID: 11400000, guid: 360ed3774a98fa742be7fc7f79800244, type: 2}
