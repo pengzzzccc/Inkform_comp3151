@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Save;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,7 +14,7 @@ namespace Inkform.Level
     ///
     /// Also the publisher of LevelBus.Started: on every scene load it resolves the scene name back to a
     /// LevelScene asset (null for the menu / unregistered scenes) and broadcasts it, keeping
-    /// LevelBus.Current accurate for whoever needs "which level is this" (HUD, audio, a future save).
+    /// LevelBus.Current accurate for whoever needs "which level is this" (HUD, audio).
     ///
     /// Attach to GameManager (the DontDestroyOnLoad host, already carrying UIManager / RespawnDirector).
     /// A sibling SceneDirector is reached by UIManager via GetComponent — like it already does for
@@ -34,6 +35,11 @@ namespace Inkform.Level
         // Set on LevelBus.Completed, consumed by RespawnDirector on the next scene's init: spawn the
         // player beside the door that leads back to the scene we came from, instead of the level start point
         private string pendingSpawnFrom;
+
+        // Set on ContinueGame, consumed the same way one scene later: the exact coordinate a save
+        // recorded. Outranks both of the above at the far end — a load is the one case where the
+        // scene's own spawn points are the wrong answer.
+        private Vector2? pendingSpawnPos;
 
         void Awake()
         {
@@ -91,8 +97,8 @@ namespace Inkform.Level
         // ---- Transitions (the only SceneManager.LoadScene call sites in the project) ----
 
         /// <summary>
-        /// Starts a fresh run in the flow's entry level. Called by UIManager (Save menu slot buttons,
-        /// which all land here until a save system exists).
+        /// Starts a fresh run in the flow's entry level. Called by UIManager for an empty save slot,
+        /// and by ContinueGame when a save cannot be honoured.
         /// </summary>
         public void StartNewGame()
         {
@@ -104,9 +110,43 @@ namespace Inkform.Level
             LoadLevel(flow.entryLevel);
         }
 
-        /// <summary>Returns to the main menu. Called by UIManager (pause menu's Save &amp; Quit).</summary>
+        /// <summary>
+        /// Resumes a saved run: loads the room the save names and hands RespawnDirector the coordinate
+        /// to put the player on. A save naming a room the flow no longer has (an asset renamed or
+        /// deleted since it was written) is not fatal — warn and start over rather than load nothing.
+        /// </summary>
+        public void ContinueGame(SaveData save)
+        {
+            if (save == null || save.IsEmpty) { StartNewGame(); return; }
+
+            if (flow == null)
+            {
+                Debug.LogWarning("SceneDirector: no LevelFlow configured — cannot continue a saved run", this);
+                return;
+            }
+
+            LevelScene target = flow.FindBySceneName(save.sceneName);
+            if (target == null)
+            {
+                Debug.LogWarning($"SceneDirector: saved room '{save.sceneName}' is not in the flow — starting a new run instead", this);
+                StartNewGame();
+                return;
+            }
+
+            // A load places the player by coordinate, so any door-side spawn left over from an earlier
+            // transition must not also be waiting at the far end.
+            pendingSpawnFrom = null;
+            pendingSpawnPos = new Vector2(save.spawnX, save.spawnY);
+            LoadLevel(target);
+        }
+
+        /// <summary>Returns to the main menu. Called by UIManager (pause menu's Save &amp; Quit) and by
+        /// the dead-end fallback below. Closes the run first, which is the manual save: whatever the
+        /// autosave last recorded gets its play time and death count brought up to date.</summary>
         public void ReturnToMainMenu()
         {
+            SaveStore.EndRun();
+
             if (flow == null)
             {
                 Debug.LogWarning("SceneDirector: no LevelFlow configured — cannot return to the main menu", this);
@@ -168,10 +208,24 @@ namespace Inkform.Level
             return v;
         }
 
+        /// <summary>The coordinate a loaded save wants the player placed on (set by ContinueGame); null
+        /// when this scene was not reached by loading a save. Cleared on read, like the one above, so
+        /// it applies to exactly one scene init.</summary>
+        public Vector2? ConsumePendingSpawnPos()
+        {
+            Vector2? v = pendingSpawnPos;
+            pendingSpawnPos = null;
+            return v;
+        }
+
         // ---- Accessors for UIManager (scene-name policy lives here, not duplicated in the UI layer) ----
 
         public bool IsMenuScene(string sceneName) => flow != null && flow.IsMenuScene(sceneName);
 
         public LevelScene CurrentLevel => LevelBus.Current;
+
+        /// <summary>The LevelScene asset for a scene name, or null. Lets the save menu turn the room
+        /// name stored in a save file into something worth reading, without holding the flow itself.</summary>
+        public LevelScene FindLevel(string sceneName) => flow != null ? flow.FindBySceneName(sceneName) : null;
     }
 }

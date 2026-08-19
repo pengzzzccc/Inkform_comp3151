@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Input;
+using Inkform.Save;
 using Inkform.Settings;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -214,10 +215,10 @@ namespace Inkform.UI
         }
 
         /// <summary>
-        /// Starts a fresh run. Callback for the Save menu's slot buttons — every slot lands here
-        /// because there is no save system yet; when there is, loading a slot becomes a different call.
+        /// Starts a fresh run in a save slot, discarding whatever that slot held. Callback for the Save
+        /// menu's empty slots, and for a slot the player confirmed overwriting.
         /// </summary>
-        public void StartNewGame()
+        public void StartNewGame(int slot)
         {
             SetPaused(false);
 
@@ -226,12 +227,43 @@ namespace Inkform.UI
                 Debug.LogWarning("UIManager: no SceneDirector on the GameManager — cannot start a new game", this);
                 return;
             }
+
+            // Claim the slot before the load: the entry room's first autosave fires on the next scene
+            // init, and with no active slot it would be dropped silently.
+            SaveStore.BeginNewRun(slot);
             sceneDirector.StartNewGame();
         }
 
+        /// <summary>Resumes the run held in a save slot. Callback for the Save menu's occupied slots.
+        /// A slot that turns out to be empty falls through to a fresh run inside SceneDirector.</summary>
+        public void ContinueGame(int slot)
+        {
+            SetPaused(false);
+
+            if (sceneDirector == null)
+            {
+                Debug.LogWarning("UIManager: no SceneDirector on the GameManager — cannot continue a saved run", this);
+                return;
+            }
+
+            SaveStore.ContinueRun(slot);
+            sceneDirector.ContinueGame(SaveStore.Get(slot));
+        }
+
+        /// <summary>The display name of the level a save file names, for the save menu's slot rows.
+        /// Routed through here rather than read from the flow directly because panels never touch the
+        /// game layer (see the class docs); falls back to the raw scene name.</summary>
+        public string LevelDisplayName(string sceneName)
+        {
+            Inkform.Level.LevelScene level = sceneDirector != null ? sceneDirector.FindLevel(sceneName) : null;
+            return level != null ? level.DisplayName : sceneName;
+        }
+
         /// <summary>
-        /// Pause menu's "Save &amp; Quit": returns to the main menu. **Saves nothing** — no save system
-        /// exists yet; the button's label is aspirational and the run is lost.
+        /// Pause menu's "Save &amp; Quit": saves and returns to the main menu. The saving happens inside
+        /// SceneDirector.ReturnToMainMenu (SaveStore.EndRun), so the dead-end path back to the menu
+        /// gets it too — the autosave has already recorded the position, and closing the run is what
+        /// brings its play time and death count up to date.
         /// </summary>
         public void QuitToMainMenu()
         {

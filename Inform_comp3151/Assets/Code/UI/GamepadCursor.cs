@@ -10,7 +10,8 @@ namespace Inkform.UI
     /// <summary>
     /// Gamepad virtual cursor: Apex-style UI control for the menu layer. The left stick drives an
     /// on-screen cursor (the same aim_cursor art the rope gun reticle uses), and the south face button
-    /// (<Gamepad>/buttonSouth, A) is the click. Movement speed scales with SettingsStore.StickSensitivity.
+    /// (<Gamepad>/buttonSouth, A) presses and releases like a mouse button — see Press / Release, which
+    /// is what lets a pad hold a control down. Movement speed scales with SettingsStore.StickSensitivity.
     /// The right stick scrolls the ScrollRect under the cursor (the settings tabs).
     ///
     /// This replaces the stock focus-highlight navigation for gamepads: the shared input asset's UI map
@@ -49,6 +50,7 @@ namespace Inkform.UI
         private PointerEventData pointerData;
         private readonly List<RaycastResult> raycastResults = new List<RaycastResult>();
         private GameObject hovered;
+        private GameObject pressedTarget;   // took the pointerDown; the release goes back to this one
         private bool visible;
 
         private static Sprite discSprite;
@@ -135,8 +137,10 @@ namespace Inkform.UI
                         + rstick.y * ScrollSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime);
             }
 
-            if (gamepad.buttonSouth.wasPressedThisFrame)
-                Click();
+            // Two separate ifs, not else-if: a tap short enough to press and release inside one frame
+            // must still produce both halves, or the control would stay stuck down.
+            if (gamepad.buttonSouth.wasPressedThisFrame) Press();
+            if (gamepad.buttonSouth.wasReleasedThisFrame) Release();
         }
 
         private void SetVisible(bool show)
@@ -150,9 +154,11 @@ namespace Inkform.UI
                 localPos = Vector2.zero;
                 cursorRect.anchoredPosition = Vector2.zero;
                 hovered = null;
+                pressedTarget = null;   // whatever was held when the cursor last vanished is long gone
             }
             else
             {
+                CancelPress();
                 ClearHover();
             }
         }
@@ -182,19 +188,54 @@ namespace Inkform.UI
                 ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerEnterHandler);
         }
 
-        private void Click()
+        // A real press/release pair rather than down/up/click fired in a single frame, which is what
+        // this used to do. One frame is indistinguishable from a tap, so no control could ever observe
+        // a *hold* from a pad — and the save menu's slots are exactly that: tap to continue, hold to
+        // offer an overwrite (see UiHoldButton). It also means the press scale in UiSelectableFx
+        // finally plays for pad users, who previously saw the button snap back the same frame.
+        private void Press()
         {
             if (EventSystem.current == null || hovered == null) return;
             EnsurePointerData();
+            if (pointerData == null) return;
 
             pointerData.position = RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+            pressedTarget = ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerDownHandler);
+        }
 
-            // Down/up/click in one frame. The press scale animation is not worth a hold-release state
-            // machine for a single confirm key; pointerClick is what reaches Button.onClick and
-            // UiSelectableFx's click sound. Toggles flip via their own IPointerClickHandler here too.
-            ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerDownHandler);
-            ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerUpHandler);
-            ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerClickHandler);
+        private void Release()
+        {
+            if (pressedTarget == null) return;
+            EnsurePointerData();
+            if (pointerData == null) { pressedTarget = null; return; }
+
+            pointerData.position = RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+            ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerUpHandler);
+
+            // Same rule the mouse follows: a release only counts as a click when it lands back on the
+            // control the press started on, so sliding the cursor off a button cancels it. pointerClick
+            // is what reaches Button.onClick and UiSelectableFx's click sound; toggles flip on their
+            // own IPointerClickHandler here too.
+            GameObject clickTarget = hovered != null
+                ? ExecuteEvents.GetEventHandler<IPointerClickHandler>(hovered)
+                : null;
+            if (clickTarget == pressedTarget)
+                ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerClickHandler);
+
+            pressedTarget = null;
+        }
+
+        /// <summary>Ends a press without producing a click — for when the cursor is taken away
+        /// mid-hold (panel closed, pad unplugged). Without it the control keeps its pressed visual
+        /// state and UiHoldButton never learns the press ended.</summary>
+        private void CancelPress()
+        {
+            if (pressedTarget == null) return;
+
+            EnsurePointerData();
+            if (pointerData != null)
+                ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerUpHandler);
+            pressedTarget = null;
         }
 
         private void ClearHover()

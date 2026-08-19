@@ -123,6 +123,11 @@ namespace Inkform.EditorTools
                 }
                 SerializedObject so = new SerializedObject(level);
                 so.FindProperty("sceneName").stringValue = room.sceneName;
+
+                // The human-readable half, shown by the save menu's slot rows. Same string the in-scene
+                // RoomLabel prints (BuildRoomLabel), so the name on the wall and the name in the menu
+                // can never drift apart.
+                so.FindProperty("displayName").stringValue = room.levelName;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 assets[room.sceneName] = level;
             }

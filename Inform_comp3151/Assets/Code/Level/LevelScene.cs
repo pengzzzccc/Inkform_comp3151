@@ -17,6 +17,13 @@ namespace Inkform.Level
         [Tooltip("Scene file name, must match Build Settings exactly (Unity's SceneManager.LoadScene matches by name). Mismatched = a load that silently never resolves")]
         public string sceneName;
 
+        [Tooltip("Human-readable name for menus (the save slots). Empty falls back to the scene name — filled by RoomBuilder from its room table")]
+        public string displayName;
+
+        /// <summary>The name to show a player. Falls back to sceneName, so an asset that never got a
+        /// displayName still reads as something rather than as a blank row in the save menu.</summary>
+        public string DisplayName => string.IsNullOrEmpty(displayName) ? sceneName : displayName;
+
         [Header("Topology")]
         [Tooltip("The player may leave this level through any of these connections. A level with several exits (e.g. a normal door and a secret door) lists them all; the in-scene LevelExit trigger names which one it is by its id")]
         public LevelConnection[] connections;

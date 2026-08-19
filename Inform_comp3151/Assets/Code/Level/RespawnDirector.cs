@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Life;
+using Inkform.Save;
 using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -81,6 +82,17 @@ namespace Inkform.Level
             GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
             if (player == null) return;
 
+            // Loaded save: the coordinate the save recorded outranks every spawn point in the scene —
+            // it is the whole point of continuing a run. Checked first so neither the door-side spawn
+            // nor the start point can win, and consumed here so it applies to this scene only.
+            Vector2? loaded = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnPos() : null;
+            if (loaded.HasValue)
+            {
+                checkpoint = loaded.Value;
+                PlaceAndRecord(player);
+                return;
+            }
+
             // Startup respawn point: prefer the checkpoint with isStartPoint checked and teleport the
             // player there; with none checked the game still plays — falls back to "wherever the
             // player was placed in the scene"
@@ -96,13 +108,38 @@ namespace Inkform.Level
             if (spawn == null)
             {
                 checkpoint = player.transform.position;
+                RecordSave();   // still a new room, still where the run now is — see RecordSave
                 return;
             }
 
             checkpoint = spawn.SpawnPos;
-            LifeBus.RaiseRespawned(player, checkpoint);   // reuse the same respawn path instead of a second teleport implementation
-            FxBus.RaiseSnap();
+            PlaceAndRecord(player);
         }
+
+        // Teleport + camera snap + autosave, shared by both of InitForScene's placing branches.
+        // RaiseRespawned rather than moving the transform here: reuse the same respawn path instead of
+        // a second teleport implementation.
+        private void PlaceAndRecord(GameObject player)
+        {
+            LifeBus.RaiseRespawned(player, checkpoint);
+            FxBus.RaiseSnap();
+            RecordSave();
+        }
+
+        /// <summary>
+        /// Autosave. Called at the two moments `checkpoint` changes for a reason worth keeping — a room
+        /// entered, or a checkpoint touched — so the save always names a place the player can be put
+        /// back onto. Deliberately *not* called from the death respawn or from Unstuck: neither moves
+        /// the checkpoint, so there would be nothing new to write.
+        ///
+        /// This lives here rather than in a save-specific director because this class already owns
+        /// "where the player comes back", and reading `checkpoint` from anywhere else would mean
+        /// racing this component's own deferred scene init (both SceneDirector and this one defer by a
+        /// frame, and Update order between two components on one GameObject is not defined).
+        /// SaveStore ignores the call entirely outside a run, so opening a level straight from the
+        /// editor writes nothing.
+        /// </summary>
+        private void RecordSave() => SaveStore.RecordProgress(SceneManager.GetActiveScene().name, checkpoint);
 
         void Update()
         {
@@ -148,6 +185,7 @@ namespace Inkform.Level
         private void OnCheckpointSet(Vector2 pos)
         {
             checkpoint = pos;
+            RecordSave();
         }
 
         private void OnDied(DeathContext ctx)
