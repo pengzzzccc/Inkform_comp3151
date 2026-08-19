@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.IO;
 using Inkform.Level;
+using Inkform.LevelGraph;
+using Inkform.LevelGraph.EditorTools;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -39,139 +41,155 @@ namespace Inkform.EditorTools
         private const string GeneratedArtDir = "Assets/Art/Generated";
         private const string WhitePixelPath = GeneratedArtDir + "/WhitePixel.png";
 
-        // ---- Room data (Docs/LevelGenerationPlan.md §3.2) ----
-        // sceneName doubles as the LevelScene asset name, the scene file name, the door's exitId and
-        // the door label's destination — one string, four places, no spelling drift.
+        // ---- Room data ----
+        // Sourced from LevelGraph.txt, which is the single source of truth for the topology. This used
+        // to be a hand-maintained C# table that also generated the LevelScene assets, which meant the
+        // graph existed in two places that nothing compared. The graph tool owns it now; this builder
+        // only reads it, and only to know which greybox scenes to bootstrap.
 
         private sealed class RoomData
         {
             public readonly string sceneName;
             public readonly string levelName;
+
+            /// <summary>Target room of each door, in graph order. Used for the door label and for the
+            /// Spawn_&lt;target&gt; checkpoint name.</summary>
             public readonly string[] neighbors;
 
-            public RoomData(string sceneName, string levelName, params string[] neighbors)
+            /// <summary>Parallel to neighbors: the id each door announces. Normally identical to the
+            /// target name — the graph only differs when a link declares an explicit id.</summary>
+            public readonly string[] exitIds;
+
+            public RoomData(string sceneName, string levelName, string[] neighbors, string[] exitIds)
             {
                 this.sceneName = sceneName;
                 this.levelName = levelName;
                 this.neighbors = neighbors;
+                this.exitIds = exitIds;
             }
         }
 
-        private const string Level1Name = "a laboratory in a cave";
-        private const string Level2Name = "Mountain tunnel";
-        private const string Level3Name = "Battle Corridor";
+        // Rebuilt on demand from the graph file. Each menu entry clears it first, so editing the graph
+        // and running a builder in the same session cannot act on a stale table.
+        private static RoomData[] cachedRooms;
 
-        private static readonly RoomData[] Rooms =
+        private static RoomData[] Rooms
         {
-            new RoomData("L1_Player", Level1Name, "L1_S1", "L1_B1", "L1_B5"),
-            new RoomData("L1_Boss", Level1Name, "L1_B5", "L1_B6", "L2_B1"),
-            new RoomData("L1_B1", Level1Name, "L1_Player", "L1_B2", "L1_B3", "L1_S2"),
-            new RoomData("L1_B2", Level1Name, "L1_B1", "L1_S3"),
-            new RoomData("L1_B3", Level1Name, "L1_B1", "L1_B4", "L1_B5", "L1_B6"),
-            new RoomData("L1_B4", Level1Name, "L1_B3", "L1_S4"),
-            new RoomData("L1_B5", Level1Name, "L1_Player", "L1_B3", "L1_Boss"),
-            new RoomData("L1_B6", Level1Name, "L1_S3", "L1_B3", "L1_Boss"),
-            new RoomData("L1_S1", Level1Name, "L1_Player"),
-            new RoomData("L1_S2", Level1Name, "L1_B1"),
-            new RoomData("L1_S3", Level1Name, "L1_B2", "L1_B6"),
-            new RoomData("L1_S4", Level1Name, "L1_B4", "L2_S1"),
-            new RoomData("L2_Boss", Level2Name, "L2_B6", "L2_S2", "L3_LongFight"),
-            new RoomData("L2_B1", Level2Name, "L2_B3", "L2_S1", "L1_Boss"),
-            new RoomData("L2_B2", Level2Name, "L2_S1", "L2_S2"),
-            new RoomData("L2_B3", Level2Name, "L2_B1", "L2_B4"),
-            new RoomData("L2_B4", Level2Name, "L2_B3", "L2_B5", "L2_S1", "L2_S2"),
-            new RoomData("L2_B5", Level2Name, "L2_B4", "L2_B6", "L2_S2"),
-            new RoomData("L2_B6", Level2Name, "L2_B5", "L2_Boss"),
-            new RoomData("L2_S1", Level2Name, "L2_B1", "L2_B4", "L2_B2", "L1_S4"),
-            new RoomData("L2_S2", Level2Name, "L2_B4", "L2_B5", "L2_B2", "L2_Boss"),
-            new RoomData("L3_LongFight", Level3Name, "L2_Boss"),
-        };
+            get
+            {
+                if (cachedRooms == null) cachedRooms = LoadRoomsFromGraph();
+                return cachedRooms;
+            }
+        }
+
+        private static void InvalidateRooms() => cachedRooms = null;
+
+        private static RoomData[] LoadRoomsFromGraph()
+        {
+            LevelGraphDocument doc = LevelGraphFile.Load();
+
+            if (doc.Rooms.Count == 0)
+            {
+                Debug.LogWarning($"RoomBuilder: {LevelGraphFile.Path} has no rooms. "
+                               + "Open Tools > Inkform > Level Graph and press \"Import From Assets\" to seed it.");
+                return new RoomData[0];
+            }
+
+            var exits = new Dictionary<string, List<DirectedLink>>();
+            foreach (RoomEntry room in doc.Rooms) exits[room.Name] = new List<DirectedLink>();
+            foreach (DirectedLink link in doc.EnumerateDirected())
+            {
+                if (exits.TryGetValue(link.From, out List<DirectedLink> list)) list.Add(link);
+            }
+
+            var rooms = new RoomData[doc.Rooms.Count];
+            for (int i = 0; i < doc.Rooms.Count; i++)
+            {
+                RoomEntry room = doc.Rooms[i];
+                List<DirectedLink> outgoing = exits[room.Name];
+
+                var neighbors = new string[outgoing.Count];
+                var exitIds = new string[outgoing.Count];
+                for (int k = 0; k < outgoing.Count; k++)
+                {
+                    neighbors[k] = outgoing[k].To;
+                    exitIds[k] = outgoing[k].ExitId;
+                }
+
+                rooms[i] = new RoomData(room.Name, room.DisplayName, neighbors, exitIds);
+            }
+
+            return rooms;
+        }
 
         // ---- Menu entries ----
 
-        [MenuItem("Tools/Inkform/Room Builder/Build All Rooms")]
-        public static void BuildAllRooms()
+        [MenuItem("Tools/Inkform/Room Builder/Build Missing Rooms")]
+        public static void BuildMissingRooms()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            InvalidateRooms();
             EnsureFolder(ScenesDir, "Assets/Scenes");
-            foreach (RoomData room in Rooms) BuildRoom(room);
+
+            int built = 0;
+            int skipped = 0;
+
+            foreach (RoomData room in Rooms)
+            {
+                // The whole point of this method. The old Build All Rooms opened an empty scene and
+                // saved over every room, so any hand authoring in a generated level was destroyed on
+                // the next run — which made the generator something a designer could not safely live
+                // beside. A scene that exists is now the designer's, and the builder leaves it alone.
+                if (File.Exists($"{ScenesDir}/{room.sceneName}.unity")) { skipped++; continue; }
+
+                BuildRoom(room);
+                built++;
+            }
+
             AssetDatabase.SaveAssets();
-            Debug.Log($"RoomBuilder: built {Rooms.Length} room scenes under {ScenesDir}/");
+            Debug.Log($"RoomBuilder: {built} greybox room(s) built, {skipped} existing scene(s) left untouched.");
         }
 
-        [MenuItem("Tools/Inkform/Room Builder/Build Level Graph")]
-        public static void BuildLevelGraph()
+        /// <summary>
+        /// Throws away one room's scene and regenerates the greybox. The only destructive entry point
+        /// left, and it is deliberately single-room, explicit and confirmed: re-rolling a blockout you
+        /// have not authored yet is a reasonable thing to want, doing it to 22 rooms by accident is not.
+        /// </summary>
+        [MenuItem("Tools/Inkform/Room Builder/Rebuild Selected Room (Destructive)")]
+        public static void RebuildSelectedRoom()
         {
-            EnsureFolder(LevelsDir, ScenesDir);
+            InvalidateRooms();
 
-            // Pass 1: create-or-load every LevelScene asset so connection targets exist before wiring.
-            // sceneName goes through Unity's SerializedObject pipeline — a plain field assignment +
-            // SetDirty once failed to persist the string (all assets were saved with an empty
-            // sceneName, silently killing FindBySceneName at runtime); the verify pass below catches
-            // any future loss instead of letting the graph die quietly.
-            var assets = new Dictionary<string, LevelScene>();
+            string roomName = EditorInputDialog.Show(
+                "Rebuild room", "Scene name of the room to regenerate as a greybox:", "");
+            if (string.IsNullOrEmpty(roomName)) return;
+
+            RoomData target = null;
             foreach (RoomData room in Rooms)
             {
-                string path = $"{LevelsDir}/{room.sceneName}.asset";
-                LevelScene level = AssetDatabase.LoadAssetAtPath<LevelScene>(path);
-                if (level == null)
-                {
-                    level = ScriptableObject.CreateInstance<LevelScene>();
-                    level.name = room.sceneName;
-                    level.sceneName = room.sceneName;   // set before CreateAsset so the first write is already correct
-                    AssetDatabase.CreateAsset(level, path);
-                }
-                SerializedObject so = new SerializedObject(level);
-                so.FindProperty("sceneName").stringValue = room.sceneName;
-
-                // The human-readable half, shown by the save menu's slot rows. Same string the in-scene
-                // RoomLabel prints (BuildRoomLabel), so the name on the wall and the name in the menu
-                // can never drift apart.
-                so.FindProperty("displayName").stringValue = room.levelName;
-                so.ApplyModifiedPropertiesWithoutUndo();
-                assets[room.sceneName] = level;
+                if (room.sceneName == roomName) { target = room; break; }
             }
 
-            // Pass 2: rebuild every connection list from the data table
-            foreach (RoomData room in Rooms)
+            if (target == null)
             {
-                LevelScene level = assets[room.sceneName];
-                var connections = new List<LevelConnection>(room.neighbors.Length);
-                foreach (string neighbor in room.neighbors) connections.Add(new LevelConnection { id = neighbor, target = assets[neighbor] });
-                level.connections = connections.ToArray();
-                EditorUtility.SetDirty(level);
+                Debug.LogWarning($"RoomBuilder: '{roomName}' is not a room in {LevelGraphFile.Path}.");
+                return;
             }
 
-            // LevelFlow: create-or-load; entryLevel and levels are ours to set, mainMenuSceneName is not
-            LevelFlow flow = AssetDatabase.LoadAssetAtPath<LevelFlow>(FlowAssetPath);
-            if (flow == null)
-            {
-                flow = ScriptableObject.CreateInstance<LevelFlow>();
-                AssetDatabase.CreateAsset(flow, FlowAssetPath);
-            }
-            flow.entryLevel = assets["L1_Player"];
-            var all = new List<LevelScene>(Rooms.Length);
-            foreach (RoomData room in Rooms) all.Add(assets[room.sceneName]);
-            flow.levels = all.ToArray();
-            EditorUtility.SetDirty(flow);
+            if (!EditorUtility.DisplayDialog(
+                    "Rebuild room",
+                    $"Discard everything in {roomName}.unity and regenerate it as a greybox?\n\nThis cannot be undone.",
+                    "Discard and rebuild", "Cancel"))
+                return;
+
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            BuildRoom(target);
             AssetDatabase.SaveAssets();
-
-            // Verify sceneName persisted to disk: read the asset file directly — LoadAssetAtPath
-            // returns the in-memory copy (always holding the value just written), which cannot catch
-            // a lost write. The graph is dead without sceneName, so fail loudly.
-            var missing = new List<string>();
-            foreach (RoomData room in Rooms)
-            {
-                string assetPath = $"{LevelsDir}/{room.sceneName}.asset";
-                string fullPath = System.IO.Path.Combine(Application.dataPath, assetPath.Substring("Assets/".Length));
-                string yaml = System.IO.File.Exists(fullPath) ? System.IO.File.ReadAllText(fullPath) : string.Empty;
-                if (!yaml.Contains($"sceneName: {room.sceneName}")) missing.Add(room.sceneName);
-            }
-            if (missing.Count > 0)
-                Debug.LogError($"RoomBuilder: sceneName did not persist for {missing.Count} asset(s): {string.Join(", ", missing)}");
-            else
-                Debug.Log($"RoomBuilder: level graph wired — {Rooms.Length} LevelScene assets, flow at {FlowAssetPath}");
+            Debug.Log($"RoomBuilder: rebuilt {roomName} as a greybox.");
         }
+
 
         [MenuItem("Tools/Inkform/Room Builder/Wire GameManager Flow")]
         public static void WireGameManagerFlow()
@@ -179,7 +197,7 @@ namespace Inkform.EditorTools
             LevelFlow flow = AssetDatabase.LoadAssetAtPath<LevelFlow>(FlowAssetPath);
             if (flow == null || flow.levels == null || flow.levels.Length == 0)
             {
-                Debug.LogWarning("RoomBuilder: run 'Build Level Graph' first — flow asset has no levels yet");
+                Debug.LogWarning("RoomBuilder: the flow asset has no levels yet — open Tools > Inkform > Level Graph and press Apply first");
                 return;
             }
 
@@ -270,11 +288,16 @@ namespace Inkform.EditorTools
             return added;
         }
 
-        [MenuItem("Tools/Inkform/Room Builder/Build All")]
+        /// <summary>
+        /// The whole bootstrap in one go, and non-destructive throughout: greybox only what has no
+        /// scene yet, then make the assets match the graph. The topology itself is not generated here
+        /// any more — LevelGraph.txt owns it, and Tools > Inkform > Level Graph is where it is edited.
+        /// </summary>
+        [MenuItem("Tools/Inkform/Room Builder/Build All (non-destructive)")]
         public static void BuildAll()
         {
-            BuildAllRooms();
-            BuildLevelGraph();
+            BuildMissingRooms();
+            LevelGraphSync.Apply(LevelGraphFile.Load());
             WireGameManagerFlow();
             FixBuildSettings();
         }
@@ -382,7 +405,10 @@ namespace Inkform.EditorTools
 
                 LevelExit exit = door.AddComponent<LevelExit>();
                 SerializedObject soExit = new SerializedObject(exit);
-                soExit.FindProperty("exitId").stringValue = target;
+                // The id the graph declares, which is normally the target room name but may be an
+                // explicit one. The label and the Spawn_ checkpoint below stay keyed to the room name:
+                // that is what RespawnDirector.FindDoorSpawn looks for, regardless of the exit's id.
+                soExit.FindProperty("exitId").stringValue = room.exitIds[k];
                 soExit.ApplyModifiedPropertiesWithoutUndo();
 
                 // Label above the door; the top door's label hangs below it to stay on-screen.

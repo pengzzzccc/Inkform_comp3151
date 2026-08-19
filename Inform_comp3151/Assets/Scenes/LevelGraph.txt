@@ -1,0 +1,59 @@
+# Inkform level graph — the single source of truth for the level topology.
+# Edit here or in Tools > Inkform > Level Graph; the window writes this file back.
+# The LevelScene / LevelFlow assets are generated from this — do not hand-edit them.
+
+menu   MainMenu
+entry  L1_Player
+
+room   L1_Player     @0,0       "a laboratory in a cave"
+room   L1_Boss       @600,0     "a laboratory in a cave"
+room   L1_B1         @300,0     "a laboratory in a cave"
+room   L1_B2         @600,150   "a laboratory in a cave"
+room   L1_B3         @600,300   "a laboratory in a cave"
+room   L1_B4         @900,0     "a laboratory in a cave"
+room   L1_B5         @300,150   "a laboratory in a cave"
+room   L1_B6         @900,150   "a laboratory in a cave"
+room   L1_S1         @300,300   "a laboratory in a cave"
+room   L1_S2         @600,450   "a laboratory in a cave"
+room   L1_S3         @900,300   "a laboratory in a cave"
+room   L1_S4         @1200,0    "a laboratory in a cave"
+room   L2_Boss       @2100,0    "Mountain tunnel"
+room   L2_B1         @900,450   "Mountain tunnel"
+room   L2_B2         @1500,0    "Mountain tunnel"
+room   L2_B3         @1200,150  "Mountain tunnel"
+room   L2_B4         @1500,150  "Mountain tunnel"
+room   L2_B5         @1800,0    "Mountain tunnel"
+room   L2_B6         @2100,150  "Mountain tunnel"
+room   L2_S1         @1200,300  "Mountain tunnel"
+room   L2_S2         @1800,150  "Mountain tunnel"
+room   L3_LongFight  @2400,0    "Battle Corridor"
+
+link   L1_Player  <-> L1_S1
+link   L1_Player  <-> L1_B1
+link   L1_Player  <-> L1_B5
+link   L1_Boss    <-> L1_B5
+link   L1_Boss    <-> L1_B6
+link   L1_Boss    <-> L2_B1
+link   L1_B1      <-> L1_B2
+link   L1_B1      <-> L1_B3
+link   L1_B1      <-> L1_S2
+link   L1_B2      <-> L1_S3
+link   L1_B3      <-> L1_B4
+link   L1_B3      <-> L1_B5
+link   L1_B3      <-> L1_B6
+link   L1_B4      <-> L1_S4
+link   L1_B6      <-> L1_S3
+link   L1_S4      <-> L2_S1
+link   L2_Boss    <-> L2_B6
+link   L2_Boss    <-> L2_S2
+link   L2_Boss    <-> L3_LongFight
+link   L2_B1      <-> L2_B3
+link   L2_B1      <-> L2_S1
+link   L2_B2      <-> L2_S1
+link   L2_B2      <-> L2_S2
+link   L2_B3      <-> L2_B4
+link   L2_B4      <-> L2_B5
+link   L2_B4      <-> L2_S1
+link   L2_B4      <-> L2_S2
+link   L2_B5      <-> L2_B6
+link   L2_B5      <-> L2_S2
