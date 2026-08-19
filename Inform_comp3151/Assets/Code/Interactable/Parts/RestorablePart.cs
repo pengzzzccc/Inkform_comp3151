@@ -42,7 +42,7 @@ namespace Inkform.Interactable.Parts
 
         // ---- IRestorable ----
 
-        public IMemento Capture() => new RestorableMemento(this, gone, transform.position, transform.rotation);
+        public IMemento Capture() => new RestorableMemento(gameObject, gone, transform.position, transform.rotation);
 
         // The single gone/whole switch, shared by hiding and restoring — maintaining the enabled
         // toggles separately on both paths would eventually miss one (same shape as
@@ -59,14 +59,16 @@ namespace Inkform.Interactable.Parts
         /// not" and where the item stood.</summary>
         private class RestorableMemento : IMemento
         {
-            private readonly RestorablePart part;
+            private readonly GameObject part;
+            private readonly RestorablePart restorablePart;
             private readonly bool gone;
             private readonly Vector3 position;
             private readonly Quaternion rotation;
 
-            public RestorableMemento(RestorablePart part, bool gone, Vector3 position, Quaternion rotation)
+            public RestorableMemento(GameObject part, bool gone, Vector3 position, Quaternion rotation)
             {
                 this.part = part;
+                this.restorablePart = part.GetComponent<RestorablePart>();
                 this.gone = gone;
                 this.position = position;
                 this.rotation = rotation;
@@ -74,24 +76,24 @@ namespace Inkform.Interactable.Parts
 
             public void Restore()
             {
-                if (part == null) return;   // item gone (scene change etc.), skip silently
+                if (restorablePart == null) return;   // item gone (scene change etc.), skip silently
 
                 // A swallowed item may still be parented to the player at death; detach so the
                 // position restore is authoritative
-                if (!gone && part.transform.parent != null) part.transform.SetParent(null);
+                if (!gone && restorablePart.transform.parent != null) restorablePart.transform.SetParent(null);
 
-                part.SetGone(gone);
+                restorablePart.SetGone(gone);
                 if (gone) return;
 
                 // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not
                 // sync, write both
-                part.transform.position = position;
-                part.transform.rotation = rotation;
-                if (part.body != null)
+                restorablePart.transform.position = position;
+                restorablePart.transform.rotation = rotation;
+                if (restorablePart.body != null)
                 {
-                    part.body.position = position;
-                    part.body.linearVelocity = Vector2.zero;
-                    part.body.angularVelocity = 0f;
+                    restorablePart.body.position = position;
+                    restorablePart.body.linearVelocity = Vector2.zero;
+                    restorablePart.body.angularVelocity = 0f;
                 }
             }
         }
