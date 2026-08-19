@@ -49,6 +49,25 @@ namespace Inkform.Interactable
             return false;
         }
 
+        /// <summary>
+        /// Every part implementing T, appended to <paramref name="into"/> — TryGetPart's plural twin.
+        /// RestorablePart uses it to collect the snapshot of every stateful part on this node.
+        ///
+        /// Constrained to `class` rather than `class, IInteractablePart` because the caller asks for
+        /// IRestorablePart, which is a capability interface a part implements alongside
+        /// IInteractablePart, not a sub-interface of it.
+        ///
+        /// Appends rather than clears: the caller owns the list and its reuse (RestorablePart keeps one
+        /// buffer across captures instead of allocating per checkpoint).
+        /// </summary>
+        public void GetParts<T>(List<T> into) where T : class
+        {
+            foreach (IInteractablePart p in parts)
+            {
+                if (p is T t) into.Add(t);
+            }
+        }
+
         void Awake()
         {
             // Parts must be collected before any physics callback: callbacks can only arrive after Awake

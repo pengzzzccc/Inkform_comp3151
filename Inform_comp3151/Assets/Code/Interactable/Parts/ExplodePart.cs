@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Fx;
+using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -20,7 +21,7 @@ namespace Inkform.Interactable.Parts
     /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
     /// distance-driven branch only.
     /// </summary>
-    public class ExplodePart : MonoBehaviour, IInteractablePart
+    public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart
     {
         [Header("Blast")]
         [SerializeField] private float blastRadius = 2f;
@@ -161,6 +162,46 @@ namespace Inkform.Interactable.Parts
 
             // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright
             if (!restorable) Destroy(root.gameObject);
+        }
+
+        // ---- IRestorablePart ----
+
+        /// <summary>
+        /// `exploded` is the state that matters here, and leaving it out of the snapshot is what made a
+        /// restored bomb inert forever: RestorablePart brought the body back but Explode() still
+        /// short-circuited on the first line, and ExplodeOnContact reported the contact as handled, so
+        /// no later part saw it either.
+        ///
+        /// Captured rather than reset: a bomb that was already spent when the checkpoint was taken
+        /// should still be spent after the respawn.
+        /// </summary>
+        public IMemento Capture() => new ExplodeMemento(this, exploded);
+
+        private class ExplodeMemento : IMemento
+        {
+            private readonly ExplodePart part;
+            private readonly bool exploded;
+
+            public ExplodeMemento(ExplodePart part, bool exploded)
+            {
+                this.part = part;
+                this.exploded = exploded;
+            }
+
+            public void Restore()
+            {
+                if (part == null) return;   // part gone (scene change etc.), skip silently
+
+                part.exploded = exploded;
+
+                // Presentation caches, not state — but they still have to be cleared. RefreshFrame only
+                // rewrites the sprite when the derived index *changes*, so a bomb that blew up on a late
+                // warning frame would come back still drawn mid-warning and stay that way until the
+                // player happened to cross a frame boundary. -1 / null guarantee the next RefreshFrame
+                // writes whatever frame the current distance calls for.
+                part.frameIndex = -1;
+                part._current = null;
+            }
         }
     }
 }

@@ -32,6 +32,11 @@ namespace Inkform.Interactable.Parts
         private bool held;
         private Timer spitTimer;    // spit-immunity timer: short-circuits only player contact
 
+        // The size this object is meant to be, read once before anything can have touched it. Re-asserted
+        // every time the item goes back into the world — see the SetParent notes below for what used to
+        // happen to it.
+        private Vector3 homeScale;
+
         public void Attach(Interactable root)
         {
             this.root = root;
@@ -40,6 +45,7 @@ namespace Inkform.Interactable.Parts
                 Debug.LogWarning($"{root.name} has CarriablePart but no Rigidbody2D; it cannot be swallowed", root);
 
             hitBox = root.GetComponent<Collider2D>();
+            homeScale = root.transform.localScale;
             renderers.Clear();
             renderers.AddRange(root.GetComponentsInChildren<Renderer>(true));
         }
@@ -101,8 +107,7 @@ namespace Inkform.Interactable.Parts
         public void DropAt(Vector2 pos)
         {
             held = false;
-            transform.SetParent(null);
-            SetVisible(true);
+            ReturnToWorld();
             hitBox.enabled = true;
             body.simulated = true;
 
@@ -122,8 +127,7 @@ namespace Inkform.Interactable.Parts
             if (item != (ICarriable)this) return;       // not the one being spit
 
             held = false;
-            transform.SetParent(null);
-            SetVisible(true);
+            ReturnToWorld();
             hitBox.enabled = true;
             body.simulated = true;
 
@@ -146,13 +150,32 @@ namespace Inkform.Interactable.Parts
         public void MarkRopeGrappled() => ropeGrappled = true;
         public void ClearRopeGrappled() => ropeGrappled = false;
 
-        // Self-deduplicating: same show/hide logic as the former Bomb's SetVisible (per-frame driving never rewrites)
-        private bool _visible = true;
+        /// <summary>
+        /// Leaves the mouth and goes back into the world: unparent, become visible, and be the size it
+        /// is supposed to be. Shared by the spit and the death-drop so the two cannot drift apart.
+        ///
+        /// **worldPositionStays: false is the whole point.** Swallow parents with false (keep the local
+        /// transform); the plain SetParent(null) that used to be here is the `true` overload, which makes
+        /// Unity rewrite localScale to preserve *world* scale. The Player root is scaled 1.2, so every
+        /// swallow/spit cycle multiplied the item by 1.2 and it visibly grew — AllinoneBomb went
+        /// 0.8 -> 0.96 -> 1.152. Matching the two calls is the fix; the explicit scale write after it is
+        /// the belt-and-braces invariant, and also repairs an item that grew before this fix.
+        /// </summary>
+        private void ReturnToWorld()
+        {
+            transform.SetParent(null, false);
+            transform.localScale = homeScale;
+            SetVisible(true);
+        }
 
+        // No dedup cache here any more. It used to keep a private `_visible` flag and skip the write
+        // when it "already" matched — but RestorablePart.SetGone drives these same renderers without
+        // going through this method, so after a HideForRestore the cache read visible while the
+        // renderers were off, and the next SetVisible(true) would no-op and leave the item permanently
+        // invisible. Two owners of one field can only stay in sync if neither caches. The three call
+        // sites are swallow / spit / drop, none of them per-frame, so there is nothing to save.
         private void SetVisible(bool visible)
         {
-            if (_visible == visible) return;
-            _visible = visible;
             foreach (Renderer r in renderers) r.enabled = visible;
         }
     }
