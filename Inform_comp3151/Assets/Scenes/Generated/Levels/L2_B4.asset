@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: L2_B4
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelScene
   sceneName: L2_B4
+  displayName: Mountain tunnel
   connections:
   - id: L2_B3
     target: {fileID: 11400000, guid: 0b115a69b7ed6ec4dbf1eb5477fff4c8, type: 2}

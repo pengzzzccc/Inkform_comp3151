@@ -10,12 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2ee91c56c11d4f2d929cada7952c8343, type: 3}
-  m_Name: L3_LongFight
+  m_Name: NewRoom
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelScene
-  sceneName: L3_LongFight
-  displayName: Battle Corridor
+  sceneName: NewRoom
+  displayName: End
   connections:
-  - id: L2_Boss
-    target: {fileID: 11400000, guid: 45431331caa94a04dab13cf3958ab6b7, type: 2}
-  - id: NewRoom
-    target: {fileID: 11400000, guid: 1f58fd347027a9c4eacc8d8bca082c6b, type: 2}
+  - id: L3_LongFight
+    target: {fileID: 11400000, guid: 58309209102359b4893d361cc6866034, type: 2}

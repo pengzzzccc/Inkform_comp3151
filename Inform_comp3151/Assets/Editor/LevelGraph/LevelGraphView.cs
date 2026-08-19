@@ -44,6 +44,11 @@ namespace Inkform.LevelGraph.EditorTools
             grid.StretchToParentSize();
 
             graphViewChanged = OnGraphViewChanged;
+
+            // Wired explicitly rather than left to whatever GraphView does by default, because the help
+            // panel tells the designer the Delete key works. Routing it through DeleteSelection keeps it
+            // going via graphViewChanged, so removals land in the document like every other edit.
+            deleteSelection = (operationName, askUser) => DeleteSelection();
         }
 
         // ---- population ----

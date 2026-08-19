@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: L1_Player
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelScene
   sceneName: L1_Player
+  displayName: a laboratory in a cave
   connections:
   - id: L1_S1
     target: {fileID: 11400000, guid: 1e3e1c6435c55844886a2d29854337df, type: 2}
