@@ -7,154 +7,174 @@ using UnityEngine.UI;
 
 namespace Inkform.UI
 {
-    /// <summary>
-    /// Gamepad virtual cursor: Apex-style UI control for the menu layer. The left stick drives an
-    /// on-screen cursor (the same aim_cursor art the rope gun reticle uses), and the south face button
-    /// (<Gamepad>/buttonSouth, A) presses and releases like a mouse button — see Press / Release, which
-    /// is what lets a pad hold a control down. Movement speed scales with SettingsStore.StickSensitivity.
-    /// The right stick scrolls the ScrollRect under the cursor (the settings tabs).
-    ///
-    /// This replaces the stock focus-highlight navigation for gamepads: the shared input asset's UI map
-    /// no longer binds any Gamepad/Joystick controls (see InputSystem_Actions), so the EventSystem never
-    /// hears a stick or button from the pad. This component reads Gamepad.current directly and drives the
-    /// same pointer pipeline a mouse does — hover and click go through ExecuteEvents, so
-    /// UiSelectableFx's scale/audio feedback and Button.onClick all fire unchanged.
-    ///
-    /// The cursor is a runtime-created overlay Canvas (sorting order 200, above the menu Canvas at 100)
-    /// holding one non-raycast Image, parented to the persistent GameManager. It shows only while a
-    /// Gamepad is connected and at least one panel is open (UIManager.AnyPanelOpen). No GraphicRaycaster
-    /// is added to this canvas: the cursor must never hit-test itself, the menu canvas does the raycast.
-    /// </summary>
-    public class GamepadCursor : MonoBehaviour
+    /// <summary>One rendered menu cursor for mouse and gamepad, sharing one Canvas coordinate space.</summary>
+    public sealed class GamepadCursor : MonoBehaviour
     {
-        // Same 1920x1080 reference the menu CanvasScaler uses (UIManager.CreateCanvas); kept in step by
-        // hand, same as FpsDisplay. Clamping to these bounds keeps the cursor on screen regardless of the
-        // scaler's match split, which is what a hardcoded Screen.width/height could not do.
-        private const float ReferenceWidth = 1920f;
-        private const float ReferenceHeight = 1080f;
-
-        [SerializeField] private Sprite cursorSprite;       // aim_cursor; wired by UIBuilder. Null -> generated disc fallback.
-        [SerializeField] private float cursorSpeed = 1000f;  // reference-space units/sec at StickSensitivity = 1
-        [SerializeField] private float cursorSize = 40f;     // reference-space size of the cursor image
-
-        /// <summary>Right-stick scroll speed in normalized ScrollRect units per second at sensitivity 1.</summary>
+        private static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
         private const float ScrollSpeed = 1.2f;
 
-        /// <summary>The sprite this cursor renders (aim_cursor); UIManager reuses it for the OS pointer.</summary>
+        [SerializeField] private Sprite cursorSprite;
+        [SerializeField] private float cursorSpeed = 1000f;
+        [SerializeField] private float cursorSize = 40f;
+
         public Sprite CursorSprite => cursorSprite;
 
         private GameObject root;
+        private RectTransform rootRect;
         private RectTransform cursorRect;
         private Vector2 localPos;
+        private SettingsStore.InputDevice activeDevice;
 
         private PointerEventData pointerData;
         private readonly List<RaycastResult> raycastResults = new List<RaycastResult>();
         private GameObject hovered;
-        private GameObject pressedTarget;   // took the pointerDown; the release goes back to this one
+        private GameObject pressedTarget;
         private bool visible;
 
         private static Sprite discSprite;
 
-        void Awake()
-        {
-            CreateCursor();
-        }
+        private void Awake() => CreateCursor();
 
         private void CreateCursor()
         {
-            root = new GameObject("Gamepad Cursor");
-            root.transform.SetParent(transform);
+            root = new GameObject("Unified Menu Cursor", typeof(RectTransform));
+            root.transform.SetParent(transform, false);
+            rootRect = (RectTransform)root.transform;
 
             Canvas canvas = root.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 30000;   // always above every other Canvas (menu 100, FpsDisplay 50)
+            canvas.sortingOrder = 30000;
 
             CanvasScaler scaler = root.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(ReferenceWidth, ReferenceHeight);
+            scaler.referenceResolution = ReferenceResolution;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = 0.5f;
 
-            GameObject img = new GameObject("Cursor", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            img.transform.SetParent(root.transform, false);
+            GameObject imageObject = new GameObject("Cursor", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            imageObject.transform.SetParent(root.transform, false);
+            Image image = imageObject.GetComponent<Image>();
+            image.sprite = cursorSprite != null ? cursorSprite : DiscSprite;
+            image.raycastTarget = false;
 
-            Image cursorImage = img.GetComponent<Image>();
-            cursorImage.sprite = cursorSprite != null ? cursorSprite : DiscSprite;
-            cursorImage.raycastTarget = false;
-
-            cursorRect = (RectTransform)img.transform;
+            cursorRect = (RectTransform)imageObject.transform;
             cursorRect.anchorMin = cursorRect.anchorMax = new Vector2(0.5f, 0.5f);
-            cursorRect.sizeDelta = new Vector2(cursorSize, cursorSize);
-
+            cursorRect.pivot = new Vector2(0.5f, 0.5f);
+            cursorRect.sizeDelta = Vector2.one * cursorSize;
             root.SetActive(false);
         }
 
-        void Update()
+        private void Update()
         {
+            bool menuOpen = UIManager.Instance != null && UIManager.Instance.AnyPanelOpen;
+            SetVisible(menuOpen);
+            if (!visible) return;
+
+            DetectActiveDevice();
+            if (activeDevice == SettingsStore.InputDevice.Gamepad && Gamepad.current != null)
+                UpdateGamepad(Gamepad.current);
+            else
+                UpdateMouse();
+        }
+
+        private void DetectActiveDevice()
+        {
+            Mouse mouse = Mouse.current;
             Gamepad gamepad = Gamepad.current;
-            bool shouldShow = gamepad != null && UIManager.Instance != null && UIManager.Instance.AnyPanelOpen;
+            bool mouseActed = mouse != null
+                && (mouse.delta.ReadValue().sqrMagnitude > 0.01f
+                    || mouse.leftButton.wasPressedThisFrame
+                    || mouse.scroll.ReadValue().sqrMagnitude > 0.01f);
+            bool padActed = gamepad != null
+                && (gamepad.leftStick.ReadValue().sqrMagnitude > 0.01f
+                    || gamepad.buttonSouth.wasPressedThisFrame);
 
-            SetVisible(shouldShow);
-            if (!visible || gamepad == null) return;
+            SettingsStore.InputDevice requested = mouseActed
+                ? SettingsStore.InputDevice.KeyboardMouse
+                : padActed ? SettingsStore.InputDevice.Gamepad : SettingsStore.Device;
 
-            // The stock focus highlight (EventSystem.currentSelectedGameObject) is a mouse/keyboard
-            // concern now; a gamepad cursor must not leave a stale highlight underneath it. Clearing
-            // every frame while a pad is attached means keyboard WASD navigation stays inert for pad
-            // owners — intended, they navigate with the cursor — and the mouse is untouched.
+            if (requested == activeDevice) return;
+            if (activeDevice == SettingsStore.InputDevice.Gamepad)
+            {
+                CancelPress();
+                ClearHover();
+            }
+            activeDevice = requested;
+            if (SettingsStore.Device != requested) SettingsStore.SetDevice(requested);
+        }
+
+        private void UpdateMouse()
+        {
+            Mouse mouse = Mouse.current;
+            if (mouse == null) return;
+
+            Vector2 screen = mouse.position.ReadValue();
+            screen.x = Mathf.Clamp(screen.x, 0f, Screen.width);
+            screen.y = Mathf.Clamp(screen.y, 0f, Screen.height);
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(rootRect, screen, null, out Vector2 local))
+            {
+                localPos = ClampLocal(local);
+                cursorRect.anchoredPosition = localPos;
+            }
+
+            // Mouse hover/down/up/click remains exclusively owned by InputSystemUIInputModule.
+        }
+
+        private void UpdateGamepad(Gamepad gamepad)
+        {
             if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
                 EventSystem.current.SetSelectedGameObject(null);
 
             Vector2 stick = gamepad.leftStick.ReadValue();
-
-            // A pad driving the cursor is the strongest possible "gamepad user" signal: flip the
-            // input family now so it is already correct when gameplay starts (menu -> level is seamless)
-            if ((stick.sqrMagnitude > 0.0001f || gamepad.buttonSouth.wasPressedThisFrame)
-                && SettingsStore.Device != SettingsStore.InputDevice.Gamepad)
-                SettingsStore.SetDevice(SettingsStore.InputDevice.Gamepad);
-
             if (stick.sqrMagnitude > 0.0001f)
             {
                 localPos += stick * cursorSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime;
-
-                float halfW = ReferenceWidth * 0.5f;
-                float halfH = ReferenceHeight * 0.5f;
-                localPos.x = Mathf.Clamp(localPos.x, -halfW, halfW);
-                localPos.y = Mathf.Clamp(localPos.y, -halfH, halfH);
+                localPos = ClampLocal(localPos);
                 cursorRect.anchoredPosition = localPos;
             }
 
             UpdateHover();
 
-            // Right stick scrolls the ScrollRect under the cursor (the settings tabs are ScrollRects);
-            // a 0.2 deadzone keeps drift from scrolling. Only runs while a panel is open (see above).
-            Vector2 rstick = gamepad.rightStick.ReadValue();
-            if (Mathf.Abs(rstick.y) > 0.2f && hovered != null)
+            Vector2 scroll = gamepad.rightStick.ReadValue();
+            if (Mathf.Abs(scroll.y) > 0.2f && hovered != null)
             {
-                ScrollRect scroll = hovered.GetComponentInParent<ScrollRect>();
-                if (scroll != null && scroll.vertical)
-                    scroll.verticalNormalizedPosition = Mathf.Clamp01(
-                        scroll.verticalNormalizedPosition
-                        + rstick.y * ScrollSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime);
+                ScrollRect scrollRect = hovered.GetComponentInParent<ScrollRect>();
+                if (scrollRect != null && scrollRect.vertical)
+                    scrollRect.verticalNormalizedPosition = Mathf.Clamp01(
+                        scrollRect.verticalNormalizedPosition
+                        + scroll.y * ScrollSpeed * SettingsStore.StickSensitivity * Time.unscaledDeltaTime);
             }
 
-            // Two separate ifs, not else-if: a tap short enough to press and release inside one frame
-            // must still produce both halves, or the control would stay stuck down.
             if (gamepad.buttonSouth.wasPressedThisFrame) Press();
             if (gamepad.buttonSouth.wasReleasedThisFrame) Release();
         }
 
+        private Vector2 ClampLocal(Vector2 value)
+        {
+            Rect bounds = rootRect.rect;
+            float halfCursor = cursorSize * 0.5f;
+            value.x = Mathf.Clamp(value.x, bounds.xMin + halfCursor, bounds.xMax - halfCursor);
+            value.y = Mathf.Clamp(value.y, bounds.yMin + halfCursor, bounds.yMax - halfCursor);
+            return value;
+        }
+
         private void SetVisible(bool show)
         {
+            Cursor.visible = false;
             if (visible == show) return;
             visible = show;
             root.SetActive(show);
 
             if (show)
             {
-                localPos = Vector2.zero;
-                cursorRect.anchoredPosition = Vector2.zero;
-                hovered = null;
-                pressedTarget = null;   // whatever was held when the cursor last vanished is long gone
+                activeDevice = SettingsStore.Device;
+                if (activeDevice == SettingsStore.InputDevice.KeyboardMouse && Mouse.current != null)
+                    UpdateMouse();
+                else
+                {
+                    localPos = Vector2.zero;
+                    cursorRect.anchoredPosition = localPos;
+                }
             }
             else
             {
@@ -169,15 +189,17 @@ namespace Inkform.UI
                 pointerData = new PointerEventData(EventSystem.current);
         }
 
+        private Vector2 CursorScreenPoint() => RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+
         private void UpdateHover()
         {
             if (EventSystem.current == null) return;
             EnsurePointerData();
+            if (pointerData == null) return;
 
-            pointerData.position = RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+            pointerData.position = CursorScreenPoint();
             raycastResults.Clear();
             EventSystem.current.RaycastAll(pointerData, raycastResults);
-
             GameObject target = raycastResults.Count > 0 ? raycastResults[0].gameObject : null;
             if (target == hovered) return;
 
@@ -188,50 +210,34 @@ namespace Inkform.UI
                 ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerEnterHandler);
         }
 
-        // A real press/release pair rather than down/up/click fired in a single frame, which is what
-        // this used to do. One frame is indistinguishable from a tap, so no control could ever observe
-        // a *hold* from a pad — and the save menu's slots are exactly that: tap to continue, hold to
-        // offer an overwrite (see UiHoldButton). It also means the press scale in UiSelectableFx
-        // finally plays for pad users, who previously saw the button snap back the same frame.
         private void Press()
         {
             if (EventSystem.current == null || hovered == null) return;
             EnsurePointerData();
             if (pointerData == null) return;
-
-            pointerData.position = RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+            pointerData.position = CursorScreenPoint();
             pressedTarget = ExecuteEvents.ExecuteHierarchy(hovered, pointerData, ExecuteEvents.pointerDownHandler);
         }
 
-        private void Release()
+        public void Release()
         {
             if (pressedTarget == null) return;
             EnsurePointerData();
             if (pointerData == null) { pressedTarget = null; return; }
 
-            pointerData.position = RectTransformUtility.WorldToScreenPoint(null, cursorRect.position);
+            pointerData.position = CursorScreenPoint();
             ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerUpHandler);
-
-            // Same rule the mouse follows: a release only counts as a click when it lands back on the
-            // control the press started on, so sliding the cursor off a button cancels it. pointerClick
-            // is what reaches Button.onClick and UiSelectableFx's click sound; toggles flip on their
-            // own IPointerClickHandler here too.
             GameObject clickTarget = hovered != null
                 ? ExecuteEvents.GetEventHandler<IPointerClickHandler>(hovered)
                 : null;
             if (clickTarget == pressedTarget)
                 ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerClickHandler);
-
             pressedTarget = null;
         }
 
-        /// <summary>Ends a press without producing a click — for when the cursor is taken away
-        /// mid-hold (panel closed, pad unplugged). Without it the control keeps its pressed visual
-        /// state and UiHoldButton never learns the press ended.</summary>
         private void CancelPress()
         {
             if (pressedTarget == null) return;
-
             EnsurePointerData();
             if (pointerData != null)
                 ExecuteEvents.Execute(pressedTarget, pointerData, ExecuteEvents.pointerUpHandler);
@@ -247,27 +253,23 @@ namespace Inkform.UI
             hovered = null;
         }
 
-        /// <summary>White disc fallback when no cursor sprite is wired (mirrors RopeGun.DiscSprite).</summary>
         private static Sprite DiscSprite
         {
             get
             {
                 if (discSprite != null) return discSprite;
-
                 const int size = 32;
-                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-                float r = size * 0.5f - 1f;
-                Vector2 c = new Vector2(size * 0.5f, size * 0.5f);
+                Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                float radius = size * 0.5f - 1f;
+                Vector2 center = Vector2.one * size * 0.5f;
                 for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
                 {
-                    for (int x = 0; x < size; x++)
-                    {
-                        float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), c);
-                        tex.SetPixel(x, y, d <= r ? Color.white : Color.clear);
-                    }
+                    float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), center);
+                    texture.SetPixel(x, y, distance <= radius ? Color.white : Color.clear);
                 }
-                tex.Apply();
-                discSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+                texture.Apply();
+                discSprite = Sprite.Create(texture, new Rect(0, 0, size, size), Vector2.one * 0.5f, 100f);
                 return discSprite;
             }
         }

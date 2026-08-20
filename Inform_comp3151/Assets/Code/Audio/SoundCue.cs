@@ -22,6 +22,8 @@ namespace Inkform.Audio
         [Tooltip("Random pitch range. Never set either end to 0 — a source at pitch 0 never finishes playing and permanently occupies a pool slot")]
         public Vector2 pitchRange = new Vector2(0.95f, 1.05f);
         public bool loop;
+        [Tooltip("Continue while AudioListener is paused. Enable only for menu/UI feedback.")]
+        public bool ignoreListenerPause;
         [Tooltip("Minimum retrigger interval for the same Cue, prevents stacked pops within one frame")]
         public float cooldown = 0.05f;
         [Range(1, 8)] public int maxConcurrent = 3;

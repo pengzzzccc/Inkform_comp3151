@@ -205,6 +205,10 @@ namespace Inkform.Player
             wallJumpBuffer.Clear();
             attackTimer.Clear();
             knockbackTimer.Clear();
+            updateBuffer.Clear();
+            grappleLocked = false;
+            groundPlatform = null;
+            groundPrevPos = Vector2.zero;
         }
 
         // The branch order matters, relying on ContactSensor's inverted semantics: CeilingStickActive

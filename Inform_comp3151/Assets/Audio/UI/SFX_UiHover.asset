@@ -19,6 +19,7 @@ MonoBehaviour:
   category: 0
   pitchRange: {x: 0.98, y: 1.02}
   loop: 0
+  ignoreListenerPause: 1
   cooldown: 0.04
   maxConcurrent: 2
   spatial: 0

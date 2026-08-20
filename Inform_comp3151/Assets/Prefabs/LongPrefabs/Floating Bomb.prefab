@@ -68,6 +68,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.CarriablePart
   eatAble: 1
   spitArmTime: 0.1
+  definition: {fileID: 11400000, guid: 4c47f4713fa047c1a234516b37b36dc4, type: 2}
 --- !u!114 &3029611092000652681
 MonoBehaviour:
   m_ObjectHideFlags: 0

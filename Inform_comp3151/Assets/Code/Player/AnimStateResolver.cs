@@ -58,7 +58,15 @@ namespace Inkform.Player
         /// <summary>Clears one-shot animations accumulated before death on respawn.
         /// With dash no longer playing an animation, only land/ceiling-stick one-shots remain; the call
         /// site stays in case more are added later.</summary>
-        public void ResetForRespawn() { }
+        public void ResetForRespawn()
+        {
+            landAnimTimer.Clear();
+            jumpUpTimer.Clear();
+            ceilingAttachTimer.Clear();
+            moveInput = Vector2.zero;
+            prevOnGround = false;
+            prevOnCeiling = false;
+        }
 
         /// <summary>Aligns the "previous frame" baselines for land/ceiling to the current contact state.
         /// Must be called once after ContactSensor.Tick() on respawn — otherwise respawning on the

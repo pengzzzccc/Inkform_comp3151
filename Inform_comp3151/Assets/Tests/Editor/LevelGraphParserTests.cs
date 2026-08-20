@@ -185,7 +185,7 @@ namespace Inkform.LevelGraph.Tests
             LevelGraphDocument doc = LevelGraphParser.Parse("room A @0,0\n");
 
             Assert.AreEqual(4, doc.FindRoom("A").DoorCount,
-                "the default must match the four door slots RoomBuilder lays out, so existing graphs parse unchanged");
+                "the default must match the four authored door slots, so existing graphs parse unchanged");
         }
 
         [Test]

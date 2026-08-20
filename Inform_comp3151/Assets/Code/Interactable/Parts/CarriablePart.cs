@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Item;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,8 +8,8 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Carriable part: an object that can be swallowed after the rope gun hits it, carried in the
-    /// mouth, spit out, and dropped on death. The common behavior of the former Bomb's Swallow /
-    /// DropAt / OnItemReleased, extracted (minus the bomb-specific fuse) — "swallowed then put back
+    /// backpack and spit out. The common behavior of the former Bomb's item lifecycle, extracted
+    /// (minus the bomb-specific fuse) — "stored then put back
     /// into the world" is the same lifecycle for any carriable; detonating and the like are the
     /// concrete object's own business.
     ///
@@ -24,6 +25,8 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private bool eatAble = true;
         [Tooltip("Brief immunity to player contact after being spit out, so it is not detonated right at the muzzle; <= 0 disables")]
         [SerializeField] private float spitArmTime = 0.3f;
+        [Tooltip("Stable inventory identity. Without one the item remains in the world and cannot be swallowed.")]
+        [SerializeField] private InventoryItemDefinition definition;
 
         private Interactable root;
         private Rigidbody2D body;
@@ -50,8 +53,7 @@ namespace Inkform.Interactable.Parts
             renderers.AddRange(root.GetComponentsInChildren<Renderer>(true));
         }
 
-        void OnEnable() { ItemBus.ItemReleased += OnItemReleased; }
-        void OnDisable() { ItemBus.ItemReleased -= OnItemReleased; }
+        public InventoryItemDefinition Definition => definition;
 
         // While being pulled (ropeGrappled), contact with the player swallows instead of letting
         // explosion-type parts detonate (same priority as the former Bomb). A failed swallow (mouth
@@ -77,55 +79,42 @@ namespace Inkform.Interactable.Parts
         {
             if (held) return false;
             if (!eatAble) return false;
-            if (ItemBus.Held != null) return false;     // something is already in the mouth
+            if (body == null || hitBox == null) return false;
+            if (definition == null)
+            {
+                Debug.LogWarning($"{name} has no InventoryItemDefinition and cannot be stored", root);
+                return false;
+            }
+            if (!InventoryStore.TryAdd(definition)) return false;
 
-            Swallow(player);
+            Swallow();
             return true;
         }
 
-        // Swallow: does not destroy, just disables physics + hides, parents to the player, waiting to
-        // be spit out. Note: must NOT SetActive(false) — OnDisable unsubscribes the bus and the
-        // "released" event would never arrive
-        private void Swallow(Transform player)
+        private void Swallow()
         {
             held = true;
             ropeGrappled = false;
             body.simulated = false;
             hitBox.enabled = false;
             SetVisible(false);
-            transform.SetParent(player, false);
-            transform.localPosition = Vector3.zero;
 
             // Being swallowed cuts all ropes: a hanging carriable becomes a free object once spit out
             // (same semantics as the former Bomb)
             if (root.TryGetPart(out HangingChain hanging)) hanging.CutAllChains();
 
-            ItemBus.RaiseItemEaten(this);
-        }
+            ItemBus.RaiseItemStored(definition);
 
-        /// <summary>Dropped back into the world on the player's death: put down in place, no fuse, no initial velocity.</summary>
-        public void DropAt(Vector2 pos)
-        {
-            held = false;
-            ReturnToWorld();
-            hitBox.enabled = true;
-            body.simulated = true;
-
-            // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
-            // write both
-            transform.position = pos;
-            body.position = pos;
-            body.linearVelocity = Vector2.zero;
-            body.angularVelocity = 0f;
+            // Inventory stores data, never a scene object. Destroying the origin also ensures a
+            // checkpoint memento cannot restore a duplicate while the item remains in the backpack.
+            Destroy(root.gameObject);
         }
 
         // Spit out: back into the world with an initial velocity.
         // No fuse is lit — the fuse is the bomb's own behavior; "what happens after being spit out"
         // is decided by the concrete object itself
-        private void OnItemReleased(ICarriable item, Vector2 pos, Vector2 velocity)
+        public void Release(Vector2 pos, Vector2 velocity)
         {
-            if (item != (ICarriable)this) return;       // not the one being spit
-
             held = false;
             ReturnToWorld();
             hitBox.enabled = true;

@@ -43,7 +43,7 @@ namespace Inkform.LevelGraph.EditorTools
                         Code = "C12",
                         Room = room.Name,
                         Message = $"No scene file named '{room.Name}.unity' anywhere in the project. "
-                                + "Room Builder can create a greybox for it.",
+                                + "Create or adopt that scene before applying the graph.",
                     });
                 }
             }

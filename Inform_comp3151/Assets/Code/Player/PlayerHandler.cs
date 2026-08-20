@@ -192,6 +192,8 @@ namespace Inkform.Player
 
             motor.RespawnAt(pos);
             anim.ResetForRespawn();
+            lastMoveInput = Vector2.zero;
+            contact.ResetForRespawn();
 
             // Probe the ground once before aligning the baseline: otherwise respawning on the ground
             // counts as "just landed" and plays a Land animation and landing sound for nothing

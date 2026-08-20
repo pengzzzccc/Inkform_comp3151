@@ -67,6 +67,16 @@ namespace Inkform.Player
             if (!OnCeiling) ceilingStickTimer.Set(ceilingStickTime);
         }
 
+        public void ResetForRespawn()
+        {
+            Ground = null;
+            OnGround = false;
+            OnLeftWall = false;
+            OnRightWall = false;
+            OnCeiling = false;
+            ceilingStickTimer.Clear();
+        }
+
         void OnDrawGizmosSelected()
         {
             if (groundCheck == null) return;

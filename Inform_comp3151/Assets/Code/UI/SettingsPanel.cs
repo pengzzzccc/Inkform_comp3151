@@ -30,8 +30,8 @@ namespace Inkform.UI
     /// Tgl_ShowFps.
     ///
     /// Controls: device picker Dpd_Device (its order must match the InputDevice enum), sensitivity
-    /// sliders Sld_Mouse / Sld_Stick with readouts Lbl_Mouse / Lbl_Stick, Btn_MapLeft / Lbl_Map /
-    /// Btn_MapRight, Btn_Unstuck, Btn_ResetBindings, and the two rebind sub-panes Content_Kbm /
+    /// sliders Sld_Mouse / Sld_Stick with readouts Lbl_Mouse / Lbl_Stick, Btn_Unstuck,
+    /// Btn_ResetBindings, and the two rebind sub-panes Content_Kbm /
     /// Content_Gamepad holding one row per KbmRows / GamepadRows entry — Lbl_KeyK{n} / Btn_BindK{n}
     /// and Lbl_KeyG{n} / Btn_BindG{n}.
     /// </summary>
@@ -120,9 +120,6 @@ namespace Inkform.UI
         [SerializeField] private Text mouseLabel;
         [SerializeField] private Slider stickSlider;
         [SerializeField] private Text stickLabel;
-        [SerializeField] private Button mapLeft;
-        [SerializeField] private Button mapRight;
-        [SerializeField] private Text mapLabel;
         [SerializeField] private Button unstuckButton;
         [SerializeField] private Button resetBindingsButton;
         [SerializeField] private Text[] kbmKeyLabels;
@@ -169,9 +166,6 @@ namespace Inkform.UI
             if (deviceDropdown == null) deviceDropdown = FindDropdown($"{ControlsRoot}/Dpd_Device");
             if (unstuckButton == null) unstuckButton = FindButton($"{ControlsRoot}/Btn_Unstuck");
             if (resetBindingsButton == null) resetBindingsButton = FindButton($"{ControlsRoot}/Btn_ResetBindings");
-            if (mapLeft == null) mapLeft = FindButton($"{ControlsRoot}/Btn_MapLeft");
-            if (mapRight == null) mapRight = FindButton($"{ControlsRoot}/Btn_MapRight");
-            if (mapLabel == null) mapLabel = FindText($"{ControlsRoot}/Lbl_Map");
             if (mouseSlider == null) mouseSlider = FindSlider($"{ControlsRoot}/Sld_Mouse");
             if (mouseLabel == null) mouseLabel = FindText($"{ControlsRoot}/Lbl_Mouse");
             if (stickSlider == null) stickSlider = FindSlider($"{ControlsRoot}/Sld_Stick");
@@ -224,8 +218,6 @@ namespace Inkform.UI
             Bind(fpsRight, "Btn_FpsRight", () => StepFps(+1));
             Bind(fullLeft, "Btn_FullLeft", ToggleFullscreen);
             Bind(fullRight, "Btn_FullRight", ToggleFullscreen);
-            Bind(mapLeft, "Btn_MapLeft", ToggleMap);
-            Bind(mapRight, "Btn_MapRight", ToggleMap);
 
             if (showFpsToggle != null)
                 showFpsToggle.onValueChanged.AddListener(v => SettingsStore.SetShowFps(v));
@@ -283,7 +275,6 @@ namespace Inkform.UI
             SetSensLabel(mouseLabel, SettingsStore.MouseSensitivity);
             SetSlider(stickSlider, SettingsStore.StickSensitivity);
             SetSensLabel(stickLabel, SettingsStore.StickSensitivity);
-            SetLabel(mapLabel, OnOffText(SettingsStore.MapEnabled));
 
             // Nothing to un-stick in the menu scene — there is no player there
             if (unstuckButton != null) unstuckButton.interactable = !UIManager.Instance.IsInMainMenu;
@@ -348,12 +339,6 @@ namespace Inkform.UI
         {
             SettingsStore.SetFullscreen(!SettingsStore.Fullscreen);
             SetLabel(fullLabel, OnOffText(SettingsStore.Fullscreen));
-        }
-
-        private void ToggleMap()
-        {
-            SettingsStore.SetMapEnabled(!SettingsStore.MapEnabled);
-            SetLabel(mapLabel, OnOffText(SettingsStore.MapEnabled));
         }
 
         private static int IndexOfResolution(System.Collections.Generic.IReadOnlyList<Resolution> list, int width, int height)

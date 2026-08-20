@@ -3,7 +3,7 @@
 # SceneDirector reads this file at runtime — what you save is what the game runs.
 
 menu   MainMenu
-entry  
+entry  B2
 
 room   B2          @1178,261
 room   B3          @1410,261  door 2

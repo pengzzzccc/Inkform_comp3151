@@ -3,6 +3,7 @@ using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
 using Inkform.Settings;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -87,6 +88,7 @@ namespace Inkform.Player
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
+        private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
 
         // Sensitivity bases: the serialized values are the designers' tuning. The user setting is a
         // multiplier applied on top, captured once in Awake before SettingsStore overrides the fields.
@@ -197,6 +199,8 @@ namespace Inkform.Player
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
             SettingsStore.Changed -= OnSettingsChanged;
+            rangeOverrides.Clear();
+            currentMaxRange = maxRange;
         }
 
         private void OnSettingsChanged() => ApplySensitivity();
@@ -699,14 +703,28 @@ namespace Inkform.Player
 
         // ---- Bus callbacks ----
 
-        private void OnRangeOverride(float range)
+        private void OnRangeOverride(object source, float range)
         {
-            currentMaxRange = Mathf.Max(0.1f, range);
+            if (source == null) return;
+            rangeOverrides[source] = Mathf.Max(0.1f, range);
+            RecalculateRange();
         }
 
-        private void OnRangeRestored()
+        private void OnRangeRestored(object source)
+        {
+            if (source == null) return;
+            rangeOverrides.Remove(source);
+            RecalculateRange();
+        }
+
+        private void RecalculateRange()
         {
             currentMaxRange = maxRange;
+            foreach (float range in rangeOverrides.Values)
+                currentMaxRange = Mathf.Min(currentMaxRange, range);
+
+            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
+                aimOffset = aimOffset.normalized * currentMaxRange;
         }
 
         private void OnDied(DeathContext ctx)

@@ -60,9 +60,9 @@ Interactable 节点 + 16 个 Parts 组件（HarmOnTouch、ExplodePart、ExplodeO
 ### 2.5 UI 与数据流
 
 - **UI**：`UIBuilder`（`Assets/Editor`）程序化生成菜单场景与 UI 预制体；UIManager 是菜单唯一入口，四面板（MainMenu/Pause/Settings/SaveMenu）只回调查 UIManager。
-- **运行时数据**：静态快照 —— PlayerBus.State/Face、LifeBus.DeathCount/IsDead、ItemBus.Held、LevelBus.Current。
-- **持久化**：PlayerPrefs（SettingsStore，键前缀 `Inkform.`，含按键重绑定 JSON，`SettingsStore.cs:94-109`）。
-- **无存档系统**：SaveMenu 为桩，任意槽位都 StartNewGame（`SaveMenuPanel.cs:40-44`）；"Save & Quit"不保存（`UIManager.cs:222-224`）。
+- **运行时数据**：PlayerBus、LifeBus 与 LevelBus 发布玩家、死亡及关卡事实；四格 `InventoryStore` 保存稳定物品 ID 和选中格，ItemBus 只发布存入/吐出事实。
+- **设置持久化**：PlayerPrefs（SettingsStore，键前缀 `Inkform.`，包含按键重绑定 JSON；旧小地图键会在加载时清理）。
+- **进度存档**：SaveStore v2 保存关卡、出生点、死亡数与背包，使用临时文件、备份和原子替换；新游戏覆盖在入口场景首次记录进度后才提交。
 
 ## 三、质量信号
 
@@ -80,9 +80,9 @@ Interactable 节点 + 16 个 Parts 组件（HarmOnTouch、ExplodePart、ExplodeO
 |---|---|---|
 | 文档死链 | README 引用的 `Docs/ProjectStructure.md`、`Docs/RefactorPlan.md` 已被提交 4a98141 删除；`Docs/` 现仅剩一张 UI 截图 | `README.md:51-53` |
 | 文档过时 | README 称 Build Settings 首场景为 AnimationTest，实际为 MainMenu | `README.md:23-24` vs `EditorBuildSettings.asset:8-9` |
-| 无测试 | 无 Tests 目录、无 asmdef、无 Unity Test Framework 用法（包已安装但未用，`manifest.json:17`） | — |
+| 测试覆盖有限 | 已有 LevelGraph 纯逻辑测试与运行时边界 EditMode 测试；完整 PlayMode/压力测试仍依赖有效 Unity 许可证会话 | `Assets/Tests/Editor/`、`Assets/Editor/InkformRuntimeEdgeTests.cs` |
 | 无 CI/CD | 无 `.github/`、无 pipeline 配置 | — |
-| 死数据 | DeathCause.Blast/Void 无发布者；MapEnabled 设置无消费者；MusicVolume 无音乐系统；PlayerState.Eat/Release/Swing 已无对应动画分支，但 PlayerAnimBuilder 仍在生成这些剪辑 | `DeathCause.cs:14-15`、`SettingsStore.cs:56-60`、`SettingsStore.cs:184-185`、`AniHandler.cs` |
+| 死数据 | DeathCause.Blast/Void 无发布者；MusicVolume 无音乐系统；PlayerState.Eat/Release/Swing 已无对应动画分支，但 PlayerAnimBuilder 仍在生成这些剪辑 | `DeathCause.cs:14-15`、`SettingsStore.cs`、`AniHandler.cs` |
 | 硬编码 | 图层号 6/11/13 分散多处；1920×1080 CanvasScaler 参数在 UIManager/GamepadCursor/FpsDisplay 手写重复（注释承认）；DiscSprite 生成逻辑两处重复 | `ContactSensor.cs:27`、`RopeGun.cs:47`、`SolidSurface.cs:23-24` |
 | 构建滞后 | `Build/` 仅含 level0 单场景，未含当前 4 场景配置（MainMenu/AnimationTest/B2/Level1）；Build 目录被 .gitignore 忽略 | `EditorBuildSettings.asset:8-19` |
 

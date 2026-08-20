@@ -7,7 +7,7 @@ namespace Inkform.LevelGraph.EditorTools
 {
     /// <summary>
     /// Where the graph lives on disk and how it is read and written. One place so the path is not
-    /// spelled in the window, the validator and RoomBuilder separately.
+    /// spelled in the window, validator, and project setup separately.
     ///
     /// The file is a plain .txt: Unity imports it as a TextAsset with no custom importer to write, the
     /// Inspector previews it, and git diffs it as text. That last one is the point — the topology used

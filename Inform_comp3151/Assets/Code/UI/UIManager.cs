@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Inkform.Audio;
 using Inkform.Bus;
+using Inkform.Fx;
 using Inkform.Input;
 using Inkform.Save;
 using Inkform.Settings;
@@ -49,6 +50,7 @@ namespace Inkform.UI
 
         private readonly Dictionary<Type, BasePanel> panels = new Dictionary<Type, BasePanel>();
         private InputHandler inputHandler;
+        private GameTimeController gameTime;
         private Inkform.Level.SceneDirector sceneDirector;   // sibling on GameManager; owns the scene policy
         private InputSystem_Actions uiActions;   // owned wrapper: the UI module reads the same asset
         private EventSystem ownEventSystem;      // the one we installed; see EnsureEventSystem
@@ -76,10 +78,13 @@ namespace Inkform.UI
 
             inputHandler = GetComponent<InputHandler>();
             sceneDirector = GetComponent<Inkform.Level.SceneDirector>();
+            gameTime = GetComponent<GameTimeController>();
+            if (gameTime == null) gameTime = gameObject.AddComponent<GameTimeController>();
 
             EnsureEventSystem();
             CreateCanvas();
             EnsureGamepadCursor();
+            EnsureInventoryHud();
             InstantiatePanels();
             // No "close them all" pass here: BasePanel.Awake lands its own hidden state on instantiate.
             // A pass here could never have worked anyway — Close() early-returns while IsOpen is still
@@ -177,10 +182,13 @@ namespace Inkform.UI
 
         private void SetPaused(bool value)
         {
-            if (paused == value) return;
             paused = value;
-            Time.timeScale = value ? 0f : 1f;
-            inputHandler?.SetPlaying(!value);
+            gameTime?.SetUserPaused(value);
+            // sceneLoaded fires before SceneDirector's AsyncOperation continuation. Do not let the
+            // new scene's UI state re-enable gameplay during that small but real transition window;
+            // SceneDirector restores it once the operation has fully completed.
+            bool transitionAllowsInput = sceneDirector == null || !sceneDirector.IsTransitioning;
+            inputHandler?.SetPlaying(!value && transitionAllowsInput);
         }
 
         // ---- Navigation ----
@@ -212,6 +220,8 @@ namespace Inkform.UI
                 Close<MainMenuPanel>();
                 SetCursor(false);
             }
+
+            GetComponent<InventoryHud>()?.RefreshVisibility();
         }
 
         /// <summary>
@@ -228,10 +238,15 @@ namespace Inkform.UI
                 return;
             }
 
-            // Claim the slot before the load: the entry room's first autosave fires on the next scene
-            // init, and with no active slot it would be dropped silently.
+            if (!sceneDirector.CanStartNewGame(out string reason))
+            {
+                Debug.LogWarning($"UIManager: cannot start a new game — {reason}", this);
+                return;
+            }
+
+            // Validation must precede BeginNewRun: a broken graph may not erase an occupied slot.
             SaveStore.BeginNewRun(slot);
-            sceneDirector.StartNewGame();
+            if (!sceneDirector.StartNewGame()) SaveStore.AbortNewRun();
         }
 
         /// <summary>Resumes the run held in a save slot. Callback for the Save menu's occupied slots.
@@ -246,8 +261,15 @@ namespace Inkform.UI
                 return;
             }
 
+            SaveData save = SaveStore.Get(slot);
+            if (!sceneDirector.CanContinueGame(save, out string reason))
+            {
+                Debug.LogWarning($"UIManager: cannot continue this save — {reason}", this);
+                return;
+            }
+
             SaveStore.ContinueRun(slot);
-            sceneDirector.ContinueGame(SaveStore.Get(slot));
+            if (!sceneDirector.ContinueGame(save)) SaveStore.EndRun();
         }
 
         /// <summary>The display name of the level a save file names, for the save menu's slot rows.
@@ -444,39 +466,10 @@ namespace Inkform.UI
 
         private void SetCursor(bool visible)
         {
-            Cursor.visible = visible;
+            // The unified cursor renders the exact pointer position for both mouse and gamepad.
+            Cursor.visible = false;
             Cursor.lockState = visible ? CursorLockMode.None : CursorLockMode.Locked;
-
-            // Same aim_cursor art as the gamepad cursor and rope reticle: swap the OS pointer too.
-            // The source texture imports as non-readable, so a CPU-readable copy is made once.
-            if (aimCursorCache == null) aimCursorCache = GetComponent<GamepadCursor>()?.CursorSprite;
-            if (aimCursorCache != null)
-            {
-                if (aimCursorTexture == null) aimCursorTexture = MakeReadable(aimCursorCache.texture);
-                Cursor.SetCursor(visible ? aimCursorTexture : null, CursorHotspot(aimCursorCache), CursorMode.Auto);
-            }
         }
-
-        // pivot is normalized (0..1); aim_cursor is center-aimed, so the hotspot is the art's center
-        private static Vector2 CursorHotspot(Sprite s) => new Vector2(s.pivot.x * s.texture.width, s.pivot.y * s.texture.height);
-
-        // The aim_cursor source imports as non-readable (fine for rendering, but Cursor.SetCursor
-        // demands CPU access) — copy it once into a readable texture
-        private static Texture2D MakeReadable(Texture2D src)
-        {
-            RenderTexture rt = RenderTexture.GetTemporary(src.width, src.height, 0, RenderTextureFormat.ARGB32);
-            Graphics.Blit(src, rt);
-            var readable = new Texture2D(src.width, src.height, TextureFormat.RGBA32, false);
-            RenderTexture.active = rt;
-            readable.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
-            readable.Apply();
-            RenderTexture.active = null;
-            RenderTexture.ReleaseTemporary(rt);
-            return readable;
-        }
-
-        private Sprite aimCursorCache;       // lazily read from the GamepadCursor component
-        private Texture2D aimCursorTexture;  // CPU-readable copy of the cursor sprite's texture
 
         /// <summary>Idempotent self-install of the gamepad virtual cursor, same as EnsureEventSystem.
         /// UIBuilder also adds the component (to wire the aim_cursor sprite); this guarantee means the
@@ -485,6 +478,12 @@ namespace Inkform.UI
         {
             if (GetComponent<GamepadCursor>() == null)
                 gameObject.AddComponent<GamepadCursor>();
+        }
+
+        private void EnsureInventoryHud()
+        {
+            if (GetComponent<InventoryHud>() == null)
+                gameObject.AddComponent<InventoryHud>();
         }
     }
 }

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Inkform.EditorTools;
 using Inkform.Level;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -13,10 +12,8 @@ namespace Inkform.LevelGraph.EditorTools
     /// missing, adds the missing Build Settings entry, ticks isTrigger back on. It never deletes a
     /// LevelExit, never removes a checkpoint, and never regenerates a scene.
     ///
-    /// That restraint is the whole design. The existing RoomBuilder rebuilds room scenes from scratch
-    /// and saves over them, so any hand authoring in a generated room is lost on the next run — a tool
-    /// that can destroy a designer's work is a tool a designer cannot use. This one is only ever
-    /// allowed to add.
+    /// That restraint is the whole design: a tool that can destroy a designer's work is not safe to
+    /// use. This workflow is only ever allowed to add or repair explicit graph contracts.
     ///
     /// Created objects land at the scene origin and get selected, because the tool knows a door is
     /// missing but has no idea where the doorway is. Placing it is the designer's call; the tool's job
@@ -95,8 +92,8 @@ namespace Inkform.LevelGraph.EditorTools
             {
                 foreach (Finding f in assetFixes)
                 {
-                    if (f.Fix == FixAction.AddSceneToBuild) AddSceneToBuild(f.Room);
-                    else if (f.Fix == FixAction.MoveMenuSceneFirst) MoveMenuSceneFirst(doc.MenuScene);
+                    if (f.Fix == FixAction.AddSceneToBuild) LevelGraphProjectSetup.EnsureSceneInBuild(doc, f.Room);
+                    else if (f.Fix == FixAction.MoveMenuSceneFirst) RepairBuildLists(doc);
                 }
                 fixedCount += assetFixes.Count;
             }
@@ -309,11 +306,11 @@ namespace Inkform.LevelGraph.EditorTools
             switch (finding.Fix)
             {
                 case FixAction.AddSceneToBuild:
-                    AddSceneToBuild(finding.Room);
+                    LevelGraphProjectSetup.EnsureSceneInBuild(doc, finding.Room);
                     break;
 
                 case FixAction.MoveMenuSceneFirst:
-                    MoveMenuSceneFirst(doc.MenuScene);
+                    RepairBuildLists(doc);
                     break;
             }
         }
@@ -357,7 +354,7 @@ namespace Inkform.LevelGraph.EditorTools
         // tool's job is that they never start stacked on top of each other.
         private static Vector3 DoorSlot(int index) => new Vector3(2f + index * 3f, 0f, 0f);
 
-        // Mirrors the door RoomBuilder generates: same trigger size, same exitId convention, same
+        // Uses the established door convention: same trigger size, exitId convention, and label.
         // naming — so a hand-repaired door is indistinguishable from a generated one. `destination`
         // is display info for the door's Scene-view gizmo ("→ where this leads"); empty falls back
         // to the exitId, which by convention is the target scene's name anyway.
@@ -448,59 +445,10 @@ namespace Inkform.LevelGraph.EditorTools
 
         // ---- Build settings ----
 
-        private static void AddSceneToBuild(string roomName)
+        private static void RepairBuildLists(LevelGraphDocument doc)
         {
-            string path = LevelGraphFile.ScenePathFor(roomName);
-            if (path == null) return;
-
-            var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-
-            foreach (EditorBuildSettingsScene s in scenes)
-            {
-                if (s.path != path) continue;
-
-                // Present but disabled: enabling is still additive, and a disabled entry is the same
-                // silent failure as a missing one.
-                if (!s.enabled)
-                {
-                    s.enabled = true;
-                    EditorBuildSettings.scenes = scenes.ToArray();
-                }
-                return;
-            }
-
-            scenes.Add(new EditorBuildSettingsScene(path, true));
-            EditorBuildSettings.scenes = scenes.ToArray();
-
-            // The global list is not the whole story on Unity 6000: a build profile with
-            // m_OverrideGlobalSceneList replaces it, so the scene must land in the profiles too or
-            // LoadScene still fails. RoomBuilder owns that write — reuse it rather than duplicate it.
-            RoomBuilder.AppendRoomsToBuildProfile(roomName);
-        }
-
-        private static void MoveMenuSceneFirst(string menuSceneName)
-        {
-            var scenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-
-            int index = scenes.FindIndex(s =>
-                System.IO.Path.GetFileNameWithoutExtension(s.path) == menuSceneName);
-
-            if (index < 0)
-            {
-                string path = LevelGraphFile.ScenePathFor(menuSceneName);
-                if (path == null) return;
-
-                scenes.Insert(0, new EditorBuildSettingsScene(path, true));
-            }
-            else
-            {
-                EditorBuildSettingsScene entry = scenes[index];
-                entry.enabled = true;
-                scenes.RemoveAt(index);
-                scenes.Insert(0, entry);
-            }
-
-            EditorBuildSettings.scenes = scenes.ToArray();
+            LevelGraphProjectSetup.EnsureBuildSettings(doc);
+            LevelGraphProjectSetup.EnsureBuildProfiles(doc);
         }
     }
 }

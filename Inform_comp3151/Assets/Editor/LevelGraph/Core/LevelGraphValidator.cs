@@ -14,9 +14,7 @@ namespace Inkform.LevelGraph
     /// </summary>
     public static class LevelGraphValidator
     {
-        /// <summary>How many doors RoomBuilder's greybox template can physically place (right-ground,
-        /// right-high, left-ground, top). Exceeding it is legal in the graph but leaves the extra
-        /// doors unbuilt in a generated room, which is a silent dead end.</summary>
+        /// <summary>Maximum authored door slots supported per room.</summary>
         public const int GreyboxDoorSlots = 4;
 
         public static List<Finding> Validate(LevelGraphDocument doc)

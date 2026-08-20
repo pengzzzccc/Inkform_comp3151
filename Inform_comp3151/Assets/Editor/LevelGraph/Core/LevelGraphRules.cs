@@ -76,7 +76,7 @@ namespace Inkform.LevelGraph
 
             // ---- Scenes ----
             new RuleInfo("C12", RuleLayer.Scenes, Severity.Error,
-                "No scene file with this name. Room Builder can bootstrap a greybox.", false),
+                "No scene file with this name. Create or adopt the scene before Apply.", false),
             new RuleInfo("C13", RuleLayer.Scenes, Severity.Error,
                 "Scene is not in Build Settings — loading it would silently do nothing.", true),
             new RuleInfo("C14", RuleLayer.Scenes, Severity.Warning,

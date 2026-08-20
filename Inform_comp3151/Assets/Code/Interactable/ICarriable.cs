@@ -1,4 +1,5 @@
 using UnityEngine;
+using Inkform.Item;
 
 namespace Inkform.Interactable
 {
@@ -14,12 +15,13 @@ namespace Inkform.Interactable
     ///    implementation must sit on the Interactable's **root object** (RopeGun probes with
     ///    GetComponent; a child object would not be found).
     ///
-    /// Release (spit out) is not here: it goes through the ItemBus.ItemReleased event with
-    /// self-claiming — that path also has audio listeners, and events fit "broadcast to everyone"
-    /// better than a method call.
+    /// Release is a direct command on the freshly instantiated world object. ItemBus only announces
+    /// the completed fact to feedback systems.
     /// </summary>
     public interface ICarriable
     {
+        InventoryItemDefinition Definition { get; }
+
         /// <summary>Pull-target position (MonoBehaviour built-in).</summary>
         Transform transform { get; }
 
@@ -27,13 +29,14 @@ namespace Inkform.Interactable
         /// not eatable — the rope gun releases).</summary>
         bool TrySwallowByRope(Transform player);
 
+        /// <summary>Places a freshly instantiated inventory item back into the world.</summary>
+        void Release(Vector2 pos, Vector2 velocity);
+
         /// <summary>Being pulled by the rope gun (explosives use it to prevent accidental contact detonation).</summary>
         void MarkRopeGrappled();
 
         /// <summary>Pulling ended.</summary>
         void ClearRopeGrappled();
 
-        /// <summary>Dropped back into the world when the player dies (no fuse, no initial velocity, dropped in place).</summary>
-        void DropAt(Vector2 pos);
     }
 }

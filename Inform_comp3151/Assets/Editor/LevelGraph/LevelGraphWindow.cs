@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Inkform.EditorTools;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -36,10 +35,12 @@ namespace Inkform.LevelGraph.EditorTools
         private Label summary;
         private VisualElement helpPanel;
         private ToolbarToggle helpToggle;
+        private DropdownField entryDropdown;
 
         private LevelGraphDocument doc;
         private readonly List<Finding> findings = new List<Finding>();
         private List<Finding> sceneFindings = new List<Finding>();
+        private List<LevelGraphParser.ParseError> parseErrors = new List<LevelGraphParser.ParseError>();
 
         private bool dirty;
 
@@ -110,6 +111,16 @@ namespace Inkform.LevelGraph.EditorTools
             bar.Add(new ToolbarButton(Reload) { text = "Reload" });
             bar.Add(new ToolbarButton(ApplyTopology) { text = "Apply Level Topology" });
 
+            entryDropdown = new DropdownField("New Game Entry");
+            entryDropdown.style.minWidth = 230f;
+            entryDropdown.RegisterValueChangedCallback(evt =>
+            {
+                if (doc == null || doc.EntryRoom == evt.newValue) return;
+                doc.EntryRoom = evt.newValue ?? string.Empty;
+                OnGraphChanged();
+            });
+            bar.Add(entryDropdown);
+
             var spacer = new ToolbarSpacer { flex = true };
             bar.Add(spacer);
 
@@ -169,7 +180,7 @@ namespace Inkform.LevelGraph.EditorTools
             Step(c, 3, "A checkpoint named Spawn_A in scene B — without it, arrivals land at B's start point instead of the doorway.");
             Step(c, 4, "B is in Build Settings.");
             Step(c, 5, "B is a room in LevelGraph.txt.");
-            Body(c, "Nothing in the running game checks any of this. Deep Validate does.");
+            Body(c, "The running game rejects invalid entry/load requests. Deep Validate catches the full authoring contract before play.");
 
             Heading(c, "3 · Toolbar");
             Term(c, "Reload", "Re-reads LevelGraph.txt. Discards edits you have not applied.");
@@ -183,7 +194,8 @@ namespace Inkform.LevelGraph.EditorTools
 
             Heading(c, "4 · On the canvas");
             Term(c, "Left shelf", "Every scene under Assets/Scenes. Drag one onto the canvas to adopt it as a room; double-click opens it.");
-            Term(c, "Right inspector", "Click a node to configure its room: display name, door count, entry. Apply writes the edit into the graph.");
+            Term(c, "New Game Entry", "Explicitly selects the room loaded by New Game. An empty or invalid entry blocks Apply.");
+            Term(c, "Right inspector", "Click a node to configure its room: display name and door count. Apply writes the edit into the graph.");
             Term(c, "Drag out → in", "New link. Two-way by default, which is what nearly every door is.");
             Term(c, "Right-click a link", "Switch between two-way (<->) and one-way (->).");
             Term(c, "Right-click a node", "Set As Entry, rename its display name, or open its scene.");
@@ -208,7 +220,7 @@ namespace Inkform.LevelGraph.EditorTools
             Bullet(c, "Never regenerates or overwrites a scene.");
             Body(c, "An exit the graph has no link for is reported (C16), not removed — it is far more "
                   + "likely to be a secret door somebody placed than a mistake, and this tool has no way "
-                  + "to tell. Room Builder > Build Missing Rooms likewise skips any scene that already exists.");
+                  + "to tell. Missing room scenes are errors and must be authored explicitly.");
 
             Heading(c, "7 · Validation rules");
             Body(c, "Graph rules re-run on every edit. Scene rules need Deep Validate.");
@@ -431,13 +443,14 @@ namespace Inkform.LevelGraph.EditorTools
 
         private void Reload()
         {
-            doc = LevelGraphFile.Load(out List<LevelGraphParser.ParseError> parseErrors);
+            doc = LevelGraphFile.Load(out parseErrors);
             dirty = false;
             sceneFindings.Clear();
 
             graph.Populate(doc);
+            RefreshEntryDropdown();
             sceneTree?.Refresh(doc);
-            Revalidate(keepSceneFindings: false, parseErrors);
+            Revalidate(keepSceneFindings: false);
 
             if (doc.Rooms.Count == 0 && !LevelGraphFile.Exists)
             {
@@ -456,6 +469,16 @@ namespace Inkform.LevelGraph.EditorTools
             if (doc == null) return;
 
             graph.WriteBackPositions();
+            Revalidate(keepSceneFindings: false);
+            foreach (Finding finding in findings)
+            {
+                if (finding.Severity != Severity.Error) continue;
+                Debug.LogError($"Level topology not applied: [{finding.Code}] {finding.Message}");
+                EditorUtility.DisplayDialog("Cannot apply level topology",
+                    $"Fix all errors before applying.\n\n[{finding.Code}] {finding.Message}", "OK");
+                return;
+            }
+
             LevelGraphFile.Save(doc);
 
             // Scene wiring before the build lists: FixBuildSettings reads the graph file back, and
@@ -463,13 +486,14 @@ namespace Inkform.LevelGraph.EditorTools
             // slow part (scene opens) once is the point of batching both here.
             int wired = LevelGraphFixer.EnsureSceneWiring(doc);
 
-            RoomBuilder.FixBuildSettings();
+            int profileChanges = LevelGraphProjectSetup.Apply(doc);
             dirty = false;
 
             sceneTree?.Refresh(doc);
             Revalidate(keepSceneFindings: false);
             Debug.Log($"Level topology applied: {doc.Rooms.Count} rooms, {doc.Links.Count} links, "
-                    + $"{wired} door(s)/spawn(s) created, build settings updated.");
+                    + $"{wired} door(s)/spawn(s) created, build settings updated, "
+                    + $"{profileChanges} build-profile scene entry/entries updated.");
         }
 
         private void DeepValidate()
@@ -520,6 +544,7 @@ namespace Inkform.LevelGraph.EditorTools
         private void OnGraphChanged()
         {
             dirty = true;
+            RefreshEntryDropdown();
 
             // Scene findings describe the project on disk, which an unapplied edit has not changed —
             // keeping them would show doors as missing that are only missing in the edit.
@@ -529,7 +554,7 @@ namespace Inkform.LevelGraph.EditorTools
 
         // ---- validation plumbing ----
 
-        private void Revalidate(bool keepSceneFindings, List<LevelGraphParser.ParseError> parseErrors = null)
+        private void Revalidate(bool keepSceneFindings)
         {
             findings.Clear();
 
@@ -574,6 +599,15 @@ namespace Inkform.LevelGraph.EditorTools
 
             findingsList.itemsSource = findings;
             findingsList.Rebuild();
+        }
+
+        private void RefreshEntryDropdown()
+        {
+            if (entryDropdown == null || doc == null) return;
+            var choices = new List<string>();
+            foreach (RoomEntry room in doc.Rooms) choices.Add(room.Name);
+            entryDropdown.choices = choices;
+            entryDropdown.SetValueWithoutNotify(doc.EntryRoom ?? string.Empty);
         }
     }
 }

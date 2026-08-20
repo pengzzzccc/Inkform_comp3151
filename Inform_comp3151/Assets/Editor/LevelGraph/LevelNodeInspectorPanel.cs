@@ -125,7 +125,7 @@ namespace Inkform.LevelGraph.EditorTools
 
             nameField.text = node.Room.Name;
             string path = LevelGraphFile.ScenePathFor(node.Room.Name);
-            scenePathField.text = path ?? "(no scene file yet — Room Builder can create a greybox)";
+            scenePathField.text = path ?? "(no scene file — create or adopt it before Apply)";
             scenePathField.style.color = path != null
                 ? new Color(0.7f, 0.7f, 0.7f)
                 : new Color(0.85f, 0.6f, 0.35f);

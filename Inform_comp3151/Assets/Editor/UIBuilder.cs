@@ -502,7 +502,7 @@ namespace Inkform.EditorTools
 
         /// <summary>
         /// Controls tab: the device dropdown, both sensitivity sliders (shown together — the device
-        /// picker no longer hides one), the Map toggle row, and Unstuck with its explanatory line.
+        /// picker no longer hides one), and Unstuck with its explanatory line.
         /// Below those, past the fold the pane scrolls to reach, the key-binding half: a Reset Bindings
         /// button and the two per-device sub-panes, one row per SettingsPanel KbmRows / GamepadRows
         /// entry in the same order. Only the selected device's pane is active.
@@ -518,14 +518,12 @@ namespace Inkform.EditorTools
             AddSensRow(content, "Mouse Sensitivity", "Sld_Mouse", "Lbl_Mouse", Y(145f));
             AddSensRow(content, "Controller Sensitivity", "Sld_Stick", "Lbl_Stick", Y(210f));
 
-            AddArrowRow(content, "Map", "Btn_MapLeft", "Lbl_Map", "Btn_MapRight", "ON", Y(275f));
-
-            AddButton(content, "Btn_Unstuck", "Unstuck", new Vector2(RowLeft + 90f, Y(340f)), new Vector2(180f, 56f), FontSize.Small);
+            AddButton(content, "Btn_Unstuck", "Unstuck", new Vector2(RowLeft + 90f, Y(285f)), new Vector2(180f, 56f), FontSize.Small);
             AddLabel(content, "Label", "Use this button if you are stuck in a bug",
-                new Vector2(RowLeft + 320f, Y(392f)), new Vector2(640f, 30f), FontSize.Caption, TextAnchor.MiddleLeft, Palette.Hint);
+                new Vector2(RowLeft + 320f, Y(337f)), new Vector2(640f, 30f), FontSize.Caption, TextAnchor.MiddleLeft, Palette.Hint);
 
-            AddRowLabel(content, "Key Bindings", Y(465f));
-            AddButton(content, "Btn_ResetBindings", "Reset Bindings", new Vector2(430f, Y(465f)), new Vector2(240f, 50f), FontSize.Small);
+            AddRowLabel(content, "Key Bindings", Y(410f));
+            AddButton(content, "Btn_ResetBindings", "Reset Bindings", new Vector2(430f, Y(410f)), new Vector2(240f, 50f), FontSize.Small);
 
             BuildKbmPane(content);
             BuildGamepadPane(content);

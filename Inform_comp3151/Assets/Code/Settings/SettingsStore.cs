@@ -52,13 +52,6 @@ namespace Inkform.Settings
         /// <summary>Frame rate counter overlay visible in gameplay.</summary>
         public static bool ShowFps { get; private set; }
 
-        /// <summary>
-        /// Minimap overlay preference from the Controls tab. **Nothing reads this yet** — no minimap
-        /// system exists; the option ships ahead of it so the preference is already persisted (and
-        /// already in the Reset path) when the map lands. Not a wiring mistake.
-        /// </summary>
-        public static bool MapEnabled { get; private set; } = true;
-
         /// <summary>Global visual FX intensity 0~1: scales screen shake, camera zoom, post punch and
         /// shatter launch speed at their consumers. Hitstop is a duration, not a strength, so it is
         /// deliberately untouched — same for gamepad rumble, which is haptic, not visual.</summary>
@@ -106,7 +99,6 @@ namespace Inkform.Settings
         private const string KeyVSync = "Inkform.vsync";
         private const string KeyShowFps = "Inkform.showFps";
         private const string KeyFxIntensity = "Inkform.fxIntensity";
-        private const string KeyMapEnabled = "Inkform.mapEnabled";
 
         // ---- Lifecycle ----
 
@@ -125,7 +117,6 @@ namespace Inkform.Settings
             FpsCap = 60;
             VSync = false;
             ShowFps = false;
-            MapEnabled = true;
             FxIntensity = 1f;
             cachedResolutions = null;
         }
@@ -147,7 +138,8 @@ namespace Inkform.Settings
             MusicVolume = PlayerPrefs.GetFloat(KeyMusic, 1f);
             SfxVolume = PlayerPrefs.GetFloat(KeySfx, 1f);
             Muted = PlayerPrefs.GetInt(KeyMuted, 0) != 0;
-            MapEnabled = PlayerPrefs.GetInt(KeyMapEnabled, 1) != 0;
+            // Remove the preference shipped for a minimap that was never implemented.
+            PlayerPrefs.DeleteKey("Inkform.mapEnabled");
             MouseSensitivity = PlayerPrefs.GetFloat(KeyMouseSens, 1f);
             StickSensitivity = PlayerPrefs.GetFloat(KeyStickSens, 1f);
             Device = (InputDevice)PlayerPrefs.GetInt(KeyDevice, (int)InputDevice.KeyboardMouse);
@@ -285,15 +277,6 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
-        /// <summary>Minimap overlay on/off. Stored only — see MapEnabled, nothing consumes it yet.</summary>
-        public static void SetMapEnabled(bool value)
-        {
-            if (MapEnabled == value) return;
-            MapEnabled = value;
-            PlayerPrefs.SetInt(KeyMapEnabled, value ? 1 : 0);
-            Changed?.Invoke();
-        }
-
         public static void SetFxIntensity(float value)
         {
             value = Mathf.Clamp01(value);
@@ -313,7 +296,6 @@ namespace Inkform.Settings
             FpsCap = 60;
             VSync = false;
             ShowFps = false;
-            MapEnabled = true;
             FxIntensity = 1f;
             Resolution r = Screen.currentResolution;
             ResolutionWidth = r.width;
@@ -325,7 +307,7 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyMusic);
             PlayerPrefs.DeleteKey(KeySfx);
             PlayerPrefs.DeleteKey(KeyMuted);
-            PlayerPrefs.DeleteKey(KeyMapEnabled);
+            PlayerPrefs.DeleteKey("Inkform.mapEnabled");
             PlayerPrefs.DeleteKey(KeyMouseSens);
             PlayerPrefs.DeleteKey(KeyStickSens);
             PlayerPrefs.DeleteKey(KeyDevice);

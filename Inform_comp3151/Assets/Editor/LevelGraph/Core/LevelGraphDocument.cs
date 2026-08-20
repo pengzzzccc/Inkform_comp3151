@@ -62,7 +62,7 @@ namespace Inkform.LevelGraph
     public class RoomEntry
     {
         /// <summary>Scene file name. Doubles as the default exit id of every door leading here —
-        /// the "one string, four places" convention RoomBuilder set.</summary>
+        /// the graph's "one string, four places" convention.</summary>
         public string Name = "";
 
         /// <summary>Shown to players (the save menu's slot rows). Empty falls back to Name.</summary>
@@ -70,7 +70,7 @@ namespace Inkform.LevelGraph
 
         /// <summary>How many outgoing doors this room may have. The node graph enforces it as the
         /// connection cap (a bidirectional link counts against both ends), and it mirrors the four
-        /// door slots RoomBuilder lays out per room. Defaults to 4; a room line without `door N`
+        /// authored door slots per room. Defaults to 4; a room line without `door N`
         /// parses as 4, so existing graphs stay byte-stable.</summary>
         public int DoorCount = 4;
 

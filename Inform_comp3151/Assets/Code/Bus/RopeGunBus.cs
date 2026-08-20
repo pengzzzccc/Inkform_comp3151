@@ -13,10 +13,10 @@ namespace Inkform.Bus
     public static class RopeGunBus
     {
         /// <summary>Range overridden (entered a special zone): range = max range the zone specifies.</summary>
-        public static event Action<float> RangeOverride;
+        public static event Action<object, float> RangeOverride;
 
         /// <summary>Range override lifted (left the zone): the rope gun restores its own default range.</summary>
-        public static event Action RangeRestored;
+        public static event Action<object> RangeRestored;
 
         /// <summary>Fired: dir = normalized fire direction (always exactly toward the reticle).</summary>
         public static event Action<Vector2> Fired;
@@ -24,9 +24,9 @@ namespace Inkform.Bus
         /// <summary>Hit: dir = normalized direction from the player toward the anchor (terrain hit point / carriable).</summary>
         public static event Action<Vector2> Hit;
 
-        public static void RaiseRangeOverride(float range) => RangeOverride?.Invoke(range);
+        public static void RaiseRangeOverride(object source, float range) => RangeOverride?.Invoke(source, range);
 
-        public static void RaiseRangeRestored() => RangeRestored?.Invoke();
+        public static void RaiseRangeRestored(object source) => RangeRestored?.Invoke(source);
 
         public static void RaiseFired(Vector2 dir) => Fired?.Invoke(dir);
 
