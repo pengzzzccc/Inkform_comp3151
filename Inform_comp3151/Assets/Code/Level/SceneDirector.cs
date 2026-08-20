@@ -6,15 +6,15 @@ using UnityEngine.SceneManagement;
 namespace Inkform.Level
 {
     /// <summary>
-    /// Scene director: the single gatekeeper for scene transitions. Owns the LevelFlow asset (the level
-    /// graph) and answers "where do we go now" — StartNewGame, ReturnToMainMenu, and the LevelBus.Completed
-    /// handler that resolves which level an exit leads to. UIManager and LevelExit triggers never call
-    /// SceneManager themselves; they route through here, so the topology lives in one place and the
-    /// scene names are never duplicated.
+    /// Scene director: the single gatekeeper for scene transitions. Reads the level topology
+    /// (LevelGraph.txt, via LevelGraphReader) once at startup and answers "where do we go now" —
+    /// StartNewGame, ReturnToMainMenu, and the LevelBus.Completed handler that resolves which scene
+    /// an exit leads to. UIManager and LevelExit triggers never call SceneManager themselves; they
+    /// route through here, so the topology lives in one place and scene names are never duplicated.
     ///
-    /// Also the publisher of LevelBus.Started: on every scene load it resolves the scene name back to a
-    /// LevelScene asset (null for the menu / unregistered scenes) and broadcasts it, keeping
-    /// LevelBus.Current accurate for whoever needs "which level is this" (HUD, audio).
+    /// Also the publisher of LevelBus.Started: on every scene load it broadcasts the active scene's
+    /// name (null for the menu / unregistered scenes), keeping LevelBus.Current accurate for whoever
+    /// needs "which level is this" (HUD, audio).
     ///
     /// Attach to GameManager (the DontDestroyOnLoad host, already carrying UIManager / RespawnDirector).
     /// A sibling SceneDirector is reached by UIManager via GetComponent — like it already does for
@@ -26,8 +26,11 @@ namespace Inkform.Level
         public static SceneDirector Instance { get; private set; }
 
         [Header("Level graph")]
-        [Tooltip("The one LevelFlow asset: menu scene, entry level, and every level. The single source of truth for scene names")]
-        [SerializeField] private LevelFlow flow;
+        [Tooltip("LevelGraph.txt — the same file the editor window edits. The single source of truth for the topology")]
+        [SerializeField] private TextAsset levelGraphFile;
+
+        // Parsed once in Awake; null when no file is wired (the public methods warn when called)
+        private LevelGraph graph;
 
         // Set by sceneLoaded, consumed one frame later in Update. See OnSceneLoaded for why.
         private bool sceneInitPending;
@@ -45,6 +48,10 @@ namespace Inkform.Level
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+
+            graph = LevelGraphReader.Parse(levelGraphFile);
+            if (levelGraphFile == null)
+                Debug.LogWarning("SceneDirector: no LevelGraph.txt wired — run Tools > Inkform > Room Builder > Wire GameManager Flow", this);
         }
 
         void OnEnable()
@@ -81,54 +88,48 @@ namespace Inkform.Level
 
         private void InitForScene()
         {
-            // No flow wired yet: nothing to resolve. The public methods warn when they are actually
+            // No graph wired yet: nothing to resolve. The public methods warn when they are actually
             // called, so a silent skip here does not hide a real misconfiguration.
-            if (flow == null) return;
+            if (graph == null) return;
 
-            LevelBus.RaiseStarted(Resolve(SceneManager.GetActiveScene()));
-        }
-
-        private LevelScene Resolve(Scene scene)
-        {
-            if (flow.IsMenuScene(scene.name)) return null;
-            return flow.FindBySceneName(scene.name);
+            string scene = SceneManager.GetActiveScene().name;
+            LevelBus.RaiseStarted(graph.IsMenuScene(scene) || !graph.HasRoom(scene) ? null : scene);
         }
 
         // ---- Transitions (the only SceneManager.LoadScene call sites in the project) ----
 
         /// <summary>
-        /// Starts a fresh run in the flow's entry level. Called by UIManager for an empty save slot,
+        /// Starts a fresh run in the graph's entry scene. Called by UIManager for an empty save slot,
         /// and by ContinueGame when a save cannot be honoured.
         /// </summary>
         public void StartNewGame()
         {
-            if (flow == null || flow.entryLevel == null)
+            if (graph == null || string.IsNullOrEmpty(graph.EntryScene))
             {
-                Debug.LogWarning("SceneDirector: no LevelFlow or entryLevel configured — cannot start a new game", this);
+                Debug.LogWarning("SceneDirector: no level graph or entry scene configured — cannot start a new game", this);
                 return;
             }
-            LoadLevel(flow.entryLevel);
+            LoadScene(graph.EntryScene);
         }
 
         /// <summary>
         /// Resumes a saved run: loads the room the save names and hands RespawnDirector the coordinate
-        /// to put the player on. A save naming a room the flow no longer has (an asset renamed or
-        /// deleted since it was written) is not fatal — warn and start over rather than load nothing.
+        /// to put the player on. A save naming a room the graph no longer has (the txt was edited since
+        /// it was written) is not fatal — warn and start over rather than load nothing.
         /// </summary>
         public void ContinueGame(SaveData save)
         {
             if (save == null || save.IsEmpty) { StartNewGame(); return; }
 
-            if (flow == null)
+            if (graph == null)
             {
-                Debug.LogWarning("SceneDirector: no LevelFlow configured — cannot continue a saved run", this);
+                Debug.LogWarning("SceneDirector: no level graph wired — cannot continue a saved run", this);
                 return;
             }
 
-            LevelScene target = flow.FindBySceneName(save.sceneName);
-            if (target == null)
+            if (!graph.HasRoom(save.sceneName))
             {
-                Debug.LogWarning($"SceneDirector: saved room '{save.sceneName}' is not in the flow — starting a new run instead", this);
+                Debug.LogWarning($"SceneDirector: saved room '{save.sceneName}' is not in the level graph — starting a new run instead", this);
                 StartNewGame();
                 return;
             }
@@ -137,7 +138,7 @@ namespace Inkform.Level
             // transition must not also be waiting at the far end.
             pendingSpawnFrom = null;
             pendingSpawnPos = new Vector2(save.spawnX, save.spawnY);
-            LoadLevel(target);
+            LoadScene(save.sceneName);
         }
 
         /// <summary>Returns to the main menu. Called by UIManager (pause menu's Save &amp; Quit) and by
@@ -147,25 +148,16 @@ namespace Inkform.Level
         {
             SaveStore.EndRun();
 
-            if (flow == null)
+            if (graph == null)
             {
-                Debug.LogWarning("SceneDirector: no LevelFlow configured — cannot return to the main menu", this);
+                Debug.LogWarning("SceneDirector: no level graph wired — cannot return to the main menu", this);
                 return;
             }
-            LoadScene(flow.mainMenuSceneName);
+            LoadScene(graph.MenuScene);
         }
 
-        /// <summary>Loads a specific level by its LevelScene asset. Future level-select entry point.</summary>
-        public void LoadLevel(LevelScene level)
-        {
-            if (level == null)
-            {
-                Debug.LogWarning("SceneDirector: LoadLevel called with a null level", this);
-                return;
-            }
-            LoadScene(level.sceneName);
-        }
-
+        // The one SceneManager.LoadScene wrapper: every transition funnels through here, so scene
+        // names are resolved before this point and a future fade/log sits at exactly one place.
         private void LoadScene(string sceneName)
         {
             SceneManager.LoadScene(sceneName);
@@ -175,28 +167,27 @@ namespace Inkform.Level
 
         /// <summary>
         /// A LevelExit was reached. Resolves the exit's target through the topology and loads it; a dead
-        /// end (no such exit, or the target is empty) falls back to the main menu rather than stranding
-        /// the player.
+        /// end (no such exit) falls back to the main menu rather than stranding the player.
         /// </summary>
         private void OnCompleted(string exitId)
         {
-            LevelScene current = LevelBus.Current;
+            string current = LevelBus.Current;
             if (current == null)
             {
                 Debug.LogWarning("SceneDirector: level completed but no current level — ignoring", this);
                 return;
             }
 
-            LevelScene target = current.TargetOf(exitId);
-            if (target == null)
+            string target = graph != null ? graph.TargetOf(current, exitId) : null;
+            if (string.IsNullOrEmpty(target))
             {
-                Debug.LogWarning($"SceneDirector: exit '{exitId}' of '{current.name}' has no target — returning to main menu", this);
+                Debug.LogWarning($"SceneDirector: exit '{exitId}' of '{current}' has no target — returning to main menu", this);
                 ReturnToMainMenu();
                 return;
             }
 
-            pendingSpawnFrom = current.sceneName;   // the new scene spawns the player at this room's door
-            LoadLevel(target);
+            pendingSpawnFrom = current;         // the new scene spawns the player at this room's door
+            LoadScene(target);
         }
 
         /// <summary>The scene we came from (set by OnCompleted); null when no door was taken, e.g. a
@@ -220,12 +211,11 @@ namespace Inkform.Level
 
         // ---- Accessors for UIManager (scene-name policy lives here, not duplicated in the UI layer) ----
 
-        public bool IsMenuScene(string sceneName) => flow != null && flow.IsMenuScene(sceneName);
+        public bool IsMenuScene(string sceneName) => graph != null && graph.IsMenuScene(sceneName);
 
-        public LevelScene CurrentLevel => LevelBus.Current;
-
-        /// <summary>The LevelScene asset for a scene name, or null. Lets the save menu turn the room
-        /// name stored in a save file into something worth reading, without holding the flow itself.</summary>
-        public LevelScene FindLevel(string sceneName) => flow != null ? flow.FindBySceneName(sceneName) : null;
+        /// <summary>The player-facing name for a room ("a laboratory in a cave"), falling back to the
+        /// scene name. Lets the save menu turn the room stored in a save file into something worth
+        /// reading, without holding the graph itself.</summary>
+        public string DisplayNameOf(string sceneName) => graph != null ? graph.DisplayNameOf(sceneName) : sceneName;
     }
 }

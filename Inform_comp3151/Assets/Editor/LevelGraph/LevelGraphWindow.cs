@@ -13,8 +13,8 @@ namespace Inkform.LevelGraph.EditorTools
     ///
     /// The workflow this layout exists for: drag a hand-authored scene from the shelf onto the canvas
     /// to adopt it as a room, configure it in the inspector (display name, door count), connect it by
-    /// dragging links, then press "Apply Level Topology" — the graph file, the LevelScene assets, the
-    /// scene wiring (doors / spawn points) and both build lists all follow in one click.
+    /// dragging links, then press "Apply Level Topology" — the graph file, the scene wiring (doors /
+    /// spawn points) and both build lists all follow in one click.
     ///
     /// The split down the middle is between cheap and expensive validation. Graph rules and asset
     /// rules re-run on every edit — they are milliseconds and they keep the node colours honest.
@@ -115,7 +115,6 @@ namespace Inkform.LevelGraph.EditorTools
 
             bar.Add(new ToolbarButton(DeepValidate) { text = "Deep Validate (opens scenes)" });
             bar.Add(new ToolbarButton(FixAll) { text = "Fix All" });
-            bar.Add(new ToolbarButton(SeedFromAssets) { text = "Import From Assets" });
 
             helpToggle = new ToolbarToggle { text = "Help" };
             helpToggle.RegisterValueChangedCallback(evt => SetHelpVisible(evt.newValue));
@@ -156,11 +155,10 @@ namespace Inkform.LevelGraph.EditorTools
             Title(c, "Level Graph — Getting Started");
 
             Heading(c, "1 · What this window owns");
-            Body(c, "LevelGraph.txt is the source of truth for the level topology. The LevelScene assets "
-                  + "and All_level_Con.asset are generated from it — do not hand-edit those, the next "
-                  + "Apply Level Topology overwrites them.");
-            Body(c, "Edit here, press Apply Level Topology, and the file is written, the assets are "
-                  + "regenerated, the scenes are wired and both build lists are updated.");
+            Body(c, "LevelGraph.txt is the source of truth for the level topology — SceneDirector reads "
+                  + "it directly at runtime, so what this window saves is literally what the game runs.");
+            Body(c, "Edit here, press Apply Level Topology, and the file is written, the scenes are "
+                  + "wired and both build lists are updated.");
 
             Heading(c, "2 · One door is five things");
             Body(c, "A link from A to B is a contract with five parts. Break any one and the only symptom "
@@ -170,22 +168,18 @@ namespace Inkform.LevelGraph.EditorTools
             Step(c, 2, "A LevelExit in scene A whose exitId is B.");
             Step(c, 3, "A checkpoint named Spawn_A in scene B — without it, arrivals land at B's start point instead of the doorway.");
             Step(c, 4, "B is in Build Settings.");
-            Step(c, 5, "B's LevelScene asset carries the matching sceneName.");
+            Step(c, 5, "B is a room in LevelGraph.txt.");
             Body(c, "Nothing in the running game checks any of this. Deep Validate does.");
 
             Heading(c, "3 · Toolbar");
             Term(c, "Reload", "Re-reads LevelGraph.txt. Discards edits you have not applied.");
             Term(c, "Apply Level Topology", "The one-button workflow: writes the graph to LevelGraph.txt, "
-                                           + "regenerates the LevelScene / LevelFlow assets, creates every "
-                                           + "missing door and spawn point in the room scenes, and updates "
-                                           + "both build lists. Additive and idempotent — applying an "
-                                           + "unchanged graph writes nothing.");
+                                           + "creates every missing door and spawn point in the room "
+                                           + "scenes, and updates both build lists. Additive and "
+                                           + "idempotent — applying an unchanged graph writes nothing.");
             Term(c, "Deep Validate", "Opens every room scene to check the door wiring. Seconds, not "
                                    + "milliseconds; your open scenes are restored afterwards.");
             Term(c, "Fix All", "Creates everything the graph says is missing. It only ever creates.");
-            Term(c, "Import From Assets", "Rebuilds the graph from the existing LevelFlow assets and "
-                                        + "OVERWRITES LevelGraph.txt, node positions included. For "
-                                        + "first-time adoption only.");
 
             Heading(c, "4 · On the canvas");
             Term(c, "Left shelf", "Every scene under Assets/Scenes. Drag one onto the canvas to adopt it as a room; double-click opens it.");
@@ -205,7 +199,7 @@ namespace Inkform.LevelGraph.EditorTools
             Step(c, 1, "Drag the scene from the left shelf onto the canvas — it becomes a room.");
             Step(c, 2, "Click the node, set its door count in the inspector, press Apply.");
             Step(c, 3, "Drag links from whichever rooms should connect.");
-            Step(c, 4, "Press Apply Level Topology — assets, doors, spawn points and build lists all follow.");
+            Step(c, 4, "Press Apply Level Topology — doors, spawn points and build lists all follow.");
             Step(c, 5, "Deep Validate, then drag the created doors / spawn points to their real positions and save.");
 
             Heading(c, "6 · What this tool will never do");
@@ -217,10 +211,9 @@ namespace Inkform.LevelGraph.EditorTools
                   + "to tell. Room Builder > Build Missing Rooms likewise skips any scene that already exists.");
 
             Heading(c, "7 · Validation rules");
-            Body(c, "Graph and asset rules re-run on every edit. Scene rules need Deep Validate.");
+            Body(c, "Graph rules re-run on every edit. Scene rules need Deep Validate.");
 
             AddRuleGroup(c, "Graph", RuleLayer.Graph);
-            AddRuleGroup(c, "Assets", RuleLayer.Assets);
             AddRuleGroup(c, "Scenes (Deep Validate)", RuleLayer.Scenes);
 
             return scroll;
@@ -448,15 +441,15 @@ namespace Inkform.LevelGraph.EditorTools
 
             if (doc.Rooms.Count == 0 && !LevelGraphFile.Exists)
             {
-                summary.text = $"{LevelGraphFile.Path} does not exist yet — press \"Import From Assets\" to seed it from the current LevelFlow.";
+                summary.text = $"{LevelGraphFile.Path} does not exist yet — drag scenes from the left shelf onto the canvas to build a graph.";
             }
         }
 
         /// <summary>
-        /// The one-button workflow: writes the graph to the text file (the source of truth),
-        /// regenerates the LevelScene / LevelFlow assets from it, wires every room scene with the
-        /// doors / spawn points its edges require, and makes sure the scenes are in the build lists
-        /// (global and build profile). Everything it does is additive and idempotent.
+        /// The one-button workflow: writes the graph to the text file (the source of truth SceneDirector
+        /// reads at runtime), wires every room scene with the doors / spawn points its edges require,
+        /// and makes sure the scenes are in the build lists (global and build profile). Everything it
+        /// does is additive and idempotent.
         /// </summary>
         private void ApplyTopology()
         {
@@ -464,8 +457,6 @@ namespace Inkform.LevelGraph.EditorTools
 
             graph.WriteBackPositions();
             LevelGraphFile.Save(doc);
-
-            int touched = LevelGraphSync.Apply(doc);
 
             // Scene wiring before the build lists: FixBuildSettings reads the graph file back, and
             // wiring works off the in-memory doc — order between them does not matter, but doing the
@@ -478,7 +469,7 @@ namespace Inkform.LevelGraph.EditorTools
             sceneTree?.Refresh(doc);
             Revalidate(keepSceneFindings: false);
             Debug.Log($"Level topology applied: {doc.Rooms.Count} rooms, {doc.Links.Count} links, "
-                    + $"{touched} asset(s) written, {wired} door(s)/spawn(s) created, build settings updated.");
+                    + $"{wired} door(s)/spawn(s) created, build settings updated.");
         }
 
         private void DeepValidate()
@@ -487,7 +478,7 @@ namespace Inkform.LevelGraph.EditorTools
 
             if (dirty && !EditorUtility.DisplayDialog(
                     "Unsaved graph changes",
-                    "The graph has edits that have not been applied. Deep validation checks the scenes against the *applied* assets, so it will not see them.\n\nValidate anyway?",
+                    "The graph has edits that have not been applied. Deep validation checks the scenes against the *saved* graph, so it will not see them.\n\nValidate anyway?",
                     "Validate", "Cancel"))
                 return;
 
@@ -523,29 +514,7 @@ namespace Inkform.LevelGraph.EditorTools
             sceneFindings.Clear();
             Revalidate(keepSceneFindings: false);
 
-            Debug.Log($"Level graph: fixed {repaired} finding(s). Created objects sit at each scene's origin — drag them into place.");
-        }
-
-        /// <summary>One-time adoption: read whatever the LevelFlow assets already say and write it out
-        /// as the text file, so switching to this tool does not start from an empty graph.</summary>
-        private void SeedFromAssets()
-        {
-            if (LevelGraphFile.Exists && !EditorUtility.DisplayDialog(
-                    "Import from assets",
-                    $"{LevelGraphFile.Path} already exists. Rebuild it from the current LevelFlow assets, discarding the file (including node positions)?",
-                    "Rebuild", "Cancel"))
-                return;
-
-            doc = LevelGraphSync.ImportFromAssets();
-            LevelGraphFile.Save(doc);
-
-            graph.Populate(doc);
-            sceneTree?.Refresh(doc);
-            dirty = false;
-            sceneFindings.Clear();
-            Revalidate(keepSceneFindings: false);
-
-            Debug.Log($"Level graph seeded from assets: {doc.Rooms.Count} rooms, {doc.Links.Count} links → {LevelGraphFile.Path}");
+            Debug.Log($"Level graph: fixed {repaired} finding(s). Created objects sit in a row of slots near the origin — drag them into place.");
         }
 
         private void OnGraphChanged()

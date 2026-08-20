@@ -5,8 +5,8 @@ namespace Inkform.LevelGraph
 {
     /// <summary>
     /// The level topology as data: which rooms exist, which doors connect them, where the entry is.
-    /// This is the in-memory form of LevelGraph.txt, which is the single source of truth — the
-    /// LevelScene / LevelFlow assets are generated from it, never edited by hand.
+    /// This is the in-memory form of LevelGraph.txt, which is the single source of truth — the editor
+    /// window edits it, and SceneDirector reads it at runtime through its own lightweight parser.
     ///
     /// Rooms and links keep their authored order so a round trip through the parser is byte-stable:
     /// re-serializing a document nobody touched must produce the file it came from, or every Apply
@@ -17,10 +17,10 @@ namespace Inkform.LevelGraph
     /// </summary>
     public class LevelGraphDocument
     {
-        /// <summary>Menu scene name, mirrored into LevelFlow.mainMenuSceneName.</summary>
+        /// <summary>Menu scene name, mirrored into the runtime graph's MenuScene.</summary>
         public string MenuScene = "MainMenu";
 
-        /// <summary>Room a fresh run starts in, mirrored into LevelFlow.entryLevel.</summary>
+        /// <summary>Room a fresh run starts in, mirrored into the runtime graph's EntryScene.</summary>
         public string EntryRoom = "";
 
         public readonly List<RoomEntry> Rooms = new List<RoomEntry>();
@@ -61,8 +61,8 @@ namespace Inkform.LevelGraph
     /// <summary>One room: a scene, a name to show players, and where its node sits in the blueprint.</summary>
     public class RoomEntry
     {
-        /// <summary>Scene file name. Doubles as the LevelScene asset name and as the default exit id
-        /// of every door leading here — the "one string, four places" convention RoomBuilder set.</summary>
+        /// <summary>Scene file name. Doubles as the default exit id of every door leading here —
+        /// the "one string, four places" convention RoomBuilder set.</summary>
         public string Name = "";
 
         /// <summary>Shown to players (the save menu's slot rows). Empty falls back to Name.</summary>

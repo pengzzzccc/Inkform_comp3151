@@ -8,73 +8,31 @@ using UnityEngine.SceneManagement;
 namespace Inkform.LevelGraph.EditorTools
 {
     /// <summary>
-    /// The validation rules that need the project, not just the graph: assets (B) and scenes (C).
-    /// Split from LevelGraphValidator because these need LevelScene / LevelExit / Checkpoint, which
-    /// live in the predefined Assembly-CSharp — an assembly definition cannot reference that, so the
-    /// pure rules and these cannot share an assembly. The upside is that the pure half stays testable.
+    /// The validation rules that need the project, not just the graph: build settings (B) and scenes
+    /// (C). Split from LevelGraphValidator because these need LevelExit / Checkpoint, which live in
+    /// the predefined Assembly-CSharp — an assembly definition cannot reference that, so the pure
+    /// rules and these cannot share an assembly. The upside is that the pure half stays testable.
     ///
     /// Split by cost, which is what the window cares about:
-    ///   ValidateProject — assets and build settings. Milliseconds; runs on every refresh.
+    ///   ValidateProject — build settings and scene-file presence. Milliseconds; runs on every refresh.
     ///   ValidateScenes  — opens every room scene. Seconds; runs only when asked.
     ///
     /// A connection A→B is really a five-part contract, and until this class existed none of it was
-    /// checked: the LevelScene connection, a LevelExit in A carrying the right id, a Spawn_A checkpoint
-    /// in B, B present in Build Settings, and B's sceneName matching the actual file. Break any one and
-    /// the only symptom is a warning at the moment a player walks into that door.
+    /// checked: the link in the graph, a LevelExit in A carrying the right id, a Spawn_A checkpoint
+    /// in B, B present in Build Settings, and B's scene file existing. Break any one and the only
+    /// symptom is a warning at the moment a player walks into that door.
     /// </summary>
     public static class LevelGraphProjectValidator
     {
-        // ---- B: assets and build settings ----
+        // ---- B: build settings ----
 
         public static List<Finding> ValidateProject(LevelGraphDocument doc)
         {
             var findings = new List<Finding>();
             if (doc == null) return findings;
 
-            var inGraph = new HashSet<string>();
-            foreach (RoomEntry room in doc.Rooms) inGraph.Add(room.Name);
-
             foreach (RoomEntry room in doc.Rooms)
             {
-                LevelScene asset = AssetDatabase.LoadAssetAtPath<LevelScene>(LevelGraphFile.AssetPathFor(room.Name));
-
-                if (asset == null)
-                {
-                    findings.Add(new Finding
-                    {
-                        Severity = Severity.Error,
-                        Code = "B8",
-                        Room = room.Name,
-                        Message = $"No LevelScene asset for '{room.Name}'.",
-                        Fix = FixAction.CreateLevelSceneAsset,
-                    });
-                    continue;
-                }
-
-                if (asset.sceneName != room.Name)
-                {
-                    findings.Add(new Finding
-                    {
-                        Severity = Severity.Error,
-                        Code = "B9",
-                        Room = room.Name,
-                        Message = $"'{room.Name}' asset has sceneName '{asset.sceneName}' — LevelFlow.FindBySceneName will never match it.",
-                        Fix = FixAction.FixSceneNameField,
-                    });
-                }
-
-                if (asset.displayName != room.DisplayName)
-                {
-                    findings.Add(new Finding
-                    {
-                        Severity = Severity.Info,
-                        Code = "B9b",
-                        Room = room.Name,
-                        Message = $"'{room.Name}' display name differs from the graph.",
-                        Fix = FixAction.FixDisplayNameField,
-                    });
-                }
-
                 // C12 lives here rather than in ValidateScenes: knowing the file is missing costs one
                 // lookup, and there is no point paying to open the other 21 scenes to find that out.
                 if (LevelGraphFile.ScenePathFor(room.Name) == null)
@@ -90,64 +48,9 @@ namespace Inkform.LevelGraph.EditorTools
                 }
             }
 
-            CheckOrphanAssets(inGraph, findings);
-            CheckFlowAsset(doc, findings);
             CheckBuildSettings(doc, findings);
 
             return findings;
-        }
-
-        // B10 — an asset nobody references. Reported, never deleted: it may be a room being written.
-        private static void CheckOrphanAssets(HashSet<string> inGraph, List<Finding> findings)
-        {
-            foreach (string guid in AssetDatabase.FindAssets("t:LevelScene", new[] { LevelGraphFile.LevelsDir }))
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                var asset = AssetDatabase.LoadAssetAtPath<LevelScene>(path);
-                if (asset == null || inGraph.Contains(asset.name)) continue;
-
-                findings.Add(new Finding
-                {
-                    Severity = Severity.Warning,
-                    Code = "B10",
-                    Room = asset.name,
-                    Message = $"LevelScene asset '{asset.name}' is not in the graph (left alone; delete it by hand if it is dead).",
-                });
-            }
-        }
-
-        // B11 — the flow root drifting from the graph.
-        private static void CheckFlowAsset(LevelGraphDocument doc, List<Finding> findings)
-        {
-            LevelFlow flow = AssetDatabase.LoadAssetAtPath<LevelFlow>(LevelGraphFile.FlowAssetPath);
-
-            if (flow == null)
-            {
-                findings.Add(new Finding
-                {
-                    Severity = Severity.Error,
-                    Code = "B11",
-                    Message = "No LevelFlow asset — SceneDirector has no topology to resolve against.",
-                    Fix = FixAction.SyncLevelFlow,
-                });
-                return;
-            }
-
-            bool countMismatch = flow.levels == null || flow.levels.Length != doc.Rooms.Count;
-            bool entryMismatch = (flow.entryLevel == null) != string.IsNullOrEmpty(doc.EntryRoom)
-                              || (flow.entryLevel != null && flow.entryLevel.sceneName != doc.EntryRoom);
-            bool menuMismatch = flow.mainMenuSceneName != doc.MenuScene;
-
-            if (countMismatch || entryMismatch || menuMismatch)
-            {
-                findings.Add(new Finding
-                {
-                    Severity = Severity.Error,
-                    Code = "B11",
-                    Message = "LevelFlow does not match the graph (entry / menu / room list).",
-                    Fix = FixAction.SyncLevelFlow,
-                });
-            }
         }
 
         // C13 / C14 — SceneManager.LoadScene matches by name and only sees scenes in Build Settings.

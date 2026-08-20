@@ -7,19 +7,25 @@ namespace Inkform.Level
     /// <summary>
     /// Level exit: the trigger that completes a level. When the player enters it, LevelBus.Completed is
     /// raised with this trigger's exitId; SceneDirector then resolves where that exit leads through the
-    /// LevelScene asset's topology. The trigger itself knows nothing about the next level — it only names
-    /// the exit, so the graph stays in the assets and the scene stays dumb.
+    /// level graph. The trigger itself knows nothing about the next level — it only names the exit, so
+    /// the graph stays in the text file and the scene stays dumb.
     ///
-    /// exitId must spell a LevelConnection.id in the current level's LevelScene asset exactly (the same
-    /// "two places, one string" contract as Tags, but per-level). A level with one exit can leave it "".
+    /// exitId must match an edge in the current scene's topology exactly (the same "two places, one
+    /// string" contract as Tags, but per-level); by convention it defaults to the target scene's name.
+    /// `destination` is display-only info written by the level graph tools: the scene this door leads
+    /// to, so the Scene-view gizmo can say it outright instead of making you cross-reference the graph
+    /// window. A level with one exit can leave exitId "".
     /// Needs an Is-Trigger collider.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class LevelExit : MonoBehaviour
     {
         [Header("Level exit")]
-        [Tooltip("Matches a LevelConnection.id in this level's LevelScene asset. Empty is fine for single-exit levels")]
+        [Tooltip("Matches an edge in this scene's level-graph topology. Empty is fine for single-exit levels")]
         [SerializeField] private string exitId = "";
+
+        [Tooltip("Display only, written by the level graph tools: the scene this door leads to. Shown in the Scene-view gizmo")]
+        [SerializeField] private string destination = "";
 
         void OnTriggerEnter2D(Collider2D other)
         {
@@ -47,6 +53,18 @@ namespace Inkform.Level
             Gizmos.DrawLine(p, p + Vector2.up * 0.6f);
             Gizmos.DrawLine(p + Vector2.up * 0.6f, p + Vector2.up * 0.45f + Vector2.left * 0.15f);
             Gizmos.DrawLine(p + Vector2.up * 0.6f, p + Vector2.up * 0.45f + Vector2.right * 0.15f);
+
+#if UNITY_EDITOR
+            // The label says where this door leads. `destination` is the tools' answer; when it is
+            // empty (older scenes, hand-placed doors) the exitId is the fallback — with the default
+            // id convention they are the same string anyway.
+            string target = string.IsNullOrEmpty(destination) ? exitId : destination;
+            if (!string.IsNullOrEmpty(target))
+            {
+                UnityEditor.Handles.color = c;
+                UnityEditor.Handles.Label(p + Vector2.up * 0.8f, $"→ {target}");
+            }
+#endif
         }
     }
 }

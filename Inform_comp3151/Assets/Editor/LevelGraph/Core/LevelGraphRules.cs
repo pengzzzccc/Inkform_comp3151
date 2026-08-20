@@ -7,9 +7,6 @@ namespace Inkform.LevelGraph
         /// <summary>Decidable from the topology alone. Re-run on every edit.</summary>
         Graph,
 
-        /// <summary>Needs the LevelScene / LevelFlow assets and Build Settings.</summary>
-        Assets,
-
         /// <summary>Needs the room scenes opened.</summary>
         Scenes,
     }
@@ -46,8 +43,8 @@ namespace Inkform.LevelGraph
     ///
     /// LevelGraphRulesTests keeps the Graph-layer entries honest: it asserts that every code the
     /// validator actually emits appears here with a matching severity, and that every Graph entry here
-    /// is reachable by some fixture. The Assets and Scenes layers cannot be covered that way — they
-    /// need a project on disk — so those entries are maintained by hand.
+    /// is reachable by some fixture. The Scenes layer cannot be covered that way — it needs a project
+    /// on disk — so those entries are maintained by hand.
     /// </summary>
     public static class LevelGraphRules
     {
@@ -76,18 +73,6 @@ namespace Inkform.LevelGraph
                 "More exits than a generated room has door slots (4) — place the extras by hand.", false),
             new RuleInfo("A8", RuleLayer.Graph, Severity.Warning,
                 "No route back to the entry: reaching this room strands the player.", false),
-
-            // ---- Assets ----
-            new RuleInfo("B8", RuleLayer.Assets, Severity.Error,
-                "No LevelScene asset for this room.", true),
-            new RuleInfo("B9", RuleLayer.Assets, Severity.Error,
-                "Asset sceneName does not match — FindBySceneName will never resolve it.", true),
-            new RuleInfo("B9b", RuleLayer.Assets, Severity.Info,
-                "Asset display name differs from the graph.", true),
-            new RuleInfo("B10", RuleLayer.Assets, Severity.Warning,
-                "LevelScene asset exists but is not in the graph. Reported only, never deleted.", false),
-            new RuleInfo("B11", RuleLayer.Assets, Severity.Error,
-                "LevelFlow does not match the graph (entry / menu / room list).", true),
 
             // ---- Scenes ----
             new RuleInfo("C12", RuleLayer.Scenes, Severity.Error,

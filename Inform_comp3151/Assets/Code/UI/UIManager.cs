@@ -23,9 +23,9 @@ namespace Inkform.UI
     /// PausePanel asks it to resume, etc. The game never knows a menu exists.
     ///
     /// Scene policy is owned by the SceneDirector (a sibling component on this same GameManager): it
-    /// holds the LevelFlow asset and answers IsMenuScene / StartNewGame / ReturnToMainMenu, so no scene
-    /// name is duplicated here. The main menu shows on load for the menu scene; any other scene is
-    /// gameplay — all panels close on load, Escape opens pause.
+    /// reads the level graph (LevelGraph.txt) and answers IsMenuScene / StartNewGame /
+    /// ReturnToMainMenu, so no scene name is duplicated here. The main menu shows on load for the
+    /// menu scene; any other scene is gameplay — all panels close on load, Escape opens pause.
     /// </summary>
     public class UIManager : MonoBehaviour
     {
@@ -251,12 +251,11 @@ namespace Inkform.UI
         }
 
         /// <summary>The display name of the level a save file names, for the save menu's slot rows.
-        /// Routed through here rather than read from the flow directly because panels never touch the
-        /// game layer (see the class docs); falls back to the raw scene name.</summary>
+        /// Routed through here rather than read from the level graph directly because panels never
+        /// touch the game layer (see the class docs); falls back to the raw scene name.</summary>
         public string LevelDisplayName(string sceneName)
         {
-            Inkform.Level.LevelScene level = sceneDirector != null ? sceneDirector.FindLevel(sceneName) : null;
-            return level != null ? level.DisplayName : sceneName;
+            return sceneDirector != null ? sceneDirector.DisplayNameOf(sceneName) : sceneName;
         }
 
         /// <summary>

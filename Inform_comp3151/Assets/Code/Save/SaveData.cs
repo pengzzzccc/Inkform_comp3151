@@ -23,8 +23,9 @@ namespace Inkform.Save
 
         public int version = CurrentVersion;
 
-        /// <summary>The room to load, matching LevelScene.sceneName. Empty = this slot holds nothing;
-        /// it is also the one field IsEmpty tests, so it must be written last-ish, never speculatively.</summary>
+        /// <summary>The room to load, matching a scene name in LevelGraph.txt. Empty = this slot holds
+        /// nothing; it is also the one field IsEmpty tests, so it must be written last-ish, never
+        /// speculatively.</summary>
         public string sceneName;
 
         // The respawn point RespawnDirector had settled on when this was written — a checkpoint the

@@ -50,7 +50,7 @@ namespace Inkform.LevelGraph.EditorTools
             }
 
             Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
-            GameObject created = ApplySceneFix(finding);
+            GameObject created = ApplySceneFix(finding, doc);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -90,18 +90,15 @@ namespace Inkform.LevelGraph.EditorTools
 
             int fixedCount = 0;
 
-            // Asset-level repairs all collapse into one Sync, so run it at most once no matter how many
-            // findings asked for it.
+            // Build-settings repairs are file-level, no scene needs opening for them.
             if (assetFixes.Count > 0)
             {
-                LevelGraphSync.Apply(doc);
-                fixedCount += assetFixes.Count;
-
                 foreach (Finding f in assetFixes)
                 {
                     if (f.Fix == FixAction.AddSceneToBuild) AddSceneToBuild(f.Room);
                     else if (f.Fix == FixAction.MoveMenuSceneFirst) MoveMenuSceneFirst(doc.MenuScene);
                 }
+                fixedCount += assetFixes.Count;
             }
 
             if (byScene.Count == 0) return fixedCount;
@@ -122,7 +119,7 @@ namespace Inkform.LevelGraph.EditorTools
                     Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
                     foreach (Finding f in pair.Value)
                     {
-                        ApplySceneFix(f);
+                        ApplySceneFix(f, doc);
                         fixedCount++;
                     }
 
@@ -139,32 +136,35 @@ namespace Inkform.LevelGraph.EditorTools
             return fixedCount;
         }
 
+        // The only file-level repairs left are build settings; everything else opens a scene.
         private static bool IsAssetFix(FixAction fix) =>
-            fix == FixAction.CreateLevelSceneAsset
-            || fix == FixAction.FixSceneNameField
-            || fix == FixAction.FixDisplayNameField
-            || fix == FixAction.SyncLevelFlow
-            || fix == FixAction.AddSceneToBuild
+            fix == FixAction.AddSceneToBuild
             || fix == FixAction.MoveMenuSceneFirst;
 
         /// <summary>
         /// Makes every room scene carry the wiring its edges require: for each directed link A→B, scene
-        /// A gets a LevelExit with exitId B, scene B gets a checkpoint named Spawn_A, and every room
-        /// with any edge gets a start point. Only ever creates what is missing — existing doors,
-        /// checkpoints and start points are left alone, so the call is idempotent.
+        /// A gets a LevelExit with exitId B (its gizmo says "→ B"), scene B gets a checkpoint named
+        /// Spawn_A parented beside the door that leads back to A, and every room with any edge gets a
+        /// start point. Only ever creates what is missing — existing doors, checkpoints and start
+        /// points are left alone, so the call is idempotent.
         ///
-        /// This is the batch equivalent of working the findings list after Deep Validate, called by the
-        /// window's "Apply Level Topology" button so adopting a hand-authored level is one click.
-        /// Returns how many objects were created.
+        /// New doors line up in a row of slots (DoorSlot) instead of piling on the origin, and each
+        /// new Spawn_ becomes a child of its paired door at a fixed local offset to the door's right —
+        /// moving the door later carries the spawn with it, which was the old footgun: two objects to
+        /// drag in sync, and a forgotten one meant arrivals landing nowhere near the door.
+        ///
+        /// Called by the window's "Apply Level Topology" button so adopting a hand-authored level is
+        /// one click. Returns how many objects were created.
         /// </summary>
         public static int EnsureSceneWiring(LevelGraphDocument doc)
         {
             if (doc == null) return 0;
 
             // Collect the per-scene wish list from the directed expansion, so each scene is opened
-            // exactly once no matter how many edges touch it.
-            var doors = new Dictionary<string, HashSet<string>>();      // room -> exit ids its scene must expose
-            var spawns = new Dictionary<string, HashSet<string>>();     // room -> source rooms it needs Spawn_ checkpoints for
+            // exactly once no matter how many edges touch it. Doors remember their target scene too —
+            // that is the destination the door's gizmo advertises.
+            var doors = new Dictionary<string, Dictionary<string, string>>();   // room -> exitId -> target
+            var spawns = new Dictionary<string, HashSet<string>>();            // room -> source rooms it needs Spawn_ checkpoints for
             var roomsWithEdges = new HashSet<string>();
 
             foreach (DirectedLink link in doc.EnumerateDirected())
@@ -172,12 +172,12 @@ namespace Inkform.LevelGraph.EditorTools
                 roomsWithEdges.Add(link.From);
                 roomsWithEdges.Add(link.To);
 
-                if (!doors.TryGetValue(link.From, out HashSet<string> ids))
+                if (!doors.TryGetValue(link.From, out Dictionary<string, string> map))
                 {
-                    ids = new HashSet<string>();
-                    doors[link.From] = ids;
+                    map = new Dictionary<string, string>();
+                    doors[link.From] = map;
                 }
-                ids.Add(link.ExitId);
+                map[link.ExitId] = link.To;
 
                 if (!spawns.TryGetValue(link.To, out HashSet<string> sources))
                 {
@@ -206,15 +206,16 @@ namespace Inkform.LevelGraph.EditorTools
 
                     Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
                     bool dirty = false;
+                    int slot = 0;
 
-                    if (doors.TryGetValue(room, out HashSet<string> exitIds))
+                    if (doors.TryGetValue(room, out Dictionary<string, string> exits))
                     {
-                        foreach (string exitId in exitIds)
+                        foreach (KeyValuePair<string, string> edge in exits)
                         {
-                            if (FindLevelExit(exitId) != null) continue;
+                            if (FindLevelExit(edge.Key) != null) continue;
 
-                            var finding = new Finding { Room = room, ExitId = exitId, Code = "C15" };
-                            CreateLevelExit(finding);
+                            var finding = new Finding { Room = room, ExitId = edge.Key, Other = edge.Value };
+                            CreateLevelExit(finding, DoorSlot(slot++));
                             created++;
                             dirty = true;
                         }
@@ -227,7 +228,25 @@ namespace Inkform.LevelGraph.EditorTools
                             string want = $"Spawn_{source}";
                             if (FindCheckpoint(want) != null) continue;
 
-                            CreateCheckpoint(want, false);
+                            GameObject spawn = CreateCheckpoint(want, false);
+
+                            // Pair the spawn with the door that leads back to where the player came
+                            // from. With the default id convention that door's exitId is exactly the
+                            // source room's name; a custom-id link with no matching door leaves the
+                            // spawn at a root-level slot of its own.
+                            LevelExit paired = FindLevelExit(source);
+                            if (paired != null)
+                            {
+                                // To the door's right, clear of the trigger (0.6 half-width) by more
+                                // than the 0.9 the plan demands, so arriving cannot re-touch the door
+                                spawn.transform.SetParent(paired.transform, false);
+                                spawn.transform.localPosition = new Vector3(1.6f, -0.5f, 0f);
+                            }
+                            else
+                            {
+                                spawn.transform.position = DoorSlot(slot++);
+                            }
+
                             created++;
                             dirty = true;
                         }
@@ -296,32 +315,56 @@ namespace Inkform.LevelGraph.EditorTools
                 case FixAction.MoveMenuSceneFirst:
                     MoveMenuSceneFirst(doc.MenuScene);
                     break;
-
-                default:
-                    // Every asset-shaped repair is "make the assets match the graph", which is exactly
-                    // what Sync already does idempotently.
-                    LevelGraphSync.Apply(doc);
-                    break;
             }
         }
 
-        private static GameObject ApplySceneFix(Finding finding)
+        private static GameObject ApplySceneFix(Finding finding, LevelGraphDocument doc)
         {
             switch (finding.Fix)
             {
-                case FixAction.CreateLevelExit: return CreateLevelExit(finding);
-                case FixAction.CreateDoorSpawn: return CreateCheckpoint($"Spawn_{finding.Other}", false);
+                case FixAction.CreateLevelExit:
+                    ResolveDestination(finding, doc);
+                    return CreateLevelExit(finding, DoorSlot(0));
+
+                case FixAction.CreateDoorSpawn:
+                    return CreateCheckpoint($"Spawn_{finding.Other}", false);
+
                 case FixAction.CreateStartPoint: return CreateCheckpoint("Checkpoint_Start", true);
                 case FixAction.MakeColliderTrigger: return MakeColliderTrigger(finding);
                 default: return null;
             }
         }
 
+        // Fills finding.Other with the room the finding's edge leads to (empty for room-level
+        // findings), so a created door can carry its destination for the Scene-view gizmo.
+        private static void ResolveDestination(Finding finding, LevelGraphDocument doc)
+        {
+            if (finding == null || doc == null || string.IsNullOrEmpty(finding.Room)
+                || string.IsNullOrEmpty(finding.ExitId) || !string.IsNullOrEmpty(finding.Other)) return;
+
+            foreach (DirectedLink link in doc.EnumerateDirected())
+            {
+                if (link.From == finding.Room && link.ExitId == finding.ExitId)
+                {
+                    finding.Other = link.To;
+                    return;
+                }
+            }
+        }
+
+        // Doors created in one scene line up in a row instead of piling on the origin: slot 0 at
+        // (2, 0), each further door 3 units right. Dragging them apart is the designer's job; the
+        // tool's job is that they never start stacked on top of each other.
+        private static Vector3 DoorSlot(int index) => new Vector3(2f + index * 3f, 0f, 0f);
+
         // Mirrors the door RoomBuilder generates: same trigger size, same exitId convention, same
-        // naming — so a hand-repaired door is indistinguishable from a generated one.
-        private static GameObject CreateLevelExit(Finding finding)
+        // naming — so a hand-repaired door is indistinguishable from a generated one. `destination`
+        // is display info for the door's Scene-view gizmo ("→ where this leads"); empty falls back
+        // to the exitId, which by convention is the target scene's name anyway.
+        private static GameObject CreateLevelExit(Finding finding, Vector3 position)
         {
             var door = new GameObject($"Door_{finding.ExitId}");
+            door.transform.position = position;
             Undo.RegisterCreatedObjectUndo(door, "Create Level Exit");
 
             var collider = door.AddComponent<BoxCollider2D>();
@@ -331,6 +374,7 @@ namespace Inkform.LevelGraph.EditorTools
             LevelExit exit = door.AddComponent<LevelExit>();
             var so = new SerializedObject(exit);
             so.FindProperty("exitId").stringValue = finding.ExitId;
+            if (!string.IsNullOrEmpty(finding.Other)) so.FindProperty("destination").stringValue = finding.Other;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             return door;

@@ -10,20 +10,14 @@ namespace Inkform.LevelGraph.EditorTools
     /// spelled in the window, the validator and RoomBuilder separately.
     ///
     /// The file is a plain .txt: Unity imports it as a TextAsset with no custom importer to write, the
-    /// Inspector previews it, and git diffs it as text. That last one is the point — the whole reason
-    /// the topology moved out of the LevelScene assets is that a GUID-laden YAML diff cannot be
-    /// reviewed, and a format that is not reviewable is not a source of truth.
+    /// Inspector previews it, and git diffs it as text. That last one is the point — the topology used
+    /// to live in GUID-laden LevelScene assets whose diffs could not be reviewed, and a format that is
+    /// not reviewable is not a source of truth. SceneDirector reads this same file at runtime through
+    /// a serialized TextAsset reference.
     /// </summary>
     public static class LevelGraphFile
     {
         public const string Path = "Assets/Scenes/LevelGraph.txt";
-
-        /// <summary>Where the generated LevelScene assets go. Still the folder RoomBuilder has always
-        /// used, even though hand-authored rooms now land there too — moving 22 assets to rename a
-        /// folder is GUID risk for a cosmetic gain.</summary>
-        public const string LevelsDir = "Assets/Scenes/Generated/Levels";
-
-        public const string FlowAssetPath = "Assets/Scenes/All_level_Con.asset";
 
         public static bool Exists => File.Exists(Path);
 
@@ -61,8 +55,6 @@ namespace Inkform.LevelGraph.EditorTools
         }
 
         private static string Normalize(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
-
-        public static string AssetPathFor(string roomName) => $"{LevelsDir}/{roomName}.asset";
 
         public static string ScenePathFor(string roomName)
         {

@@ -280,7 +280,7 @@ namespace Inkform.LevelGraph
 
             sb.Append("# Inkform level graph — the single source of truth for the level topology.\n");
             sb.Append("# Edit here or in Tools > Inkform > Level Graph; the window writes this file back.\n");
-            sb.Append("# The LevelScene / LevelFlow assets are generated from this — do not hand-edit them.\n");
+            sb.Append("# SceneDirector reads this file at runtime — what you save is what the game runs.\n");
             sb.Append('\n');
             sb.Append("menu   ").Append(doc.MenuScene).Append('\n');
             sb.Append("entry  ").Append(doc.EntryRoom).Append('\n');

@@ -21,12 +21,6 @@ namespace Inkform.LevelGraph
     {
         None = 0,
 
-        // Assets
-        CreateLevelSceneAsset,
-        FixSceneNameField,
-        FixDisplayNameField,
-        SyncLevelFlow,
-
         // Build settings
         AddSceneToBuild,
         MoveMenuSceneFirst,

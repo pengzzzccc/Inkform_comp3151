@@ -8,8 +8,8 @@ namespace Inkform.LevelGraph
     /// blueprint window, and — because it is a pure function of a document — the part of the tool that
     /// unit tests can cover completely.
     ///
-    /// Asset-level (B) and scene-level (C) rules live in the editor assembly, because they need
-    /// LevelScene / LevelExit / Checkpoint and therefore the predefined Assembly-CSharp, which an
+    /// Project-level (build settings) and scene-level (C) rules live in the editor assembly, because
+    /// they need LevelExit / Checkpoint and therefore the predefined Assembly-CSharp, which an
     /// assembly definition cannot reference.
     /// </summary>
     public static class LevelGraphValidator
@@ -95,8 +95,8 @@ namespace Inkform.LevelGraph
             }
         }
 
-        // A5 — LevelScene.TargetOf takes the first id that matches, so a duplicate silently makes one
-        // of the two doors unreachable no matter which trigger the player walks into.
+        // A5 — the runtime graph's TargetOf takes the first id that matches, so a duplicate silently
+        // makes one of the two doors unreachable no matter which trigger the player walks into.
         private static void CheckDuplicateExitIds(LevelGraphDocument doc, List<DirectedLink> directed, List<Finding> findings)
         {
             var seen = new Dictionary<string, HashSet<string>>();

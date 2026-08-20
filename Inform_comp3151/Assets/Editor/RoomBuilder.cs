@@ -16,11 +16,9 @@ namespace Inkform.EditorTools
     /// scene of the 3-level graph from a shared floor skeleton with one of three challenge variants
     /// (V0 single spike + 3-step tower, V1 double spike + 3-step tower, V2 spike-on-step + 4-step
     /// tower), room label, and directional door slots (right-ground / right-high / left-ground / top),
-    /// generates the LevelScene assets, fills the LevelFlow
-    /// graph, wires GameManager's SceneDirector.flow, and appends the scenes to Build Settings.
-    /// Re-running is safe (idempotent): scenes/assets are overwritten in place, connections are
-    /// rebuilt from the data table each run, the flow slot is filled only when empty, and Build
-    /// Settings entries are de-duplicated.
+    /// wires GameManager's SceneDirector to read LevelGraph.txt, and appends the scenes to Build
+    /// Settings. Re-running is safe (idempotent): scenes are overwritten in place only when missing,
+    /// the graph slot is filled only when empty, and Build Settings entries are de-duplicated.
     ///
     /// Menu: Tools &gt; Inkform &gt; Room Builder. Also callable headlessly:
     ///   Unity -batchmode -quit -executeMethod Inkform.EditorTools.RoomBuilder.BuildAll
@@ -29,8 +27,6 @@ namespace Inkform.EditorTools
     {
         // ---- Paths ----
         private const string ScenesDir = "Assets/Scenes/Generated";
-        private const string LevelsDir = ScenesDir + "/Levels";
-        private const string FlowAssetPath = "Assets/Scenes/All_level_Con.asset";
         private const string GameManagerPrefabPath = "Assets/Prefabs/Control/GameManager.prefab";
         private const string PlayerPrefabPath = "Assets/Prefabs/Control/Player.prefab";
         private const string CameraPrefabPath = "Assets/Prefabs/Control/MainCamera.prefab";
@@ -194,10 +190,12 @@ namespace Inkform.EditorTools
         [MenuItem("Tools/Inkform/Room Builder/Wire GameManager Flow")]
         public static void WireGameManagerFlow()
         {
-            LevelFlow flow = AssetDatabase.LoadAssetAtPath<LevelFlow>(FlowAssetPath);
-            if (flow == null || flow.levels == null || flow.levels.Length == 0)
+            // The topology no longer lives in generated assets: SceneDirector reads LevelGraph.txt
+            // itself at runtime, so wiring is just handing it the text file.
+            TextAsset graph = AssetDatabase.LoadAssetAtPath<TextAsset>(LevelGraphFile.Path);
+            if (graph == null)
             {
-                Debug.LogWarning("RoomBuilder: the flow asset has no levels yet — open Tools > Inkform > Level Graph and press Apply first");
+                Debug.LogWarning($"RoomBuilder: {LevelGraphFile.Path} does not exist yet — open Tools > Inkform > Level Graph and build a graph first");
                 return;
             }
 
@@ -211,11 +209,11 @@ namespace Inkform.EditorTools
             }
 
             SerializedObject so = new SerializedObject(director);
-            AssignIfEmpty(so, "flow", flow);
+            AssignIfEmpty(so, "levelGraphFile", graph);
             so.ApplyModifiedPropertiesWithoutUndo();
             PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefabPath);
             PrefabUtility.UnloadPrefabContents(root);
-            Debug.Log($"RoomBuilder: GameManager SceneDirector.flow -> {FlowAssetPath}");
+            Debug.Log($"RoomBuilder: GameManager SceneDirector.levelGraphFile -> {LevelGraphFile.Path}");
         }
 
         [MenuItem("Tools/Inkform/Room Builder/Fix Level Build Settings")]
@@ -306,14 +304,14 @@ namespace Inkform.EditorTools
 
         /// <summary>
         /// The whole bootstrap in one go, and non-destructive throughout: greybox only what has no
-        /// scene yet, then make the assets match the graph. The topology itself is not generated here
-        /// any more — LevelGraph.txt owns it, and Tools > Inkform > Level Graph is where it is edited.
+        /// scene yet, then wire the director to the graph file and fix the build lists. The topology
+        /// itself is not generated here — LevelGraph.txt owns it, Tools > Inkform > Level Graph is
+        /// where it is edited, and SceneDirector reads it at runtime.
         /// </summary>
         [MenuItem("Tools/Inkform/Room Builder/Build All (non-destructive)")]
         public static void BuildAll()
         {
             BuildMissingRooms();
-            LevelGraphSync.Apply(LevelGraphFile.Load());
             WireGameManagerFlow();
             FixBuildSettings();
         }
@@ -425,6 +423,7 @@ namespace Inkform.EditorTools
                 // explicit one. The label and the Spawn_ checkpoint below stay keyed to the room name:
                 // that is what RespawnDirector.FindDoorSpawn looks for, regardless of the exit's id.
                 soExit.FindProperty("exitId").stringValue = room.exitIds[k];
+                soExit.FindProperty("destination").stringValue = target;   // the door's gizmo says where it leads
                 soExit.ApplyModifiedPropertiesWithoutUndo();
 
                 // Label above the door; the top door's label hangs below it to stay on-screen.
@@ -436,10 +435,18 @@ namespace Inkform.EditorTools
                 MakeLabel(labelGo, target, 36, 0.025f);
 
                 // Door-side spawn point (Checkpoint, not a start point): entering from `target`
-                // spawns the player beside this door instead of the room's start point. Placed on the
-                // inside floor, ≥0.9 from the door trigger (1.2 wide) so spawning cannot re-trigger it.
-                float dx = k == 2 ? 1.5f : -1.5f;   // the left-wall door opens inward to the right; the rest open left
-                Instantiate(scene, CheckpointPrefabPath, $"Spawn_{target}", new Vector3(pos.x + dx, pos.y - 0.5f, 0f));
+                // spawns the player beside this door instead of the room's start point. A child of
+                // the door at a local offset — moving the door later carries the spawn with it. The
+                // offset keeps the spawn on the inside floor (left-wall door opens inward to the
+                // right, the rest open left), ≥0.9 from the door trigger (1.2 wide) so spawning
+                // cannot re-trigger it.
+                GameObject spawn = Instantiate(scene, CheckpointPrefabPath, $"Spawn_{target}", Vector3.zero);
+                if (spawn != null)
+                {
+                    spawn.transform.SetParent(door.transform, false);
+                    float dx = k == 2 ? 1.5f : -1.5f;
+                    spawn.transform.localPosition = new Vector3(dx, -0.5f, 0f);
+                }
             }
         }
 
