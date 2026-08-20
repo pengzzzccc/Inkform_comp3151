@@ -221,6 +221,11 @@ namespace Inkform.EditorTools
         [MenuItem("Tools/Inkform/Room Builder/Fix Level Build Settings")]
         public static void FixBuildSettings()
         {
+            // The room list is cached per menu invocation; the level graph window writes the file
+            // directly (it is not a menu entry), so re-read it or freshly adopted rooms never reach
+            // the build lists.
+            InvalidateRooms();
+
             var scenes = new List<EditorBuildSettingsScene> { new EditorBuildSettingsScene(MenuScenePath, true) };
 
             // Preserve every existing entry except the menu (re-added at index 0 above), de-duplicated
@@ -233,7 +238,10 @@ namespace Inkform.EditorTools
 
             foreach (RoomData room in Rooms)
             {
-                string path = $"{ScenesDir}/{room.sceneName}.unity";
+                // Hand-authored rooms may live outside Generated/ — resolve by name project-wide,
+                // falling back to the generated path for rooms whose scene does not exist yet
+                // (the greybox builder will create it there).
+                string path = LevelGraphFile.ScenePathFor(room.sceneName) ?? $"{ScenesDir}/{room.sceneName}.unity";
                 if (scenes.Exists(x => x.path == path)) continue;
                 scenes.Add(new EditorBuildSettingsScene(path, true));
             }
@@ -248,9 +256,15 @@ namespace Inkform.EditorTools
 
         /// <summary>Adds the generated scenes to every build profile that overrides the global scene
         /// list (Assets/Settings/Build Profiles). Without this, SceneManager.LoadScene fails with
-        /// "has not been added to the build settings" even though the global list contains the scene.</summary>
-        private static int AppendRoomsToBuildProfile()
+        /// "has not been added to the build settings" even though the global list contains the scene.
+        /// Called with a room name by the level graph fixer so an adopted hand-authored scene lands in
+        /// the profiles too; called with null it covers every room in the graph.</summary>
+        public static int AppendRoomsToBuildProfile(string roomName = null)
         {
+            // Called from the level graph fixer too, where the graph file was just saved by the
+            // window — never trust the per-menu cache here.
+            InvalidateRooms();
+
             int added = 0;
             const string profilesDir = "Assets/Settings/Build Profiles";
             if (!AssetDatabase.IsValidFolder(profilesDir)) return 0;
@@ -267,7 +281,9 @@ namespace Inkform.EditorTools
 
                 foreach (RoomData room in Rooms)
                 {
-                    string scenePath = $"{ScenesDir}/{room.sceneName}.unity";
+                    if (roomName != null && room.sceneName != roomName) continue;
+
+                    string scenePath = LevelGraphFile.ScenePathFor(room.sceneName) ?? $"{ScenesDir}/{room.sceneName}.unity";
                     bool exists = false;
                     for (int i = 0; i < scenesProp.arraySize; i++)
                     {

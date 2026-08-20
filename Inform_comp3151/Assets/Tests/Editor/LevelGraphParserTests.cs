@@ -179,6 +179,68 @@ namespace Inkform.LevelGraph.Tests
             Assert.IsTrue(doc.HasRoom("A"));
         }
 
+        [Test]
+        public void Parse_RoomWithoutDoorCount_DefaultsToFour()
+        {
+            LevelGraphDocument doc = LevelGraphParser.Parse("room A @0,0\n");
+
+            Assert.AreEqual(4, doc.FindRoom("A").DoorCount,
+                "the default must match the four door slots RoomBuilder lays out, so existing graphs parse unchanged");
+        }
+
+        [Test]
+        public void Parse_DoorCount_IsReadInAnyPosition()
+        {
+            LevelGraphDocument doc = LevelGraphParser.Parse(
+                "room A @0,0 door 2\n" +
+                "room B door 1 @5,5 \"tunnel\"\n", out List<LevelGraphParser.ParseError> errors);
+
+            Assert.IsEmpty(errors);
+            Assert.AreEqual(2, doc.FindRoom("A").DoorCount);
+            Assert.AreEqual(1, doc.FindRoom("B").DoorCount);
+            Assert.AreEqual(new Vector2(5f, 5f), doc.FindRoom("B").Position);
+            Assert.AreEqual("tunnel", doc.FindRoom("B").DisplayName);
+        }
+
+        [Test]
+        public void Parse_DoorCountOutOfRange_IsReportedAndKeepsDefault()
+        {
+            LevelGraphDocument doc = LevelGraphParser.Parse("room A @0,0 door 0\nroom B @1,1 door 9\n", out List<LevelGraphParser.ParseError> errors);
+
+            Assert.AreEqual(2, errors.Count, "0 and 9 are both outside the 1..4 range");
+            Assert.AreEqual(4, doc.FindRoom("A").DoorCount);
+            Assert.AreEqual(4, doc.FindRoom("B").DoorCount);
+        }
+
+        [Test]
+        public void Serialize_WritesDoorCountOnlyWhenCapped()
+        {
+            string text = LevelGraphParser.Serialize(LevelGraphParser.Parse(
+                "room A @0,0\n" +
+                "room B @5,5 door 2\n"));
+
+            StringAssert.Contains("room   B  @5,5  door 2", text,
+                "a capped room must write its count so the cap survives a reload");
+            Assert.IsFalse(text.Contains("door 4"),
+                "the default must not be written, or every untouched graph churns a whole-file diff");
+        }
+
+        [Test]
+        public void Serialize_DoorCount_RoundTripsWithoutDrift()
+        {
+            const string sample =
+                "room A @0,0\n" +
+                "room B @5,5 \"end\" door 1\n";
+
+            LevelGraphDocument first = LevelGraphParser.Parse(sample);
+            string text = LevelGraphParser.Serialize(first);
+            LevelGraphDocument second = LevelGraphParser.Parse(text, out List<LevelGraphParser.ParseError> errors);
+
+            Assert.IsEmpty(errors);
+            Assert.AreEqual(first.FindRoom("B").DoorCount, second.FindRoom("B").DoorCount);
+            Assert.AreEqual(text, LevelGraphParser.Serialize(second), "serialization must be a fixed point");
+        }
+
         private static void AssertSameDocument(LevelGraphDocument a, LevelGraphDocument b)
         {
             Assert.AreEqual(a.MenuScene, b.MenuScene);
@@ -191,6 +253,7 @@ namespace Inkform.LevelGraph.Tests
                 Assert.AreEqual(a.Rooms[i].Name, b.Rooms[i].Name, $"room {i} name");
                 Assert.AreEqual(a.Rooms[i].DisplayName, b.Rooms[i].DisplayName, $"room {i} display name");
                 Assert.AreEqual(a.Rooms[i].Position, b.Rooms[i].Position, $"room {i} position");
+                Assert.AreEqual(a.Rooms[i].DoorCount, b.Rooms[i].DoorCount, $"room {i} door count");
             }
 
             for (int i = 0; i < a.Links.Count; i++)

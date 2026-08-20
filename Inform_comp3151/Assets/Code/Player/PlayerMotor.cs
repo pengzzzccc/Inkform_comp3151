@@ -215,16 +215,11 @@ namespace Inkform.Player
         {
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
-            if (contact.OnCeiling && contact.CeilingStickActive)
-                body.gravityScale = -5f;                            // stuck to the ceiling, gravity points up
-            else if (!contact.CeilingStickActive)
-                body.gravityScale = gravity;                        // stick time exhausted, fall off
-            else if (wallSliding)
-                body.gravityScale = gravity * onWallGravityMultiplier; // wall slide slowdown
-            else if (body.linearVelocityY < 0f)
-                body.gravityScale = gravity * fallGravityMultiplier;   // falling acceleration, snappier feel
-            else
-                body.gravityScale = gravity;
+            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
+            else if (!contact.CeilingStickActive)                   {body.gravityScale = gravity;}                              // stick time exhausted, fall off
+            else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
+            else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
+            else                                                    {body.gravityScale = gravity;}
         }
 
         private void StepJump()

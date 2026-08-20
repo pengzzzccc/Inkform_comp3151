@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Inkform.EditorTools;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -7,24 +8,30 @@ using UnityEngine.UIElements;
 namespace Inkform.LevelGraph.EditorTools
 {
     /// <summary>
-    /// The level graph window: a blueprint canvas on top, a findings list underneath.
+    /// The level graph window: a scene shelf on the left, the blueprint canvas in the middle, an
+    /// inspector for the selected room on the right, and a findings list underneath.
+    ///
+    /// The workflow this layout exists for: drag a hand-authored scene from the shelf onto the canvas
+    /// to adopt it as a room, configure it in the inspector (display name, door count), connect it by
+    /// dragging links, then press "Apply Level Topology" — the graph file, the LevelScene assets, the
+    /// scene wiring (doors / spawn points) and both build lists all follow in one click.
     ///
     /// The split down the middle is between cheap and expensive validation. Graph rules and asset
     /// rules re-run on every edit — they are milliseconds and they keep the node colours honest.
-    /// Scene rules open all 22 room scenes, so they run only when asked, and their results are kept
+    /// Scene rules open all room scenes, so they run only when asked, and their results are kept
     /// until the next run rather than thrown away on the next keystroke.
     ///
     /// Menu: Tools &gt; Inkform &gt; Level Graph.
     /// </summary>
     public class LevelGraphWindow : EditorWindow
     {
-        /// <summary>Defaults to true: the panel has to be visible the first time, or nobody discovers
-        /// it. Once dismissed the choice sticks.</summary>
+        /// <summary>Defaults to false: the help panel now lives under the inspector and is one toggle
+        /// away, so the first-time default does not need to crowd the canvas.</summary>
         private const string ShowHelpPref = "Inkform.LevelGraph.ShowHelp";
 
-        private const float HelpWidth = 340f;
-
         private LevelGraphView graph;
+        private LevelSceneTreePanel sceneTree;
+        private LevelNodeInspectorPanel inspector;
         private ListView findingsList;
         private Label summary;
         private VisualElement helpPanel;
@@ -41,7 +48,7 @@ namespace Inkform.LevelGraph.EditorTools
         {
             var window = GetWindow<LevelGraphWindow>();
             window.titleContent = new GUIContent("Level Graph");
-            window.minSize = new Vector2(720f, 420f);
+            window.minSize = new Vector2(960f, 480f);
             window.Show();
         }
 
@@ -49,8 +56,9 @@ namespace Inkform.LevelGraph.EditorTools
         {
             rootVisualElement.Add(BuildToolbar());
 
-            // Canvas and help sit side by side, so the tutorial can be read while working rather than
-            // instead of working — which is the only time a tutorial is actually useful.
+            // Three columns: scene shelf | canvas | inspector. The shelf is where hand-authored
+            // levels are picked up (drag onto the canvas), the inspector is where a selected node's
+            // room is configured — the canvas sits between them and stays the largest surface.
             var middle = new VisualElement();
             middle.style.flexDirection = FlexDirection.Row;
             middle.style.flexGrow = 1f;
@@ -58,15 +66,33 @@ namespace Inkform.LevelGraph.EditorTools
 
             graph = new LevelGraphView();
             graph.Changed += OnGraphChanged;
+
+            sceneTree = new LevelSceneTreePanel(graph);
+            middle.Add(sceneTree);
+
             middle.Add(graph);
 
+            var rightColumn = new VisualElement();
+            rightColumn.style.flexShrink = 0f;
+            rightColumn.style.minWidth = LevelNodeInspectorPanel.PanelWidth;
+            rightColumn.style.width = LevelNodeInspectorPanel.PanelWidth;
+
+            inspector = new LevelNodeInspectorPanel(graph);
+            inspector.style.flexGrow = 1f;
+            rightColumn.Add(inspector);
+
             helpPanel = BuildHelpPanel();
-            middle.Add(helpPanel);
+            helpPanel.style.width = LevelNodeInspectorPanel.PanelWidth;
+            helpPanel.style.flexGrow = 0f;      // ScrollView grows by default; the inspector takes the room
+            helpPanel.style.maxHeight = 260f;
+            rightColumn.Add(helpPanel);
+
+            middle.Add(rightColumn);
 
             rootVisualElement.Add(middle);
             rootVisualElement.Add(BuildFindingsPanel());
 
-            SetHelpVisible(EditorPrefs.GetBool(ShowHelpPref, true));
+            SetHelpVisible(EditorPrefs.GetBool(ShowHelpPref, false));
             Reload();
         }
 
@@ -82,7 +108,7 @@ namespace Inkform.LevelGraph.EditorTools
             var bar = new Toolbar();
 
             bar.Add(new ToolbarButton(Reload) { text = "Reload" });
-            bar.Add(new ToolbarButton(Apply) { text = "Apply" });
+            bar.Add(new ToolbarButton(ApplyTopology) { text = "Apply Level Topology" });
 
             var spacer = new ToolbarSpacer { flex = true };
             bar.Add(spacer);
@@ -118,11 +144,9 @@ namespace Inkform.LevelGraph.EditorTools
         private VisualElement BuildHelpPanel()
         {
             var scroll = new ScrollView { name = "help" };
-            scroll.style.width = HelpWidth;
-            scroll.style.minWidth = HelpWidth;
             scroll.style.flexShrink = 0f;
-            scroll.style.borderLeftWidth = 1f;
-            scroll.style.borderLeftColor = new Color(0f, 0f, 0f, 0.4f);
+            scroll.style.borderTopWidth = 1f;
+            scroll.style.borderTopColor = new Color(0f, 0f, 0f, 0.4f);
             scroll.style.paddingLeft = 10f;
             scroll.style.paddingRight = 10f;
             scroll.style.paddingBottom = 12f;
@@ -134,8 +158,9 @@ namespace Inkform.LevelGraph.EditorTools
             Heading(c, "1 · What this window owns");
             Body(c, "LevelGraph.txt is the source of truth for the level topology. The LevelScene assets "
                   + "and All_level_Con.asset are generated from it — do not hand-edit those, the next "
-                  + "Apply overwrites them.");
-            Body(c, "Edit here, press Apply, and the file is written and the assets are regenerated from it.");
+                  + "Apply Level Topology overwrites them.");
+            Body(c, "Edit here, press Apply Level Topology, and the file is written, the assets are "
+                  + "regenerated, the scenes are wired and both build lists are updated.");
 
             Heading(c, "2 · One door is five things");
             Body(c, "A link from A to B is a contract with five parts. Break any one and the only symptom "
@@ -150,8 +175,11 @@ namespace Inkform.LevelGraph.EditorTools
 
             Heading(c, "3 · Toolbar");
             Term(c, "Reload", "Re-reads LevelGraph.txt. Discards edits you have not applied.");
-            Term(c, "Apply", "Writes the graph to LevelGraph.txt, then regenerates the LevelScene and "
-                           + "LevelFlow assets. Idempotent — applying an unchanged graph writes nothing.");
+            Term(c, "Apply Level Topology", "The one-button workflow: writes the graph to LevelGraph.txt, "
+                                           + "regenerates the LevelScene / LevelFlow assets, creates every "
+                                           + "missing door and spawn point in the room scenes, and updates "
+                                           + "both build lists. Additive and idempotent — applying an "
+                                           + "unchanged graph writes nothing.");
             Term(c, "Deep Validate", "Opens every room scene to check the door wiring. Seconds, not "
                                    + "milliseconds; your open scenes are restored afterwards.");
             Term(c, "Fix All", "Creates everything the graph says is missing. It only ever creates.");
@@ -160,24 +188,25 @@ namespace Inkform.LevelGraph.EditorTools
                                         + "first-time adoption only.");
 
             Heading(c, "4 · On the canvas");
-            Term(c, "Right-click empty space", "Create Room.");
+            Term(c, "Left shelf", "Every scene under Assets/Scenes. Drag one onto the canvas to adopt it as a room; double-click opens it.");
+            Term(c, "Right inspector", "Click a node to configure its room: display name, door count, entry. Apply writes the edit into the graph.");
             Term(c, "Drag out → in", "New link. Two-way by default, which is what nearly every door is.");
             Term(c, "Right-click a link", "Switch between two-way (<->) and one-way (->).");
             Term(c, "Right-click a node", "Set As Entry, rename its display name, or open its scene.");
             Term(c, "Double-click a node", "Open its scene.");
             Term(c, "Delete key", "Removes selected nodes and links from the graph. Scenes are untouched.");
             Body(c, "The stripe under each node title is its worst finding: green passes, blue is a note, "
-                  + "yellow a warning, red an error. A thick orange edge is a one-way door.");
+                  + "yellow a warning, red an error. A thick orange edge is a one-way door. The x/y badge "
+                  + "is door occupancy (connected doors / door count).");
 
             Heading(c, "5 · Adopting a hand-authored level");
             Body(c, "B1.unity and B2.unity contain no LevelExit at all, so the flow cannot reach them. "
                   + "This is the sequence that brings one in:");
-            Step(c, 1, "Right-click the canvas → Create Room, then rename it to the scene's name.");
-            Step(c, 2, "Drag a link from whichever room should lead there.");
-            Step(c, 3, "Apply.");
-            Step(c, 4, "Deep Validate.");
-            Step(c, 5, "Work the findings list — each missing door and spawn point has a Fix button.");
-            Step(c, 6, "Fix creates the object at that scene's origin and selects it. Drag it to the real doorway and save.");
+            Step(c, 1, "Drag the scene from the left shelf onto the canvas — it becomes a room.");
+            Step(c, 2, "Click the node, set its door count in the inspector, press Apply.");
+            Step(c, 3, "Drag links from whichever rooms should connect.");
+            Step(c, 4, "Press Apply Level Topology — assets, doors, spawn points and build lists all follow.");
+            Step(c, 5, "Deep Validate, then drag the created doors / spawn points to their real positions and save.");
 
             Heading(c, "6 · What this tool will never do");
             Bullet(c, "Never deletes a LevelExit or a Checkpoint.");
@@ -414,6 +443,7 @@ namespace Inkform.LevelGraph.EditorTools
             sceneFindings.Clear();
 
             graph.Populate(doc);
+            sceneTree?.Refresh(doc);
             Revalidate(keepSceneFindings: false, parseErrors);
 
             if (doc.Rooms.Count == 0 && !LevelGraphFile.Exists)
@@ -422,9 +452,13 @@ namespace Inkform.LevelGraph.EditorTools
             }
         }
 
-        /// <summary>Writes the graph to the text file (the source of truth) and regenerates the assets
-        /// from it.</summary>
-        private void Apply()
+        /// <summary>
+        /// The one-button workflow: writes the graph to the text file (the source of truth),
+        /// regenerates the LevelScene / LevelFlow assets from it, wires every room scene with the
+        /// doors / spawn points its edges require, and makes sure the scenes are in the build lists
+        /// (global and build profile). Everything it does is additive and idempotent.
+        /// </summary>
+        private void ApplyTopology()
         {
             if (doc == null) return;
 
@@ -432,10 +466,19 @@ namespace Inkform.LevelGraph.EditorTools
             LevelGraphFile.Save(doc);
 
             int touched = LevelGraphSync.Apply(doc);
+
+            // Scene wiring before the build lists: FixBuildSettings reads the graph file back, and
+            // wiring works off the in-memory doc — order between them does not matter, but doing the
+            // slow part (scene opens) once is the point of batching both here.
+            int wired = LevelGraphFixer.EnsureSceneWiring(doc);
+
+            RoomBuilder.FixBuildSettings();
             dirty = false;
 
+            sceneTree?.Refresh(doc);
             Revalidate(keepSceneFindings: false);
-            Debug.Log($"Level graph applied: {doc.Rooms.Count} rooms, {doc.Links.Count} links, {touched} asset(s) written.");
+            Debug.Log($"Level topology applied: {doc.Rooms.Count} rooms, {doc.Links.Count} links, "
+                    + $"{touched} asset(s) written, {wired} door(s)/spawn(s) created, build settings updated.");
         }
 
         private void DeepValidate()
@@ -497,6 +540,7 @@ namespace Inkform.LevelGraph.EditorTools
             LevelGraphFile.Save(doc);
 
             graph.Populate(doc);
+            sceneTree?.Refresh(doc);
             dirty = false;
             sceneFindings.Clear();
             Revalidate(keepSceneFindings: false);

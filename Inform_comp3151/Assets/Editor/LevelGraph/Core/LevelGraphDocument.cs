@@ -68,17 +68,24 @@ namespace Inkform.LevelGraph
         /// <summary>Shown to players (the save menu's slot rows). Empty falls back to Name.</summary>
         public string DisplayName = "";
 
+        /// <summary>How many outgoing doors this room may have. The node graph enforces it as the
+        /// connection cap (a bidirectional link counts against both ends), and it mirrors the four
+        /// door slots RoomBuilder lays out per room. Defaults to 4; a room line without `door N`
+        /// parses as 4, so existing graphs stay byte-stable.</summary>
+        public int DoorCount = 4;
+
         /// <summary>Node position in the blueprint window. Persisted in the text file because a layout
         /// that lives only in the window is a layout the designer loses on every reopen.</summary>
         public Vector2 Position;
 
         public RoomEntry() { }
 
-        public RoomEntry(string name, Vector2 position, string displayName = "")
+        public RoomEntry(string name, Vector2 position, string displayName = "", int doorCount = 4)
         {
             Name = name;
             Position = position;
             DisplayName = displayName;
+            DoorCount = doorCount;
         }
     }
 

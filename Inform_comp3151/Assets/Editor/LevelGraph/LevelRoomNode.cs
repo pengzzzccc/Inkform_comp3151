@@ -26,6 +26,7 @@ namespace Inkform.LevelGraph.EditorTools
         private readonly VisualElement statusStripe;
         private readonly Label subtitle;
         private readonly Label entryBadge;
+        private readonly Label doorBadge;
 
         private static readonly Color OkColor = new Color(0.30f, 0.55f, 0.32f);
         private static readonly Color InfoColor = new Color(0.28f, 0.44f, 0.58f);
@@ -51,6 +52,14 @@ namespace Inkform.LevelGraph.EditorTools
             entryBadge.style.marginLeft = 6f;
             entryBadge.style.display = DisplayStyle.None;
             titleContainer.Add(entryBadge);
+
+            // Door occupancy reads at a glance while the node is small: "3/4" means three of the four
+            // door slots this room allows are wired. Red once the cap is hit or exceeded.
+            doorBadge = new Label();
+            doorBadge.style.unityFontStyleAndWeight = FontStyle.Bold;
+            doorBadge.style.fontSize = 9;
+            doorBadge.style.marginLeft = 6f;
+            titleContainer.Add(doorBadge);
 
             subtitle = new Label(room.DisplayName);
             subtitle.style.fontSize = 10;
@@ -96,6 +105,18 @@ namespace Inkform.LevelGraph.EditorTools
         public void SetIsEntry(bool isEntry)
         {
             entryBadge.style.display = isEntry ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        /// <summary>
+        /// Paints the door occupancy badge. `linkCount` is the number of directed edges leaving this
+        /// room (a bidirectional link counts against both ends — each direction is one door slot).
+        /// </summary>
+        public void SetDoorInfo(int doorCount, int linkCount)
+        {
+            doorBadge.text = $"{linkCount}/{doorCount}";
+            doorBadge.style.color = linkCount > doorCount
+                ? new Color(0.95f, 0.45f, 0.45f)
+                : new Color(0.62f, 0.62f, 0.62f);
         }
 
         public void SetDisplayName(string value)

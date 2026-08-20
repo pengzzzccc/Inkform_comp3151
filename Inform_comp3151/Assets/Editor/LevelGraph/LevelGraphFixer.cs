@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Inkform.EditorTools;
 using Inkform.Level;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -146,6 +147,144 @@ namespace Inkform.LevelGraph.EditorTools
             || fix == FixAction.AddSceneToBuild
             || fix == FixAction.MoveMenuSceneFirst;
 
+        /// <summary>
+        /// Makes every room scene carry the wiring its edges require: for each directed link A→B, scene
+        /// A gets a LevelExit with exitId B, scene B gets a checkpoint named Spawn_A, and every room
+        /// with any edge gets a start point. Only ever creates what is missing — existing doors,
+        /// checkpoints and start points are left alone, so the call is idempotent.
+        ///
+        /// This is the batch equivalent of working the findings list after Deep Validate, called by the
+        /// window's "Apply Level Topology" button so adopting a hand-authored level is one click.
+        /// Returns how many objects were created.
+        /// </summary>
+        public static int EnsureSceneWiring(LevelGraphDocument doc)
+        {
+            if (doc == null) return 0;
+
+            // Collect the per-scene wish list from the directed expansion, so each scene is opened
+            // exactly once no matter how many edges touch it.
+            var doors = new Dictionary<string, HashSet<string>>();      // room -> exit ids its scene must expose
+            var spawns = new Dictionary<string, HashSet<string>>();     // room -> source rooms it needs Spawn_ checkpoints for
+            var roomsWithEdges = new HashSet<string>();
+
+            foreach (DirectedLink link in doc.EnumerateDirected())
+            {
+                roomsWithEdges.Add(link.From);
+                roomsWithEdges.Add(link.To);
+
+                if (!doors.TryGetValue(link.From, out HashSet<string> ids))
+                {
+                    ids = new HashSet<string>();
+                    doors[link.From] = ids;
+                }
+                ids.Add(link.ExitId);
+
+                if (!spawns.TryGetValue(link.To, out HashSet<string> sources))
+                {
+                    sources = new HashSet<string>();
+                    spawns[link.To] = sources;
+                }
+                sources.Add(link.From);
+            }
+
+            int created = 0;
+            if (roomsWithEdges.Count == 0) return created;
+
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return created;
+
+            SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
+
+            try
+            {
+                int i = 0;
+                foreach (string room in roomsWithEdges)
+                {
+                    string path = LevelGraphFile.ScenePathFor(room);
+                    if (path == null) continue;     // no scene yet (e.g. NewRoom) — nothing to wire
+
+                    EditorUtility.DisplayProgressBar("Wiring scenes", room, ++i / (float)roomsWithEdges.Count);
+
+                    Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                    bool dirty = false;
+
+                    if (doors.TryGetValue(room, out HashSet<string> exitIds))
+                    {
+                        foreach (string exitId in exitIds)
+                        {
+                            if (FindLevelExit(exitId) != null) continue;
+
+                            var finding = new Finding { Room = room, ExitId = exitId, Code = "C15" };
+                            CreateLevelExit(finding);
+                            created++;
+                            dirty = true;
+                        }
+                    }
+
+                    if (spawns.TryGetValue(room, out HashSet<string> sources))
+                    {
+                        foreach (string source in sources)
+                        {
+                            string want = $"Spawn_{source}";
+                            if (FindCheckpoint(want) != null) continue;
+
+                            CreateCheckpoint(want, false);
+                            created++;
+                            dirty = true;
+                        }
+                    }
+
+                    if (FindStartPoint() == null)
+                    {
+                        CreateCheckpoint("Checkpoint_Start", true);
+                        created++;
+                        dirty = true;
+                    }
+
+                    if (dirty)
+                    {
+                        EditorSceneManager.MarkSceneDirty(scene);
+                        EditorSceneManager.SaveScene(scene);
+                    }
+                }
+            }
+            finally
+            {
+                EditorUtility.ClearProgressBar();
+                if (setup != null && setup.Length > 0) EditorSceneManager.RestoreSceneManagerSetup(setup);
+            }
+
+            return created;
+        }
+
+        private static LevelExit FindLevelExit(string exitId)
+        {
+            foreach (LevelExit exit in Object.FindObjectsByType<LevelExit>(FindObjectsInactive.Include))
+            {
+                if (LevelGraphProjectValidator.ReadString(exit, "exitId") == exitId) return exit;
+            }
+            return null;
+        }
+
+        private static Checkpoint FindCheckpoint(string name)
+        {
+            foreach (Checkpoint checkpoint in Object.FindObjectsByType<Checkpoint>(FindObjectsInactive.Include))
+            {
+                if (checkpoint.gameObject.name == name) return checkpoint;
+            }
+            return null;
+        }
+
+        private static Checkpoint FindStartPoint()
+        {
+            foreach (Checkpoint checkpoint in Object.FindObjectsByType<Checkpoint>(FindObjectsInactive.Include))
+            {
+                SerializedObject so = new SerializedObject(checkpoint);
+                SerializedProperty p = so.FindProperty("isStartPoint");
+                if (p != null && p.boolValue) return checkpoint;
+            }
+            return null;
+        }
+
         private static void ApplyAssetFix(Finding finding, LevelGraphDocument doc)
         {
             switch (finding.Fix)
@@ -288,6 +427,11 @@ namespace Inkform.LevelGraph.EditorTools
 
             scenes.Add(new EditorBuildSettingsScene(path, true));
             EditorBuildSettings.scenes = scenes.ToArray();
+
+            // The global list is not the whole story on Unity 6000: a build profile with
+            // m_OverrideGlobalSceneList replaces it, so the scene must land in the profiles too or
+            // LoadScene still fails. RoomBuilder owns that write — reuse it rather than duplicate it.
+            RoomBuilder.AppendRoomsToBuildProfile(roomName);
         }
 
         private static void MoveMenuSceneFirst(string menuSceneName)

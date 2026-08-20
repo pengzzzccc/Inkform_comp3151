@@ -103,7 +103,7 @@ namespace Inkform.LevelGraph
             return doc;
         }
 
-        // room <name> [@x,y] ["display name"] — the two optional parts may appear in either order,
+        // room <name> [@x,y] ["display name"] [door N] — the optional parts may appear in any order,
         // because telling a designer their annotations have a required sequence buys nothing.
         private static void ParseRoom(LevelGraphDocument doc, List<string> tokens, int line, List<ParseError> errors)
         {
@@ -130,6 +130,25 @@ namespace Inkform.LevelGraph
                 {
                     if (TryParsePosition(token, out Vector2 pos)) room.Position = pos;
                     else errors.Add(new ParseError(line, $"could not read position '{token}' (expected @x,y)"));
+                    continue;
+                }
+
+                if (token == "door")
+                {
+                    if (t + 1 >= tokens.Count)
+                    {
+                        errors.Add(new ParseError(line, "door needs a number (expected door N, 1..4)"));
+                        continue;
+                    }
+
+                    if (!int.TryParse(tokens[++t], NumberStyles.Integer, CultureInfo.InvariantCulture, out int count)
+                        || count < 1 || count > 4)
+                    {
+                        errors.Add(new ParseError(line, $"door must be a number from 1 to 4, got '{tokens[t]}'"));
+                        continue;
+                    }
+
+                    room.DoorCount = count;
                     continue;
                 }
 
@@ -285,6 +304,12 @@ namespace Inkform.LevelGraph
 
                     if (!string.IsNullOrEmpty(r.DisplayName))
                         sb.Append("  \"").Append(r.DisplayName).Append('"');
+
+                    // Only rooms the designer has capped write their count: the default of 4 matches
+                    // what every generated room already has, and a silent line per room would turn an
+                    // untouched graph into a whole-file diff on first Apply.
+                    if (r.DoorCount != 4)
+                        sb.Append("  door ").Append(r.DoorCount);
 
                     sb.Append('\n');
                 }

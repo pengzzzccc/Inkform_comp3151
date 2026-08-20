@@ -3,59 +3,14 @@
 # The LevelScene / LevelFlow assets are generated from this — do not hand-edit them.
 
 menu   MainMenu
-entry  L1_Player
+entry  
 
-room   L1_Player     @0,0       "a laboratory in a cave"
-room   L1_Boss       @600,0     "a laboratory in a cave"
-room   L1_B1         @266,-96   "a laboratory in a cave"
-room   L1_B2         @600,150   "a laboratory in a cave"
-room   L1_B3         @600,300   "a laboratory in a cave"
-room   L1_B4         @900,0     "a laboratory in a cave"
-room   L1_B5         @300,150   "a laboratory in a cave"
-room   L1_B6         @900,150   "a laboratory in a cave"
-room   L1_S1         @300,300   "a laboratory in a cave"
-room   L1_S2         @600,450   "a laboratory in a cave"
-room   L1_S3         @900,300   "a laboratory in a cave"
-room   L1_S4         @1200,0    "a laboratory in a cave"
-room   L2_Boss       @2100,0    "Mountain tunnel"
-room   L2_B1         @900,450   "Mountain tunnel"
-room   L2_B2         @1500,0    "Mountain tunnel"
-room   L2_B3         @1200,150  "Mountain tunnel"
-room   L2_B4         @1500,198  "Mountain tunnel"
-room   L2_B5         @1800,0    "Mountain tunnel"
-room   L2_B6         @2100,204  "Mountain tunnel"
-room   L2_S1         @1200,300  "Mountain tunnel"
-room   L2_S2         @1824,198  "Mountain tunnel"
-room   L3_LongFight  @2400,0    "Battle Corridor"
-room   NewRoom       @2706,-17  "End"
+room   B2          @1214,258  door 2
+room   B3          @1515,255  door 2
+room   PlayerTest  @1497,456  door 2
+room   Level1      @1206,456  door 2
 
-link   L1_Player     <-> L1_S1
-link   L1_Player     <-> L1_B1
-link   L1_Player     <-> L1_B5
-link   L1_Boss       <-> L1_B5
-link   L1_Boss       <-> L1_B6
-link   L1_Boss       <-> L2_B1
-link   L1_B1         <-> L1_B2
-link   L1_B1         <-> L1_B3
-link   L1_B1         <-> L1_S2
-link   L1_B2         <-> L1_S3
-link   L1_B3         <-> L1_B4
-link   L1_B3         <-> L1_B5
-link   L1_B3         <-> L1_B6
-link   L1_B4         <-> L1_S4
-link   L1_B6         <-> L1_S3
-link   L1_S4         <-> L2_S1
-link   L2_Boss       <-> L2_B6
-link   L2_Boss       <-> L2_S2
-link   L2_Boss       <-> L3_LongFight
-link   L2_B1         <-> L2_B3
-link   L2_B1         <-> L2_S1
-link   L2_B2         <-> L2_S1
-link   L2_B2         <-> L2_S2
-link   L2_B3         <-> L2_B4
-link   L2_B4         <-> L2_B5
-link   L2_B4         <-> L2_S1
-link   L2_B4         <-> L2_S2
-link   L2_B5         <-> L2_B6
-link   L2_B5         <-> L2_S2
-link   L3_LongFight  <-> NewRoom
+link   B2          <-> B3
+link   B3          <-> Level1
+link   Level1      <-> PlayerTest
+link   PlayerTest  <-> B2

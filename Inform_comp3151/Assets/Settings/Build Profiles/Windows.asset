@@ -90,8 +90,11 @@ MonoBehaviour:
     m_path: Assets/Scenes/Generated/L3_LongFight.unity
     m_guid: ca6ad2446e5f4c540acf01023ee12a60
   - m_enabled: 1
-    m_path: Assets/Scenes/Level1/B1.unity
+    m_path: Assets/Scenes/Level1/L1_B1.unity
     m_guid: 872cc82b6e188a04a88a96448d41875e
+  - m_enabled: 1
+    m_path: Assets/Scenes/Level1/B2.unity
+    m_guid: ebd79b34ceae0d14daf8895d7fa20e6c
   - m_enabled: 1
     m_path: Assets/Scenes/Level1/B2.unity
     m_guid: ebd79b34ceae0d14daf8895d7fa20e6c
