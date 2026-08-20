@@ -36,6 +36,8 @@
 .mimocode/
 .workbuddy/
 .zcode/
+_Recovery/
+_Recovery.meta
 
 # Gradle cache directory
 .gradle/
