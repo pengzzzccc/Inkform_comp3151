@@ -34,7 +34,7 @@ namespace Inkform.Bus
         public static void RaiseDied(in DeathContext ctx)
         {
             // Dedup: several spikes may hit the player in the same frame; without this, the count
-            // doubles and fragments spawn double (same reason as Bomb.exploded — that one guards
+            // doubles and fragments spawn double (same reason as HazardBus.Exploded — that one guards
             // against being called twice, this one against multiple sources)
             if (IsDead) return;
             IsDead = true;

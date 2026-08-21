@@ -42,7 +42,7 @@ namespace Inkform.Level
         private void Spawn()
         {
             // Must use the overload with position: Instantiate(prefab, transform) keeps the prefab's
-            // saved localPosition (Bomb.prefab stores -4.07, 0.45) instead of moving to this node
+            // saved localPosition (the legacy bomb prefab stored -4.07, 0.45) instead of moving to this node
             current = Instantiate(spawnObject, transform.position, Quaternion.identity);
             cooling = false;
         }

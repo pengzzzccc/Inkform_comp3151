@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a1c8e5d24b7940a8e6b3c9d5f21807, type: 3}
+  m_Name: FX_PlayerFlat
+  m_EditorClassIdentifier: Assembly-CSharp::FragmentCue
+  prefab: {fileID: 4307302687437123413, guid: d7a20d6e5585c3e479258fcca3224ae8, type: 3}
+  sprites:
+  - {fileID: -3146388230760474409, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: 2984385326653541226, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: -3943910241326055403, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: -7596742721342520770, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: -8043781955992407693, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: -2439489951502366519, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  - {fileID: 2365839403681807571, guid: 23335c9a25f57a2438ea543703d6a080, type: 3}
+  scaleRange: {x: 0.8, y: 1.1}
+  randomFlip: 1
+  tint: {r: 0.85, g: 0.85, b: 0.85, a: 1}
+  cellsX: 4
+  cellsY: 1
+  forceMultiplier: 1
+  spinSpeed: 300
+  lifeTime: 1.2
+  fadeTime: 0.6

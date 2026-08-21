@@ -2,6 +2,8 @@ using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
+using Inkform.Settings;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -28,7 +30,7 @@ namespace Inkform.Player
     /// solve, collider off, catches nothing on the way).
     ///
     /// Special hits:
-    /// ① carriable objects (objects implementing ICarriable: Bomb, CarriablePart-mounted objects, etc.):
+    /// ① carriable objects (objects implementing ICarriable: CarriablePart-mounted objects, etc.):
     ///    short hitstop, then pulls the player toward the target, swallowing on arrival
     ///    (ICarriable.TrySwallowByRope);
     /// ② bomb hanging chains: severs at the hit point (Chain.CutAt, probing the Chain static registry
@@ -86,6 +88,12 @@ namespace Inkform.Player
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
+        private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
+
+        // Sensitivity bases: the serialized values are the designers' tuning. The user setting is a
+        // multiplier applied on top, captured once in Awake before SettingsStore overrides the fields.
+        private float mouseSensitivityBase;
+        private float stickAimSpeedBase;
 
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
@@ -98,6 +106,8 @@ namespace Inkform.Player
 
         private ICarriable grapple;        // eat-pull target; null = plain terrain pull
         private Vector2 pullTarget;     // anchor: terrain hit point / carriable's current position
+        private Collider2D anchor;      // the collider the terrain hook is attached to; null = static anchor
+        private Vector2 anchorLocal;    // hit point in the anchor collider's local space, so the hook follows moving terrain
         private float lastPullDist;     // pull-stuck detection: distance to the anchor last physics step
         private float pullStuck;        // accumulated time the distance has stopped dropping
 
@@ -157,6 +167,9 @@ namespace Inkform.Player
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
 
+            mouseSensitivityBase = mouseAimSensitivity;
+            stickAimSpeedBase = stickAimSpeed;
+
             reticle = CreateFx("RopeReticle", out reticleSprite,
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
@@ -172,6 +185,11 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored += OnRangeRestored;
             LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
+
+            // SettingsStore is static and always loaded, so subscription needs no instance guard.
+            // Re-apply here too: after a scene reload this RopeGun is fresh while the settings live on.
+            SettingsStore.Changed += OnSettingsChanged;
+            ApplySensitivity();
         }
 
         void OnDisable()
@@ -180,6 +198,17 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored -= OnRangeRestored;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
+            SettingsStore.Changed -= OnSettingsChanged;
+            rangeOverrides.Clear();
+            currentMaxRange = maxRange;
+        }
+
+        private void OnSettingsChanged() => ApplySensitivity();
+
+        private void ApplySensitivity()
+        {
+            mouseAimSensitivity = mouseSensitivityBase * SettingsStore.MouseSensitivity;
+            stickAimSpeed = stickAimSpeedBase * SettingsStore.StickSensitivity;
         }
 
         // ---- Input entries (forwarded by PlayerHandler) ----
@@ -215,7 +244,6 @@ namespace Inkform.Player
                 Cancel();           // pressing again = cancel this shot / release the rope
                 return;
             }
-            if (ItemBus.Held != null) return;   // cannot fire with something in the mouth
 
             // Always exactly toward the reticle (EffectiveFireDir), no movement-direction fallback
             Vector2 fireDir = EffectiveFireDir;
@@ -226,6 +254,8 @@ namespace Inkform.Player
                 out Vector2 v0, out _);
 
             phase = RopePhase.Flying;
+
+            RopeGunBus.RaiseFired(fireDir);
 
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
@@ -307,8 +337,16 @@ namespace Inkform.Player
             }
 
             pullTarget = hitPoint;
+            // Terrain may move (PatrolMover platforms, spinners, ...): keep the anchor attached to the
+            // hit collider's local point so hook + rope follow the object instead of hanging in space.
+            // Static terrain colliders never move, so this local-space bookkeeping is a no-op there
+            anchor = collision.collider;
+            anchorLocal = anchor.transform.InverseTransformPoint(hitPoint);
             AnchorHook();
             motor?.SetMoveLocked(true);
+
+            // Direction from the player toward the anchor, for directional feedback (haptics, ...)
+            RopeGunBus.RaiseHit((hookBody.position - playerBody.position).normalized);
 
             // Brief hitstop at the hit moment: impact feel. Via FxBus; ScreenFx restores timeScale
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
@@ -346,6 +384,9 @@ namespace Inkform.Player
             AnchorHook();
             motor?.SetMoveLocked(true);
 
+            // Same directional feedback as the terrain hit: from the player toward the grabbed target
+            RopeGunBus.RaiseHit(((Vector2)target.transform.position - playerBody.position).normalized);
+
             // Same reset as the terrain path: a stuck-timeout release leaves pullStuck at the limit,
             // and without clearing it the very first PullStep would trip the timeout and cancel the grab
             lastPullDist = float.MaxValue;
@@ -373,6 +414,7 @@ namespace Inkform.Player
                 grapple.ClearRopeGrappled();
             }
             grapple = null;
+            anchor = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
             DespawnHook();
@@ -464,7 +506,9 @@ namespace Inkform.Player
                         break;
                     }
 
-                    // Terrain pull: static anchor, release on arrival
+                    // Terrain pull: the anchor follows the hit collider (static terrain never moves;
+                    // moving platforms/spinners carry the hook with them), release on arrival
+                    if (anchor != null) pullTarget = anchor.transform.TransformPoint(anchorLocal);
                     if (PullStep(pullTarget, dt) <= arrivalDistance)
                     {
                         // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
@@ -500,8 +544,8 @@ namespace Inkform.Player
 
         // During flight, probes for carriables segment by segment: the hook physically does not touch
         // Default-layer objects (bombs etc.); found via the probe. The probe is layer-agnostic —
-        // TryGetComponent recognizes the interface; both Bomb (direct implementation) and CarriablePart
-        // (framework objects) hit
+        // TryGetComponent recognizes the interface; both the former Bomb (direct implementation) and
+        // CarriablePart (framework objects) hit
         private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(
@@ -620,9 +664,9 @@ namespace Inkform.Player
         {
             if (phase == RopePhase.Idle) return;
 
-            // A hook attached to a carriable follows the target (eat-pull has the hook's physics off;
-            // synced manually)
-            if (hookGo != null && hookBody != null && !hookBody.simulated && grapple != null)
+            // A hook with physics off follows the live anchor — eat-pull follows the carriable, terrain
+            // pull follows the moving collider (both synced manually; static terrain never moves)
+            if (hookGo != null && hookBody != null && !hookBody.simulated)
                 hookGo.transform.position = pullTarget;
 
             // Rope rendering: a straight span between the two ends — the rope gun uses no rope
@@ -659,14 +703,28 @@ namespace Inkform.Player
 
         // ---- Bus callbacks ----
 
-        private void OnRangeOverride(float range)
+        private void OnRangeOverride(object source, float range)
         {
-            currentMaxRange = Mathf.Max(0.1f, range);
+            if (source == null) return;
+            rangeOverrides[source] = Mathf.Max(0.1f, range);
+            RecalculateRange();
         }
 
-        private void OnRangeRestored()
+        private void OnRangeRestored(object source)
+        {
+            if (source == null) return;
+            rangeOverrides.Remove(source);
+            RecalculateRange();
+        }
+
+        private void RecalculateRange()
         {
             currentMaxRange = maxRange;
+            foreach (float range in rangeOverrides.Values)
+                currentMaxRange = Mathf.Min(currentMaxRange, range);
+
+            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
+                aimOffset = aimOffset.normalized * currentMaxRange;
         }
 
         private void OnDied(DeathContext ctx)

@@ -36,7 +36,6 @@ namespace Inkform.Interactable.Parts
             if (explode == null) return false;
             if (!other.CompareTag(targetTag)) return false;
 
-            Debug.Log("Yes I did");
             explode.Explode();
             return true;    // handled: short-circuit later parts
         }

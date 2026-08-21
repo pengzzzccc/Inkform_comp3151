@@ -16,6 +16,9 @@
 # They also could contain extremely sensitive data
 /[Mm]emoryCaptures/
 
+# Profiler captures can get excessive in size
+/[Pp]rofiler[Cc]aptures/
+
 # Recordings can get excessive in size
 /[Rr]ecordings/
 
@@ -32,7 +35,9 @@
 .vscode/
 .mimocode/
 .workbuddy/
-
+.zcode/
+_Recovery/
+_Recovery.meta
 
 # Gradle cache directory
 .gradle/

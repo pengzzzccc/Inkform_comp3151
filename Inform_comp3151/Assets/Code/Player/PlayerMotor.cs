@@ -205,6 +205,10 @@ namespace Inkform.Player
             wallJumpBuffer.Clear();
             attackTimer.Clear();
             knockbackTimer.Clear();
+            updateBuffer.Clear();
+            grappleLocked = false;
+            groundPlatform = null;
+            groundPrevPos = Vector2.zero;
         }
 
         // The branch order matters, relying on ContactSensor's inverted semantics: CeilingStickActive
@@ -215,16 +219,11 @@ namespace Inkform.Player
         {
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
-            if (contact.OnCeiling && contact.CeilingStickActive)
-                body.gravityScale = -5f;                            // stuck to the ceiling, gravity points up
-            else if (!contact.CeilingStickActive)
-                body.gravityScale = gravity;                        // stick time exhausted, fall off
-            else if (wallSliding)
-                body.gravityScale = gravity * onWallGravityMultiplier; // wall slide slowdown
-            else if (body.linearVelocityY < 0f)
-                body.gravityScale = gravity * fallGravityMultiplier;   // falling acceleration, snappier feel
-            else
-                body.gravityScale = gravity;
+            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
+            else if (!contact.CeilingStickActive)                   {body.gravityScale = gravity;}                              // stick time exhausted, fall off
+            else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
+            else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
+            else                                                    {body.gravityScale = gravity;}
         }
 
         private void StepJump()
@@ -263,7 +262,7 @@ namespace Inkform.Player
                 if (contact.OnGround) updateBuffer.Set(0.1f);
             }
 
-            if (contact.OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+            if ((contact.OnGround || contact.OnCeiling) && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
         }
     }
 }

@@ -18,6 +18,21 @@ namespace Inkform.Bus
         public static PlayerState State { get; private set; }
         public static FaceDirection Face { get; private set; }
 
+        // The current scene's live player, registered by PlayerHandler on Awake and cleared on
+        // destroy. Persistent managers must read the player from here instead of a serialized
+        // reference: the GameManager survives scene switches (AudioManager's DontDestroyOnLoad), so a
+        // reference to the spawning scene's player goes stale the moment the scene changes.
+        public static PlayerHandler Player { get; private set; }
+
+        public static void RegisterPlayer(PlayerHandler player) => Player = player;
+
+        // The new scene's player registers (Awake) before the old one is destroyed, so the guard
+        // keeps the live player in place during a scene switch
+        public static void UnregisterPlayer(PlayerHandler player)
+        {
+            if (Player == player) Player = null;
+        }
+
         public static void RaiseState(PlayerState state)
         {
             if (state == State) return;      // dedup: broadcast only on change
@@ -42,6 +57,7 @@ namespace Inkform.Bus
             // Match PlayerHandler's field defaults (Idle / R) to avoid an extra broadcast at startup
             State = PlayerState.Idle;
             Face = FaceDirection.R;
+            Player = null;
         }
     }
 }

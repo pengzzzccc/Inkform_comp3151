@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Fx;
+using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -11,16 +12,16 @@ namespace Inkform.Interactable.Parts
     /// trigger parts (ExplodeOnContact / ExplodeOnBlast / ExplodeAfterDelay / ExplodeOnImpact) call
     /// Explode() when their condition is met.
     ///
-    /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakableWall
+    /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakablePart
     /// shatters, PlayerHandler gets knocked back, other explosives chain) + one RaiseBlast overall
     /// (screen shake / sound / rope cutting) — all listeners already on the bus, zero changes.
     ///
     /// Proximity warning animation: with triggerFrames + proximityRadius configured, the frame
     /// sequence advances as the player approaches (closer = later frame, 0 = normal), raising Ticked
-    /// on change (AudioDirector plays the tick sound) — same origin as Bomb's proximity logic,
+    /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
     /// distance-driven branch only.
     /// </summary>
-    public class ExplodePart : MonoBehaviour, IInteractablePart
+    public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart
     {
         [Header("Blast")]
         [SerializeField] private float blastRadius = 2f;
@@ -47,7 +48,7 @@ namespace Inkform.Interactable.Parts
 
         // All explosives share one player reference. After the player is destroyed or the scene
         // changes it becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics
-        // needed (same as Bomb)
+        // needed (same as the former Bomb monolith)
         private static Transform playerCache;
 
         private static Transform Player
@@ -141,14 +142,66 @@ namespace Inkform.Interactable.Parts
             // Overall blast signal: exactly once per explosion; screen shake and such are driven by it
             HazardBus.RaiseBlast(center, blastRadius, blastForce);
 
-            // Hide the body before shattering (Destroy only applies at frame end; without hiding, body
-            // and shards overlap for one frame)
-            if (body != null) body.enabled = false;
-            foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            // Restorable items are not destroyed — the part hides them and respawn brings them back.
+            // Everything else hides before the shards render (Destroy only applies at frame end, so
+            // without hiding the body overlaps the shards for one frame), then is destroyed outright
+            // (same as the former Bomb monolith)
+            bool restorable = root.TryGetPart(out RestorablePart restore);
 
-            // Explosives are unrecoverable (same as Bomb): shattered and destroyed outright
+            if (restorable)
+                restore.HideForRestore();
+            else
+            {
+                if (body != null) body.enabled = false;
+                foreach (Renderer r in root.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            }
+
+            // The shatter look plays for restorable items too: being hidden for restore instead of
+            // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
-            Destroy(root.gameObject);
+
+            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright
+            if (!restorable) Destroy(root.gameObject);
+        }
+
+        // ---- IRestorablePart ----
+
+        /// <summary>
+        /// `exploded` is the state that matters here, and leaving it out of the snapshot is what made a
+        /// restored bomb inert forever: RestorablePart brought the body back but Explode() still
+        /// short-circuited on the first line, and ExplodeOnContact reported the contact as handled, so
+        /// no later part saw it either.
+        ///
+        /// Captured rather than reset: a bomb that was already spent when the checkpoint was taken
+        /// should still be spent after the respawn.
+        /// </summary>
+        public IMemento Capture() => new ExplodeMemento(this, exploded);
+
+        private class ExplodeMemento : IMemento
+        {
+            private readonly ExplodePart part;
+            private readonly bool exploded;
+
+            public ExplodeMemento(ExplodePart part, bool exploded)
+            {
+                this.part = part;
+                this.exploded = exploded;
+            }
+
+            public void Restore()
+            {
+                if (part == null) return;   // part gone (scene change etc.), skip silently
+
+                part.exploded = exploded;
+
+                // Presentation caches, not state — but they still have to be cleared. RefreshFrame only
+                // rewrites the sprite when the derived index *changes*, so a bomb that blew up on a late
+                // warning frame would come back still drawn mid-warning and stay that way until the
+                // player happened to cross a frame boundary. -1 / null guarantee the next RefreshFrame
+                // writes whatever frame the current distance calls for.
+                part.frameIndex = -1;
+                part._current = null;
+            }
         }
     }
 }

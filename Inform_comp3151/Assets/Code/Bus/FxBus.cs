@@ -5,7 +5,7 @@ namespace Inkform.Bus
 {
     /// <summary>
     /// FX bus: command-style (not fact-style) — publishers say "give me a shake", nobody cares who
-    /// shakes or how. Bomb therefore needs no camera reference, and the camera does not know explosions exist.
+    /// shakes or how. Explosions therefore need no camera reference, and the camera does not know explosions exist.
     /// How strong an effect each game event deserves is translated uniformly by FxDirector.
     /// </summary>
     public static class FxBus

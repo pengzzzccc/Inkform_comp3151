@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Player;
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -31,20 +32,27 @@ namespace Inkform.Fx
         private float baseOrthoSize;
 
         private Vector2 followVel;
+        private Vector2 followBasePosition;
 
         private float trauma;
         private float seedX, seedY;
 
-        private float zoomAmount, zoomDuration;
-        private UnscaledTimer zoomTimer;
+        private float zoomAmount, zoomDuration, zoomRemaining;
+        private float shakeClock;
 
         private float lookAheadNow, lookAheadVel;
+
+        // Follow target = the current scene's live player, resolved from the bus at use time so
+        // follow/snap survive scene switches; the serialized field only serves as a fallback for
+        // scenes without a player (menus) and for older scene data
+        private Transform Target => PlayerBus.Player != null ? PlayerBus.Player.transform : target;
 
         void Awake()
         {
             cam = GetComponent<Camera>();
             baseZ = transform.position.z;
             baseOrthoSize = cam.orthographicSize;
+            followBasePosition = transform.position;
 
             // Different noise seeds per axis, or x/y would be perfectly in phase and shake in a line
             seedX = Random.value * 1000f;
@@ -74,6 +82,7 @@ namespace Inkform.Fx
         /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
         private void SnapToTarget()
         {
+            Transform target = Target;
             if (target == null) return;
 
             // All three velocities must zero: SmoothDamp's velocity lives in fields, and without this
@@ -83,6 +92,7 @@ namespace Inkform.Fx
             lookAheadNow = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
 
             Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
+            followBasePosition = want;
             transform.position = new Vector3(want.x, want.y, baseZ);
         }
 
@@ -99,24 +109,28 @@ namespace Inkform.Fx
 
         private Vector2 FollowStep()
         {
-            if (target == null) return transform.position;
+            Transform target = Target;
+            if (target == null) return followBasePosition;
 
             // Look-ahead toward facing: read the bus snapshot directly, no PlayerHandler reference needed
             float wantAhead = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
             lookAheadNow = Mathf.SmoothDamp(lookAheadNow, wantAhead, ref lookAheadVel, lookAheadSmooth);
 
             Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
-            return Vector2.SmoothDamp(transform.position, want, ref followVel, followSmooth);
+            followBasePosition = Vector2.SmoothDamp(followBasePosition, want, ref followVel, followSmooth);
+            return followBasePosition;
         }
 
         private Vector2 ShakeStep()
         {
-            trauma = Mathf.Max(0f, trauma - traumaDecay * Time.unscaledDeltaTime);
+            float dt = GameTimeController.PresentationDeltaTime;
+            trauma = Mathf.Max(0f, trauma - traumaDecay * dt);
             if (trauma <= 0f) return Vector2.zero;
 
             // Squared: small trauma is barely felt, large is strong — more layered than linear
             float shake = trauma * trauma;
-            float t = Time.unscaledTime * shakeFrequency;
+            shakeClock += dt;
+            float t = shakeClock * shakeFrequency;
 
             // Perlin rather than pure random: adjacent frames are continuous, shaking rather than twitching
             return new Vector2(
@@ -126,28 +140,31 @@ namespace Inkform.Fx
 
         private void ZoomStep()
         {
-            if (zoomDuration <= 0f || !zoomTimer.IsRunning)
+            zoomRemaining = Mathf.Max(0f, zoomRemaining - GameTimeController.PresentationDeltaTime);
+            if (zoomDuration <= 0f || zoomRemaining <= 0f)
             {
                 cam.orthographicSize = baseOrthoSize;
                 return;
             }
 
-            cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomTimer.Remaining / zoomDuration);
+            cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
         }
 
-        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time
+        // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
+        // Scaled by the user's FX intensity at request time (read-style like AudioManager's volume):
+        // intensity 0 = the camera never shakes; a later change affects new requests, not current trauma.
         private void OnShake(float amount)
         {
-            trauma = Mathf.Clamp01(trauma + amount);
+            trauma = Mathf.Clamp01(trauma + amount * SettingsStore.FxIntensity);
         }
 
         private void OnZoom(float amount, float duration)
         {
             if (duration <= 0f) return;
 
-            zoomAmount = amount;
+            zoomAmount = amount * SettingsStore.FxIntensity;
             zoomDuration = duration;
-            zoomTimer.Set(duration);
+            zoomRemaining = duration;
         }
     }
 }

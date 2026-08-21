@@ -12,8 +12,8 @@ namespace Inkform.Interactable.Parts
     ///
     /// Implementation note: the flip only toggles Collider2D and Renderer enabled, **never SetActive** —
     /// deactivation would stop this component's own Update and it could never wake itself when the
-    /// hidden phase ends. This is a project-wide rule (BreakableWall.SetBroken / Bomb.SetVisible all
-    /// toggle enabled). Works on Tilemaps too: TilemapRenderer is a Renderer.
+    /// hidden phase ends. This is a project-wide rule (BreakablePart.SetBroken / RestorablePart.SetGone
+    /// / the former Bomb's SetVisible all toggle enabled). Works on Tilemaps too: TilemapRenderer is a Renderer.
     /// </summary>
     public class TimedVisibility : MonoBehaviour, IInteractablePart
     {

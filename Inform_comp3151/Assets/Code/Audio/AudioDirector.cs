@@ -1,5 +1,5 @@
 using Inkform.Bus;
-using Inkform.Interactable;
+using Inkform.Item;
 using Inkform.Player;
 using UnityEngine;
 
@@ -8,7 +8,7 @@ namespace Inkform.Audio
     /// <summary>
     /// Audio director: translates "what happened in the game" into "which sound to play".
     /// Same pattern as FxDirector — subscribes to buses, centralizes which SoundCue each event maps to
-    /// in this one Inspector; Bomb / PlayerHandler / BreakableWall never need to know the audio system exists.
+    /// in this one Inspector; PlayerHandler / BreakablePart never need to know the audio system exists.
     /// Leaving a slot empty is legal: AudioManager skips it silently; drop a Cue into the slot later and
     /// it sounds without touching code.
     /// </summary>
@@ -38,7 +38,7 @@ namespace Inkform.Audio
             HazardBus.Blast += OnBlast;
             HazardBus.Broken += OnBroken;
             HazardBus.Ticked += OnTicked;
-            ItemBus.ItemEaten += OnItemEaten;
+            ItemBus.ItemStored += OnItemEaten;
             ItemBus.ItemReleased += OnItemReleased;
             PlayerBus.StateChanged += OnPlayerState;
             LifeBus.Respawned += OnRespawned;
@@ -50,7 +50,7 @@ namespace Inkform.Audio
             HazardBus.Blast -= OnBlast;
             HazardBus.Broken -= OnBroken;
             HazardBus.Ticked -= OnTicked;
-            ItemBus.ItemEaten -= OnItemEaten;
+            ItemBus.ItemStored -= OnItemEaten;
             ItemBus.ItemReleased -= OnItemReleased;
             PlayerBus.StateChanged -= OnPlayerState;
             LifeBus.Respawned -= OnRespawned;
@@ -66,7 +66,7 @@ namespace Inkform.Audio
         // kept so "higher pitch as it gets closer" needs no bus signature change later
         private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
 
-        private void OnItemEaten(ICarriable item) => Play(itemEaten);
+        private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
 
         // Both of these are "the player's own sounds", always at the camera center, so like
         // attack/jump/land they pass no position. The matching Cue assets should keep spatial off —
@@ -78,7 +78,7 @@ namespace Inkform.Audio
         // The spit origin is always on the player ≈ camera center, so the attenuation factor is
         // necessarily near 1 — passing the position is only for "pass position when we have one"
         // consistency; audibly identical to passing nothing
-        private void OnItemReleased(ICarriable item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
+        private void OnItemReleased(InventoryItemDefinition item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
 
         // PlayerBus already dedups (broadcasts only when a state actually changes), so no per-frame spam.
         // Eat/Release animations were removed (dash is pure dash), leaving only jump and land

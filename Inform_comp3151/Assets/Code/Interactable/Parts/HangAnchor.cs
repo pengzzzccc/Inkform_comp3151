@@ -4,9 +4,12 @@ namespace Inkform.Interactable.Parts
 {
     /// <summary>
     /// Hanging anchor marker: attach to a child of an object carrying HangingChain to mark a chain
-    /// anchor position. Pure marker component (the framework version of Bomb.HangingPoint) — no logic;
-    /// HangingChain auto-collects via GetComponentsInChildren at Attach, so an anchor **must be a child
-    /// node of that object**. No collider, no rigidbody — only a Scene-view icon for positioning.
+    /// anchor position. Pure marker component — no logic; HangingChain auto-collects via
+    /// GetComponentsInChildren at Attach, so an anchor **must be a child node of that object**.
+    /// No collider, no rigidbody — only a Scene-view icon for positioning.
+    ///
+    /// Also used by the former Bomb's hanging mode, which collected anchors the same way — one marker
+    /// type serves both the framework and the legacy bomb.
     /// </summary>
     public class HangAnchor : MonoBehaviour
     {
