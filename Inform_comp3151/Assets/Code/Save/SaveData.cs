@@ -19,7 +19,7 @@ namespace Inkform.Save
         /// <summary>Bump when a field's meaning changes. SaveStore treats a file from a newer or
         /// unknown version as an empty slot rather than guessing at it — a save that loads wrong is
         /// worse than a save that is gone.</summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         public int version = CurrentVersion;
 
@@ -41,6 +41,13 @@ namespace Inkform.Save
         public string[] inventoryItemIds = Array.Empty<string>();
 
         public int selectedInventoryIndex;
+
+        public int crystalCount;
+        public bool ropeGunUnlocked;
+        public bool elevatorControllerAcquired;
+        public int controlRoomCharge;
+        public int tutorialStep;
+        public string[] activatedDoorIds = Array.Empty<string>();
 
         /// <summary>DateTime.UtcNow.ToString("o"). A string rather than a DateTime because JsonUtility
         /// cannot serialize DateTime at all — it writes an empty object and loses the value.</summary>

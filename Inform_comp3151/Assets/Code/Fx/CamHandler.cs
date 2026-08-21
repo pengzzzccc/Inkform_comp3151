@@ -41,6 +41,12 @@ namespace Inkform.Fx
         private float shakeClock;
 
         private float lookAheadNow, lookAheadVel;
+        private object focusSource;
+        private Vector2 focusPoint;
+        private float focusOrthoSize;
+        private float focusBlendTime;
+        private float viewOrthoSize;
+        private float viewOrthoVelocity;
 
         // Follow target = the current scene's live player, resolved from the bus at use time so
         // follow/snap survive scene switches; the serialized field only serves as a fallback for
@@ -52,6 +58,7 @@ namespace Inkform.Fx
             cam = GetComponent<Camera>();
             baseZ = transform.position.z;
             baseOrthoSize = cam.orthographicSize;
+            viewOrthoSize = baseOrthoSize;
             followBasePosition = transform.position;
 
             // Different noise seeds per axis, or x/y would be perfectly in phase and shake in a line
@@ -64,6 +71,8 @@ namespace Inkform.Fx
             FxBus.ShakeRequested += OnShake;
             FxBus.ZoomRequested += OnZoom;
             FxBus.SnapRequested += SnapToTarget;
+            FxBus.FocusRequested += OnFocusRequested;
+            FxBus.FocusReleased += OnFocusReleased;
         }
 
         void OnDisable()
@@ -71,6 +80,9 @@ namespace Inkform.Fx
             FxBus.ShakeRequested -= OnShake;
             FxBus.ZoomRequested -= OnZoom;
             FxBus.SnapRequested -= SnapToTarget;
+            FxBus.FocusRequested -= OnFocusRequested;
+            FxBus.FocusReleased -= OnFocusReleased;
+            focusSource = null;
         }
 
         void Start()
@@ -109,15 +121,28 @@ namespace Inkform.Fx
 
         private Vector2 FollowStep()
         {
+            float dt = GameTimeController.PresentationDeltaTime;
+            if (focusSource != null)
+            {
+                followBasePosition = Vector2.SmoothDamp(
+                    followBasePosition, focusPoint, ref followVel, focusBlendTime,
+                    Mathf.Infinity, dt);
+                return followBasePosition;
+            }
+
             Transform target = Target;
             if (target == null) return followBasePosition;
 
             // Look-ahead toward facing: read the bus snapshot directly, no PlayerHandler reference needed
             float wantAhead = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
-            lookAheadNow = Mathf.SmoothDamp(lookAheadNow, wantAhead, ref lookAheadVel, lookAheadSmooth);
+            lookAheadNow = Mathf.SmoothDamp(
+                lookAheadNow, wantAhead, ref lookAheadVel, lookAheadSmooth,
+                Mathf.Infinity, dt);
 
             Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
-            followBasePosition = Vector2.SmoothDamp(followBasePosition, want, ref followVel, followSmooth);
+            followBasePosition = Vector2.SmoothDamp(
+                followBasePosition, want, ref followVel, followSmooth,
+                Mathf.Infinity, dt);
             return followBasePosition;
         }
 
@@ -140,14 +165,21 @@ namespace Inkform.Fx
 
         private void ZoomStep()
         {
-            zoomRemaining = Mathf.Max(0f, zoomRemaining - GameTimeController.PresentationDeltaTime);
+            float dt = GameTimeController.PresentationDeltaTime;
+            float wantedSize = focusSource != null ? focusOrthoSize : baseOrthoSize;
+            float smooth = focusSource != null ? focusBlendTime : followSmooth;
+            viewOrthoSize = Mathf.SmoothDamp(
+                viewOrthoSize, wantedSize, ref viewOrthoVelocity, smooth,
+                Mathf.Infinity, dt);
+
+            zoomRemaining = Mathf.Max(0f, zoomRemaining - dt);
             if (zoomDuration <= 0f || zoomRemaining <= 0f)
             {
-                cam.orthographicSize = baseOrthoSize;
+                cam.orthographicSize = viewOrthoSize;
                 return;
             }
 
-            cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
+            cam.orthographicSize = viewOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
         }
 
         // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
@@ -165,6 +197,24 @@ namespace Inkform.Fx
             zoomAmount = amount * SettingsStore.FxIntensity;
             zoomDuration = duration;
             zoomRemaining = duration;
+        }
+
+        private void OnFocusRequested(object source, Vector2 point, float orthoSize, float blendTime)
+        {
+            focusSource = source;
+            focusPoint = point;
+            focusOrthoSize = Mathf.Max(0.1f, orthoSize);
+            focusBlendTime = Mathf.Max(0.0001f, blendTime);
+            followVel = Vector2.zero;
+            viewOrthoVelocity = 0f;
+        }
+
+        private void OnFocusReleased(object source)
+        {
+            if (!ReferenceEquals(source, focusSource)) return;
+            focusSource = null;
+            followVel = Vector2.zero;
+            viewOrthoVelocity = 0f;
         }
     }
 }

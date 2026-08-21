@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5404840421074772266}
   - component: {fileID: -3141880750536322233}
   - component: {fileID: -4741290178063421264}
-  - component: {fileID: -377615897271615317}
+  - component: {fileID: 756557785105644421}
   m_Layer: 12
   m_Name: Fragment
   m_TagString: Untagged
@@ -135,7 +135,7 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
---- !u!61 &-377615897271615317
+--- !u!61 &756557785105644421
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -151,7 +151,7 @@ BoxCollider2D:
     m_Bits: 0
   m_ExcludeLayers:
     serializedVersion: 2
-    m_Bits: 8
+    m_Bits: 0
   m_LayerOverridePriority: 0
   m_ForceSendLayers:
     serializedVersion: 2

@@ -54,7 +54,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV1_MigratesToV2WithEmptyInventory()
+        public void SaveV1_MigratesToCurrentVersionWithEmptyInventory()
         {
             string path = Path.Combine(Application.temporaryCachePath, $"inkform-v1-{Guid.NewGuid():N}.json");
             try

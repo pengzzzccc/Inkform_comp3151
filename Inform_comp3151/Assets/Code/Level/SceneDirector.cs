@@ -4,6 +4,7 @@ using Inkform.Fx;
 using Inkform.Input;
 using Inkform.Life;
 using Inkform.Save;
+using Inkform.Progression;
 using Inkform.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -210,6 +211,7 @@ namespace Inkform.Level
             }
 
             transitionInProgress = true;
+            GetComponent<RunProgressPersistence>()?.Flush();
             GetComponent<InputHandler>()?.SetPlaying(false);
             StartCoroutine(LoadSceneRoutine(sceneName));
             return true;

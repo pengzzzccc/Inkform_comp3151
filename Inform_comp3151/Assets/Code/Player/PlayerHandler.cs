@@ -32,6 +32,8 @@ namespace Inkform.Player
         private AnimStateResolver anim;
         private ItemCarrier items;      // may be null: levels without the item gameplay need not attach it
         private RopeGun ropeGun;        // may be null: levels without the rope gun play fine
+        private PlayerInteractor interactor;
+        private bool gameplayControlBlocked;
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
 
@@ -45,6 +47,7 @@ namespace Inkform.Player
             anim = GetComponent<AnimStateResolver>();
             TryGetComponent(out items);
             TryGetComponent(out ropeGun);
+            TryGetComponent(out interactor);
 
             // Broadcast once at startup so the bus snapshot is correct from the first frame
             PlayerBus.RaiseState(PlayerState.Idle);
@@ -89,6 +92,7 @@ namespace Inkform.Player
         public void Move(Vector2 input)
         {
             if (LifeBus.IsDead) return;     // dead: neither facing nor velocity changes
+            if (gameplayControlBlocked) input = Vector2.zero;
 
             lastMoveInput = input;          // fallback source for spit direction (when no rope gun)
 
@@ -104,6 +108,7 @@ namespace Inkform.Player
         public void JumpPressed()
         {
             if (LifeBus.IsDead) return;
+            if (gameplayControlBlocked) return;
 
             // Rope gun hanging: jump = release the rope + normal jump
             if (ropeGun != null) ropeGun.DetachOnJump();
@@ -115,6 +120,7 @@ namespace Inkform.Player
         public void JumpReleased()
         {
             if (LifeBus.IsDead) return;
+            if (gameplayControlBlocked) return;
 
             motor.CutJump();
         }
@@ -123,6 +129,7 @@ namespace Inkform.Player
         public void Dash()
         {
             if (LifeBus.IsDead) return;
+            if (gameplayControlBlocked) return;
 
             // Pure dash: no eat animation, no item interaction (dash into a bomb only detonates;
             // spitting goes through Q / right trigger)
@@ -133,12 +140,17 @@ namespace Inkform.Player
         // ---- Rope gun input entries ----
 
         /// <summary>Aim action (mouse delta / right stick): drives the rope gun's reticle.</summary>
-        public void Aim(Vector2 delta, bool pixelDelta) => ropeGun?.Aim(delta, pixelDelta);
+        public void Aim(Vector2 delta, bool pixelDelta)
+        {
+            if (gameplayControlBlocked) return;
+            ropeGun?.Aim(delta, pixelDelta);
+        }
 
         /// <summary>RopeFire action (left mouse / RB): fire the rope; pressing again cancels.</summary>
         public void RopeFire()
         {
             if (LifeBus.IsDead) return;
+            if (gameplayControlBlocked) return;
             ropeGun?.TryFire();
         }
 
@@ -148,6 +160,7 @@ namespace Inkform.Player
         public void SpitBomb()
         {
             if (LifeBus.IsDead) return;
+            if (gameplayControlBlocked) return;
             if (items == null || items.IsEmpty) return;
 
             Vector2 dir;
@@ -163,6 +176,21 @@ namespace Inkform.Player
                 anim.SetFace(dir.x >= 0f ? FaceDirection.R : FaceDirection.L);
                 // no spit animation (the Release animation was removed)
             }
+        }
+
+        public void InteractStarted() => interactor?.InteractStarted();
+        public void InteractReleased() => interactor?.InteractReleased();
+
+        public void SetGameplayControlBlocked(bool blocked)
+        {
+            if (gameplayControlBlocked == blocked) return;
+            gameplayControlBlocked = blocked;
+            if (!blocked) return;
+
+            lastMoveInput = Vector2.zero;
+            anim.SetMoveInput(Vector2.zero);
+            motor.Move(Vector2.zero);
+            ropeGun?.CancelForControlLock();
         }
 
         // ---- Bus callbacks ----

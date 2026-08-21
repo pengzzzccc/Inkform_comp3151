@@ -119,6 +119,7 @@ namespace Inkform.Player
         private SpriteRenderer reticleSprite;
 
         private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
+        private bool equipped = true;
 
         private static Sprite DiscSprite
         {
@@ -161,6 +162,20 @@ namespace Inkform.Player
             }
         }
 
+        public void SetEquipped(bool value)
+        {
+            if (equipped == value) return;
+            equipped = value;
+            if (!equipped && ropeRenderer != null) Finish();
+            if (reticleSprite != null) reticleSprite.enabled = equipped;
+            if (ropeRenderer != null && !equipped) ropeRenderer.enabled = false;
+        }
+
+        public void CancelForControlLock()
+        {
+            if (ropeRenderer != null) Finish();
+        }
+
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();
@@ -177,6 +192,7 @@ namespace Inkform.Player
             CreateRope();
 
             aimOffset = Vector2.right * currentMaxRange * 0.6f;
+            reticleSprite.enabled = equipped;
         }
 
         void OnEnable()
@@ -217,6 +233,7 @@ namespace Inkform.Player
         /// height), otherwise a right-stick analog value (speed × dt). Moves the always-visible reticle.</summary>
         public void Aim(Vector2 delta, bool pixelDelta)
         {
+            if (!equipped) return;
             if (phase != RopePhase.Idle || LifeBus.IsDead) return;
 
             if (pixelDelta)
@@ -238,6 +255,7 @@ namespace Inkform.Player
 
         public void TryFire()
         {
+            if (!equipped) return;
             if (LifeBus.IsDead) return;
             if (phase != RopePhase.Idle)
             {
@@ -442,6 +460,7 @@ namespace Inkform.Player
 
         void Update()
         {
+            if (!equipped) return;
             if (LifeBus.IsDead) return;
             // The reticle is always visible: it updates every frame while idle, so the player always
             // knows exactly where the next shot will go
@@ -662,6 +681,7 @@ namespace Inkform.Player
 
         void LateUpdate()
         {
+            if (!equipped) return;
             if (phase == RopePhase.Idle) return;
 
             // A hook with physics off follows the live anchor — eat-pull follows the carriable, terrain

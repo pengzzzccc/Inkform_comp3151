@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using Inkform.Bus;
 using Inkform.Item;
+using Inkform.Progression;
 using UnityEngine;
 
 namespace Inkform.Save
@@ -77,6 +78,7 @@ namespace Inkform.Save
             pendingPrevious = Clone(slots[slot]);
             slots[slot] = new SaveData();
             InventoryStore.ClearWithoutSaving();
+            RunProgressStore.Clear();
             StartRun(slot, 0f, 0);
             Changed?.Invoke();
         }
@@ -91,6 +93,7 @@ namespace Inkform.Save
             ActiveSlot = -1;
             ClearPending();
             InventoryStore.Restore(slots[slot].inventoryItemIds, slots[slot].selectedInventoryIndex);
+            RestoreProgression(slots[slot]);
             Changed?.Invoke();
             return true;
         }
@@ -106,6 +109,7 @@ namespace Inkform.Save
             ClearPending();
             StartRun(slot, data.playSeconds, data.deaths);
             InventoryStore.Restore(data.inventoryItemIds, data.selectedInventoryIndex);
+            RestoreProgression(data);
         }
 
         private static void StartRun(int slot, float playBase, int deathBase)
@@ -126,6 +130,7 @@ namespace Inkform.Save
             data.spawnX = spawn.x;
             data.spawnY = spawn.y;
             CaptureInventory(data);
+            CaptureProgression(data);
             Stamp(data);
 
             if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
@@ -138,6 +143,7 @@ namespace Inkform.Save
             SaveData data = slots[ActiveSlot];
             data.inventoryItemIds = ids ?? Array.Empty<string>();
             data.selectedInventoryIndex = selectedIndex;
+            CaptureProgression(data);
 
             // A brand-new run is not committed until RespawnDirector supplies a loadable scene/position.
             if (data.IsEmpty) return;
@@ -154,6 +160,7 @@ namespace Inkform.Save
             if (data.IsEmpty) return;
 
             CaptureInventory(data);
+            CaptureProgression(data);
             Stamp(data);
             if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
             Changed?.Invoke();
@@ -193,6 +200,30 @@ namespace Inkform.Save
         {
             data.inventoryItemIds = InventoryStore.SnapshotIds();
             data.selectedInventoryIndex = InventoryStore.SelectedIndex;
+        }
+
+        private static void CaptureProgression(SaveData data)
+        {
+            RunProgressSnapshot snapshot = RunProgressStore.Snapshot();
+            data.crystalCount = snapshot.crystalCount;
+            data.ropeGunUnlocked = snapshot.ropeGunUnlocked;
+            data.elevatorControllerAcquired = snapshot.elevatorControllerAcquired;
+            data.controlRoomCharge = snapshot.controlRoomCharge;
+            data.tutorialStep = snapshot.tutorialStep;
+            data.activatedDoorIds = snapshot.activatedDoorIds;
+        }
+
+        private static void RestoreProgression(SaveData data)
+        {
+            RunProgressStore.Restore(new RunProgressSnapshot
+            {
+                crystalCount = data?.crystalCount ?? 0,
+                ropeGunUnlocked = data != null && data.ropeGunUnlocked,
+                elevatorControllerAcquired = data != null && data.elevatorControllerAcquired,
+                controlRoomCharge = data?.controlRoomCharge ?? 0,
+                tutorialStep = data?.tutorialStep ?? 0,
+                activatedDoorIds = data?.activatedDoorIds ?? Array.Empty<string>()
+            });
         }
 
         private static void Stamp(SaveData data)
@@ -269,16 +300,17 @@ namespace Inkform.Save
 
                 if (data.version == 1)
                 {
-                    data.version = SaveData.CurrentVersion;
                     data.inventoryItemIds = Array.Empty<string>();
                     data.selectedInventoryIndex = 0;
                 }
-                else if (data.version != SaveData.CurrentVersion)
+                else if (data.version != 2 && data.version != SaveData.CurrentVersion)
                 {
                     return false;
                 }
 
+                data.version = SaveData.CurrentVersion;
                 data.inventoryItemIds ??= Array.Empty<string>();
+                data.activatedDoorIds ??= Array.Empty<string>();
                 return true;
             }
             catch (Exception e)
@@ -339,6 +371,7 @@ namespace Inkform.Save
             if (source == null) return new SaveData();
             SaveData clone = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(source));
             clone.inventoryItemIds ??= Array.Empty<string>();
+            clone.activatedDoorIds ??= Array.Empty<string>();
             return clone;
         }
     }

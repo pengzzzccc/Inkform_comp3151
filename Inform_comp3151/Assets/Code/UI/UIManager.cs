@@ -85,6 +85,7 @@ namespace Inkform.UI
             CreateCanvas();
             EnsureGamepadCursor();
             EnsureInventoryHud();
+            EnsureGameplayHuds();
             InstantiatePanels();
             // No "close them all" pass here: BasePanel.Awake lands its own hidden state on instantiate.
             // A pass here could never have worked anyway — Close() early-returns while IsOpen is still
@@ -222,6 +223,9 @@ namespace Inkform.UI
             }
 
             GetComponent<InventoryHud>()?.RefreshVisibility();
+            GetComponent<InteractionPromptHud>()?.RefreshVisibility();
+            GetComponent<CrystalCounterHud>()?.RefreshVisibility();
+            GetComponent<GuidanceHud>()?.RefreshVisibility();
         }
 
         /// <summary>
@@ -484,6 +488,16 @@ namespace Inkform.UI
         {
             if (GetComponent<InventoryHud>() == null)
                 gameObject.AddComponent<InventoryHud>();
+        }
+
+        private void EnsureGameplayHuds()
+        {
+            if (GetComponent<InteractionPromptHud>() == null)
+                gameObject.AddComponent<InteractionPromptHud>();
+            if (GetComponent<CrystalCounterHud>() == null)
+                gameObject.AddComponent<CrystalCounterHud>();
+            if (GetComponent<GuidanceHud>() == null)
+                gameObject.AddComponent<GuidanceHud>();
         }
     }
 }

@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 7645394820213847150}
   - component: {fileID: 1503010808642312737}
   - component: {fileID: 8368835806917013791}
+  - component: {fileID: 9903000004}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -130,6 +131,11 @@ MonoBehaviour:
   land: {fileID: 0}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 0}
+  ropeGunPickup: {fileID: 0}
+  elevatorControllerPickup: {fileID: 0}
+  crystalCollected: {fileID: 0}
+  crystalDoorActivated: {fileID: 0}
+  crystalDeposited: {fileID: 0}
 --- !u!114 &6402705293193736749
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -271,3 +277,16 @@ MonoBehaviour:
   cursorSprite: {fileID: 4521880829696946994, guid: 710eb778f56883341bc4aa12ba3a73fd, type: 3}
   cursorSpeed: 1000
   cursorSize: 40
+--- !u!114 &9903000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174349163457537239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c51a0000000000000000000000000004, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Progression.RunProgressPersistence
+  saveDelay: 0.35
