@@ -2,6 +2,8 @@ using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
+using Inkform.Settings;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -28,7 +30,7 @@ namespace Inkform.Player
     /// solve, collider off, catches nothing on the way).
     ///
     /// Special hits:
-    /// ① carriable objects (objects implementing ICarriable: Bomb, CarriablePart-mounted objects, etc.):
+    /// ① carriable objects (objects implementing ICarriable: CarriablePart-mounted objects, etc.):
     ///    short hitstop, then pulls the player toward the target, swallowing on arrival
     ///    (ICarriable.TrySwallowByRope);
     /// ② bomb hanging chains: severs at the hit point (Chain.CutAt, probing the Chain static registry
@@ -86,6 +88,12 @@ namespace Inkform.Player
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
+        private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
+
+        // Sensitivity bases: the serialized values are the designers' tuning. The user setting is a
+        // multiplier applied on top, captured once in Awake before SettingsStore overrides the fields.
+        private float mouseSensitivityBase;
+        private float stickAimSpeedBase;
 
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
@@ -159,6 +167,9 @@ namespace Inkform.Player
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
 
+            mouseSensitivityBase = mouseAimSensitivity;
+            stickAimSpeedBase = stickAimSpeed;
+
             reticle = CreateFx("RopeReticle", out reticleSprite,
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
@@ -174,6 +185,11 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored += OnRangeRestored;
             LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
+
+            // SettingsStore is static and always loaded, so subscription needs no instance guard.
+            // Re-apply here too: after a scene reload this RopeGun is fresh while the settings live on.
+            SettingsStore.Changed += OnSettingsChanged;
+            ApplySensitivity();
         }
 
         void OnDisable()
@@ -182,6 +198,17 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored -= OnRangeRestored;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
+            SettingsStore.Changed -= OnSettingsChanged;
+            rangeOverrides.Clear();
+            currentMaxRange = maxRange;
+        }
+
+        private void OnSettingsChanged() => ApplySensitivity();
+
+        private void ApplySensitivity()
+        {
+            mouseAimSensitivity = mouseSensitivityBase * SettingsStore.MouseSensitivity;
+            stickAimSpeed = stickAimSpeedBase * SettingsStore.StickSensitivity;
         }
 
         // ---- Input entries (forwarded by PlayerHandler) ----
@@ -517,8 +544,8 @@ namespace Inkform.Player
 
         // During flight, probes for carriables segment by segment: the hook physically does not touch
         // Default-layer objects (bombs etc.); found via the probe. The probe is layer-agnostic —
-        // TryGetComponent recognizes the interface; both Bomb (direct implementation) and CarriablePart
-        // (framework objects) hit
+        // TryGetComponent recognizes the interface; both the former Bomb (direct implementation) and
+        // CarriablePart (framework objects) hit
         private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(
@@ -676,14 +703,28 @@ namespace Inkform.Player
 
         // ---- Bus callbacks ----
 
-        private void OnRangeOverride(float range)
+        private void OnRangeOverride(object source, float range)
         {
-            currentMaxRange = Mathf.Max(0.1f, range);
+            if (source == null) return;
+            rangeOverrides[source] = Mathf.Max(0.1f, range);
+            RecalculateRange();
         }
 
-        private void OnRangeRestored()
+        private void OnRangeRestored(object source)
+        {
+            if (source == null) return;
+            rangeOverrides.Remove(source);
+            RecalculateRange();
+        }
+
+        private void RecalculateRange()
         {
             currentMaxRange = maxRange;
+            foreach (float range in rangeOverrides.Values)
+                currentMaxRange = Mathf.Min(currentMaxRange, range);
+
+            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
+                aimOffset = aimOffset.normalized * currentMaxRange;
         }
 
         private void OnDied(DeathContext ctx)

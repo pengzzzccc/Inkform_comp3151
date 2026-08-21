@@ -8,8 +8,8 @@ namespace Inkform.Interactable.Parts
     /// GetComponentsInChildren at Attach, so an anchor **must be a child node of that object**.
     /// No collider, no rigidbody — only a Scene-view icon for positioning.
     ///
-    /// Also used by Bomb's hanging mode (Bomb.BuildHangingMode / Generate Hanging Points), which
-    /// collects anchors the same way — one marker type serves both the framework and the legacy bomb.
+    /// Also used by the former Bomb's hanging mode, which collected anchors the same way — one marker
+    /// type serves both the framework and the legacy bomb.
     /// </summary>
     public class HangAnchor : MonoBehaviour
     {

@@ -12,7 +12,7 @@ namespace Inkform.Fx
     /// Gamepad haptics: translates "what happened in the game" into left/right motor rumble. Pure
     /// event-driven — subscribes to buses, never polls. Same director pattern as FxDirector /
     /// AudioDirector: tuning for "how strong each event rumbles" is centralized in this one Inspector;
-    /// Bomb / RopeGun / PlayerHandler never need to know haptics exist.
+    /// RopeGun / PlayerHandler never need to know haptics exist.
     ///
     /// Motor direction semantics (Xbox / most gamepads: big motor left, small motor right):
     ///  - land (directionless): both motors split the strength evenly
@@ -67,7 +67,7 @@ namespace Inkform.Fx
 
         private struct ScheduledRumble
         {
-            public float triggerTime;
+            public float remainingDelay;
             public float low;
             public float high;
             public float duration;
@@ -75,7 +75,7 @@ namespace Inkform.Fx
 
         private struct ActiveRumble
         {
-            public float endTime;
+            public float remainingDuration;
             public float low;
             public float high;
         }
@@ -131,7 +131,6 @@ namespace Inkform.Fx
             if (k <= 0f) return;
 
             float strength = blastStrength * k;
-            float now = Time.unscaledTime;
             float w = Mathf.Max(0f, playerHalfWidth);
 
             // Distances to the left/right half of the body; their difference is the sweep delay
@@ -141,13 +140,13 @@ namespace Inkform.Fx
             float speed = Mathf.Max(0.01f, shockSpeed);
             if (dL <= dR)
             {
-                AddAt(now + dL / speed, strength, 0f, blastDuration);   // left half first
-                AddAt(now + dR / speed, 0f, strength, blastDuration);   // right half later
+                AddAfter(dL / speed, strength, 0f, blastDuration);   // left half first
+                AddAfter(dR / speed, 0f, strength, blastDuration);   // right half later
             }
             else
             {
-                AddAt(now + dR / speed, 0f, strength, blastDuration);   // right half first
-                AddAt(now + dL / speed, strength, 0f, blastDuration);   // left half later
+                AddAfter(dR / speed, 0f, strength, blastDuration);   // right half first
+                AddAfter(dL / speed, strength, 0f, blastDuration);   // left half later
             }
         }
 
@@ -159,7 +158,7 @@ namespace Inkform.Fx
         private void AddNow(float low, float high, float duration)
         {
             if (!enableRumble || Gamepad.current == null || duration <= 0f) return;
-            active.Add(new ActiveRumble { endTime = Time.unscaledTime + duration, low = low, high = high });
+            active.Add(new ActiveRumble { remainingDuration = duration, low = low, high = high });
             EnsureLoop();
         }
 
@@ -172,10 +171,13 @@ namespace Inkform.Fx
         }
 
         // Delayed rumble: the shockwave's left/right trigger ordering
-        private void AddAt(float triggerTime, float low, float high, float duration)
+        private void AddAfter(float delay, float low, float high, float duration)
         {
             if (!enableRumble || Gamepad.current == null || duration <= 0f) return;
-            scheduled.Add(new ScheduledRumble { triggerTime = triggerTime, low = low, high = high, duration = duration });
+            scheduled.Add(new ScheduledRumble
+            {
+                remainingDelay = Mathf.Max(0f, delay), low = low, high = high, duration = duration
+            });
             EnsureLoop();
         }
 
@@ -189,27 +191,33 @@ namespace Inkform.Fx
         {
             while (scheduled.Count > 0 || active.Count > 0)
             {
-                float now = Time.unscaledTime;
+                bool frozen = GameTimeController.Instance != null && GameTimeController.Instance.IsFrozen;
+                float dt = frozen ? 0f : Time.unscaledDeltaTime;
 
-                // Promote due scheduled rumbles into the active list
+                // Countdown fields preserve the exact remaining delay/duration while frozen.
                 for (int i = scheduled.Count - 1; i >= 0; i--)
                 {
-                    if (scheduled[i].triggerTime <= now)
+                    ScheduledRumble pending = scheduled[i];
+                    pending.remainingDelay -= dt;
+                    if (pending.remainingDelay <= 0f)
                     {
                         active.Add(new ActiveRumble
                         {
-                            endTime = now + scheduled[i].duration,
-                            low = scheduled[i].low,
-                            high = scheduled[i].high,
+                            remainingDuration = pending.duration,
+                            low = pending.low,
+                            high = pending.high,
                         });
                         scheduled.RemoveAt(i);
                     }
+                    else scheduled[i] = pending;
                 }
 
-                // Drop expired rumbles
                 for (int i = active.Count - 1; i >= 0; i--)
                 {
-                    if (active[i].endTime <= now) active.RemoveAt(i);
+                    ActiveRumble rumble = active[i];
+                    rumble.remainingDuration -= dt;
+                    if (rumble.remainingDuration <= 0f) active.RemoveAt(i);
+                    else active[i] = rumble;
                 }
 
                 if (scheduled.Count == 0 && active.Count == 0)
@@ -220,7 +228,7 @@ namespace Inkform.Fx
                 }
 
                 // Pause / hitstop: zero the motors but keep the remaining durations
-                if (Time.timeScale <= 0f)
+                if (frozen)
                 {
                     Gamepad.current?.SetMotorSpeeds(0f, 0f);
                 }
@@ -241,7 +249,7 @@ namespace Inkform.Fx
 
         // Player transform: the GameManager hosting this survives scene switches, so after a change
         // the old reference is a Unity fake-null and is re-looked-up on next use (same pattern as
-        // Bomb.Player / AudioManager.Listener)
+        // PlayerBus.Player / AudioManager.Listener)
         private static Transform playerCache;
 
         private static Transform Player

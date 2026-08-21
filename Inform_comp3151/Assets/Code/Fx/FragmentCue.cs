@@ -6,7 +6,7 @@ namespace Inkform.Fx
     /// <summary>
     /// Config for one shatter look: fragment prefab + multiple random looks + slicing/force/lifetime
     /// parameters, pure data asset. Created via Assets > Create > Fx > Fragment Cue, referenced by
-    /// Bomb / BreakablePart / PlayerDeathFx in the Inspector. The spawning itself is done by Shatter;
+    /// BreakablePart / PlayerDeathFx in the Inspector. The spawning itself is done by Shatter;
     /// this class only describes "what the shatter should look like".
     /// </summary>
     [CreateAssetMenu(menuName = "Fx/Fragment Cue")]

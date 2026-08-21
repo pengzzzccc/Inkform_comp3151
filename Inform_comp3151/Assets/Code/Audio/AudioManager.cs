@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Inkform.Settings;
 using UnityEngine.Audio;
 using UnityEngine;
 
@@ -30,6 +31,7 @@ namespace Inkform.Audio
         // previous run leaked activeCount, the Cue would be permanently muted next run. Zeroing it on
         // first use sidesteps that.
         private readonly HashSet<SoundCue> seen = new HashSet<SoundCue>();
+        private int nextSourceId;
 
         // A source and its low-pass filter must be stored as a pair: every play resets the cutoff by
         // distance; GetComponent per play is wasteful, fetch once at pool build
@@ -44,6 +46,7 @@ namespace Inkform.Audio
         {
             public Source source;
             public SoundCue cue;
+            public float baseGain;
         }
 
         // Listener position. This component lives on a DontDestroyOnLoad object and does not follow the
@@ -70,27 +73,15 @@ namespace Inkform.Audio
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
 
             for (int i = 0; i < poolSize; i++)
-            {
-                GameObject go = new GameObject($"AudioSource_{i}");
-                go.transform.SetParent(transform);
-                AudioSource src = go.AddComponent<AudioSource>();
-                src.playOnAwake = false;
-
-                // Always 2D; passing a position never switches to 3D. Unity's 3D falloff would stack
-                // on top of our own distance factor, and since the camera sits at z = -10 its computed
-                // distance is always ≥10, crushing explosions to near inaudible. Distance feel comes
-                // entirely from Falloff() measured on the XY plane; z does not participate.
-                src.spatialBlend = 0f;
-
-                AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
-                lpf.cutoffFrequency = FullBandwidth;
-
-                pool.Enqueue(new Source { src = src, lpf = lpf });
-            }
+                pool.Enqueue(CreateSource());
         }
+
+        void OnEnable() => SettingsStore.Changed += RefreshActiveVolumes;
+
+        void OnDisable() => SettingsStore.Changed -= RefreshActiveVolumes;
 
         void OnDestroy()
         {
@@ -105,7 +96,14 @@ namespace Inkform.Audio
         {
             for (int i = active.Count - 1; i >= 0; i--)
             {
-                if (active[i].source.src == null) { active.RemoveAt(i); continue; }   // source destroyed unexpectedly
+                if (active[i].source.src == null)
+                {
+                    Voice lost = active[i];
+                    active.RemoveAt(i);
+                    if (lost.cue != null) lost.cue.activeCount = Mathf.Max(0, lost.cue.activeCount - 1);
+                    pool.Enqueue(CreateSource());
+                    continue;
+                }
                 if (!active[i].source.src.isPlaying) ReleaseAt(i);
             }
         }
@@ -132,25 +130,34 @@ namespace Inkform.Audio
             AudioClip clip = cue.PickClip();
             if (clip == null) return null;      // Cue has no clip, or every slot is empty
 
-            Source s = pool.Dequeue();
+            Source s = TakeLiveSource();
+            if (s.src == null) return null;
             AudioSource src = s.src;
 
             src.clip = clip;
             src.pitch = cue.PickPitch();
             src.loop = cue.loop;
+            src.ignoreListenerPause = cue.ignoreListenerPause;
 
             // Distance factor: 0 = right at the listener's ear, 1 = far enough to attenuate fully.
             // All three presentations share this one value
             float t = Falloff(cue, position);
 
-            src.volume = cue.volume * Mathf.Lerp(1f, cue.minVolume, t);
+            // Settings volume reads per Play rather than by subscription: values are plain floats,
+            // reading them is cheaper than tracking the Changed event on a static class across scenes.
+            float trackVolume = cue.category == SoundCue.Category.Music
+                ? SettingsStore.MusicVolume
+                : SettingsStore.SfxVolume;
+
+            float baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t);
+            src.volume = baseGain * SettingsStore.MasterVolume * trackVolume;
             s.lpf.cutoffFrequency = Mathf.Lerp(FullBandwidth, cue.minCutoff, t);
             src.outputAudioMixerGroup = PickGroup(cue, t);
 
             src.Play();
             cue.lastPlayTime = Time.unscaledTime;
             cue.activeCount++;
-            active.Add(new Voice { source = s, cue = cue });
+            active.Add(new Voice { source = s, cue = cue, baseGain = baseGain });
 
             return src;
         }
@@ -201,6 +208,13 @@ namespace Inkform.Audio
             Voice v = active[i];
             active.RemoveAt(i);
 
+            if (v.source.src == null)
+            {
+                if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
+                pool.Enqueue(CreateSource());
+                return;
+            }
+
             v.source.src.Stop();
             v.source.src.clip = null;
 
@@ -209,8 +223,53 @@ namespace Inkform.Audio
             // would mysteriously go dull. outputAudioMixerGroup needs no restore — every Play sets it explicitly
             v.source.lpf.cutoffFrequency = FullBandwidth;
 
-            if (v.cue != null) v.cue.activeCount--;
+            if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
             pool.Enqueue(v.source);
+        }
+
+        private Source CreateSource()
+        {
+            GameObject go = new GameObject($"AudioSource_{nextSourceId++}");
+            go.transform.SetParent(transform);
+            AudioSource src = go.AddComponent<AudioSource>();
+            src.playOnAwake = false;
+            src.spatialBlend = 0f;
+            AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
+            lpf.cutoffFrequency = FullBandwidth;
+            return new Source { src = src, lpf = lpf };
+        }
+
+        private Source TakeLiveSource()
+        {
+            int missing = 0;
+            while (pool.Count > 0)
+            {
+                Source source = pool.Dequeue();
+                if (source.src == null) { missing++; continue; }
+                if (source.lpf == null) source.lpf = source.src.gameObject.AddComponent<AudioLowPassFilter>();
+                for (int i = 0; i < missing; i++) pool.Enqueue(CreateSource());
+                return source;
+            }
+            if (missing > 0)
+            {
+                Source replacement = CreateSource();
+                for (int i = 1; i < missing; i++) pool.Enqueue(CreateSource());
+                return replacement;
+            }
+            return default;
+        }
+
+        private void RefreshActiveVolumes()
+        {
+            for (int i = 0; i < active.Count; i++)
+            {
+                Voice voice = active[i];
+                if (voice.source.src == null || voice.cue == null) continue;
+                float track = voice.cue.category == SoundCue.Category.Music
+                    ? SettingsStore.MusicVolume
+                    : SettingsStore.SfxVolume;
+                voice.source.src.volume = voice.baseGain * SettingsStore.MasterVolume * track;
+            }
         }
     }
 }

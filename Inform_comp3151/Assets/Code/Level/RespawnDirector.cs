@@ -1,5 +1,7 @@
 using Inkform.Bus;
+using Inkform.Fx;
 using Inkform.Life;
+using Inkform.Save;
 using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -26,9 +28,9 @@ namespace Inkform.Level
         // Must use unscaled timing: on the death frame the death strategy requests hitstop, crushing
         // timeScale to 0 — a plain Timer's Time.time is frozen then, waiting for it to expire is
         // waiting forever
-        private UnscaledTimer respawnTimer;
+        private float respawnRemaining;
 
-        // Same lazy cache as Bomb.Player / AudioManager.Listener: after a scene change the old
+        // Same lazy cache as PlayerBus.Player / AudioManager.Listener: after a scene change the old
         // reference becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics needed
         private DeathDirector deathCache;
 
@@ -81,20 +83,64 @@ namespace Inkform.Level
             GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
             if (player == null) return;
 
+            // Loaded save: the coordinate the save recorded outranks every spawn point in the scene —
+            // it is the whole point of continuing a run. Checked first so neither the door-side spawn
+            // nor the start point can win, and consumed here so it applies to this scene only.
+            Vector2? loaded = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnPos() : null;
+            if (loaded.HasValue)
+            {
+                checkpoint = loaded.Value;
+                PlaceAndRecord(player);
+                return;
+            }
+
             // Startup respawn point: prefer the checkpoint with isStartPoint checked and teleport the
             // player there; with none checked the game still plays — falls back to "wherever the
             // player was placed in the scene"
             Checkpoint start = FindStartPoint();
-            if (start == null)
+
+            // Door-side spawn: entering from another room puts the player beside that room's door in
+            // this scene (SceneDirector records the source scene on LevelBus.Completed) rather than
+            // the level start point, so direction stays intuitive across level transitions
+            string from = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnFrom() : null;
+            Checkpoint spawn = from != null ? FindDoorSpawn(from) : null;
+            if (spawn == null) spawn = start;
+
+            if (spawn == null)
             {
                 checkpoint = player.transform.position;
+                RecordSave();   // still a new room, still where the run now is — see RecordSave
                 return;
             }
 
-            checkpoint = start.SpawnPos;
-            LifeBus.RaiseRespawned(player, checkpoint);   // reuse the same respawn path instead of a second teleport implementation
-            FxBus.RaiseSnap();
+            checkpoint = spawn.SpawnPos;
+            PlaceAndRecord(player);
         }
+
+        // Teleport + camera snap + autosave, shared by both of InitForScene's placing branches.
+        // RaiseRespawned rather than moving the transform here: reuse the same respawn path instead of
+        // a second teleport implementation.
+        private void PlaceAndRecord(GameObject player)
+        {
+            LifeBus.RaiseRespawned(player, checkpoint);
+            FxBus.RaiseSnap();
+            RecordSave();
+        }
+
+        /// <summary>
+        /// Autosave. Called at the two moments `checkpoint` changes for a reason worth keeping — a room
+        /// entered, or a checkpoint touched — so the save always names a place the player can be put
+        /// back onto. Deliberately *not* called from the death respawn or from Unstuck: neither moves
+        /// the checkpoint, so there would be nothing new to write.
+        ///
+        /// This lives here rather than in a save-specific director because this class already owns
+        /// "where the player comes back", and reading `checkpoint` from anywhere else would mean
+        /// racing this component's own deferred scene init (both SceneDirector and this one defer by a
+        /// frame, and Update order between two components on one GameObject is not defined).
+        /// SaveStore ignores the call entirely outside a run, so opening a level straight from the
+        /// editor writes nothing.
+        /// </summary>
+        private void RecordSave() => SaveStore.RecordProgress(SceneManager.GetActiveScene().name, checkpoint);
 
         void Update()
         {
@@ -104,11 +150,14 @@ namespace Inkform.Level
             {
                 sceneInitPending = false;
                 pending = null;
+                respawnRemaining = 0f;
                 InitForScene();
             }
 
             if (pending == null) return;
-            if (respawnTimer.IsRunning) return;
+            if (GameTimeController.Instance == null || !GameTimeController.Instance.IsUserPaused)
+                respawnRemaining = Mathf.Max(0f, respawnRemaining - Time.unscaledDeltaTime);
+            if (respawnRemaining > 0f) return;
 
             LifeBus.RaiseRespawned(pending, checkpoint);
             pending = null;
@@ -118,9 +167,30 @@ namespace Inkform.Level
             FxBus.RaiseSnap();
         }
 
+        /// <summary>
+        /// Puts the player back on the last checkpoint on demand — the Controls tab's Unstuck button,
+        /// for when a bug wedges the slime somewhere it cannot leave. Reuses the death path's teleport
+        /// rather than moving the transform here, so anything listening for a respawn (camera snap,
+        /// state reset) sees the same event it always does.
+        ///
+        /// Clears any death still waiting out its delay: that pending respawn would otherwise fire a
+        /// second later against a player who has already been moved, teleporting them again.
+        /// </summary>
+        public void RespawnNow()
+        {
+            GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
+            if (player == null) return;     // no player in this scene (the menu) — nobody to rescue
+
+            pending = null;
+            respawnRemaining = 0f;
+            LifeBus.RaiseRespawned(player, checkpoint);
+            FxBus.RaiseSnap();
+        }
+
         private void OnCheckpointSet(Vector2 pos)
         {
             checkpoint = pos;
+            RecordSave();
         }
 
         private void OnDied(DeathContext ctx)
@@ -132,7 +202,7 @@ namespace Inkform.Level
             DeathDirector deaths = Deaths;
             DeathStrategy strategy = deaths != null ? deaths.Resolve(ctx.Cause) : null;
 
-            respawnTimer.Set(strategy != null ? strategy.RespawnDelay : fallbackDelay);
+            respawnRemaining = Mathf.Max(0f, strategy != null ? strategy.RespawnDelay : fallbackDelay);
         }
 
         // The no-sort-parameter overload is the current recommended API: the FindObjectsSortMode
@@ -144,6 +214,20 @@ namespace Inkform.Level
             foreach (Checkpoint c in all)
             {
                 if (c.IsStartPoint) return c;
+            }
+            return null;
+        }
+
+        // The door-side spawn point maintained by Level Graph as "Spawn_<sceneName>" (a Checkpoint
+        // beside the door whose exitId is that scene); matching by name keeps it a pure editor-side
+        // convention — no new component, no scene wiring
+        private Checkpoint FindDoorSpawn(string fromScene)
+        {
+            string want = $"Spawn_{fromScene}";
+            Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
+            foreach (Checkpoint c in all)
+            {
+                if (c.gameObject.name == want) return c;
             }
             return null;
         }

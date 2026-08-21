@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Inkform.Bus;
 using Inkform.Tool;
 using UnityEngine;
@@ -13,17 +14,26 @@ namespace Inkform.Level
     public class RopeRangeZone : MonoBehaviour
     {
         [SerializeField] private float maxRange = 4.2f;    // rope gun max range inside the zone
+        private readonly HashSet<Collider2D> playerColliders = new HashSet<Collider2D>();
 
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.CompareTag(Tags.Player)) return;
-            RopeGunBus.RaiseRangeOverride(maxRange);
+            if (playerColliders.Add(other) && playerColliders.Count == 1)
+                RopeGunBus.RaiseRangeOverride(this, maxRange);
         }
 
         void OnTriggerExit2D(Collider2D other)
         {
             if (!other.CompareTag(Tags.Player)) return;
-            RopeGunBus.RaiseRangeRestored();
+            if (playerColliders.Remove(other) && playerColliders.Count == 0)
+                RopeGunBus.RaiseRangeRestored(this);
+        }
+
+        private void OnDisable()
+        {
+            if (playerColliders.Count > 0) RopeGunBus.RaiseRangeRestored(this);
+            playerColliders.Clear();
         }
 
         void OnDrawGizmosSelected()
