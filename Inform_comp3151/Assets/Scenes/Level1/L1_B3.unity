@@ -94163,7 +94163,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 946db3fba5054c240b479ea0b24eafb8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Fx.ScreenFx
-  maxHitStop: 0.25
   volume: {fileID: 675788897}
   vignettePunch: 0.35
 --- !u!114 &1700843101
