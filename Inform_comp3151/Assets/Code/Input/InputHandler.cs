@@ -2,10 +2,8 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Inkform.Bus;
-using Inkform.Item;
 using Inkform.Player;
 using Inkform.Settings;
-using Inkform.UI;
 
 namespace Inkform.Input
 {
@@ -54,10 +52,6 @@ namespace Inkform.Input
         // Virtual stick position (-1..1). Reversing direction passes through 0 via MoveTowards naturally;
         // the flip across center needs no special-casing
         private Vector2 stick;
-        private const float InventoryHoldSeconds = 0.25f;
-        private bool inventoryButtonHeld;
-        private bool inventoryWheelOpened;
-        private float inventoryPressedAt;
 
         /// <summary>
         /// awake all input system and setting before the game life loop start.
@@ -119,8 +113,6 @@ namespace Inkform.Input
         void Update()
         {
             AutoSwitchDevice();   // before filtering: the active family follows whichever device produced input
-
-            UpdateInventoryWheel();
 
             // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
             // charge, and ReadValue on a disabled action returns default which would push a stale
@@ -229,63 +221,13 @@ namespace Inkform.Input
         private void OnRopeFire(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (inventoryWheelOpened) return;
             player?.RopeFire();
         }
 
         private void OnSpitBomb(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-
-            if (ctx.started)
-            {
-                inventoryButtonHeld = true;
-                inventoryWheelOpened = false;
-                inventoryPressedAt = Time.unscaledTime;
-                return;
-            }
-
-            if (!ctx.canceled || !inventoryButtonHeld) return;
-            inventoryButtonHeld = false;
-
-            if (inventoryWheelOpened)
-            {
-                InventoryHud.Instance?.CommitWheel();
-                inventoryWheelOpened = false;
-            }
-            else
-            {
-                player?.SpitBomb();
-            }
-        }
-
-        private void UpdateInventoryWheel()
-        {
-            if (!actionsEnabled || !inventoryButtonHeld || player == null) return;
-
-            if (!inventoryWheelOpened
-                && InventoryStore.Count > 0
-                && Time.unscaledTime - inventoryPressedAt >= InventoryHoldSeconds)
-            {
-                inventoryWheelOpened = InventoryHud.Instance != null && InventoryHud.Instance.OpenWheel();
-            }
-
-            if (!inventoryWheelOpened) return;
-
-            Vector2 direction = Vector2.zero;
-            if (SettingsStore.Device == SettingsStore.InputDevice.Gamepad && Gamepad.current != null)
-                direction = Gamepad.current.rightStick.ReadValue();
-            else if (Mouse.current != null)
-                direction = Mouse.current.position.ReadValue() - new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-
-            InventoryHud.Instance?.SetWheelDirection(direction);
-        }
-
-        private void CancelInventoryHold()
-        {
-            inventoryButtonHeld = false;
-            inventoryWheelOpened = false;
-            InventoryHud.Instance?.CancelWheel();
+            player?.SpitBomb();
         }
 
         void OnEnable()
@@ -350,8 +292,7 @@ namespace Inkform.Input
             jump.canceled += OnJumpReleased;
             dash.performed += OnDash;
             ropeFire.performed += OnRopeFire;
-            spitBomb.started += OnSpitBomb;
-            spitBomb.canceled += OnSpitBomb;
+            spitBomb.performed += OnSpitBomb;
         }
 
         private void DisableActions()
@@ -359,14 +300,11 @@ namespace Inkform.Input
             if (!actionsEnabled) return;
             actionsEnabled = false;
 
-            CancelInventoryHold();
-
             jump.performed -= OnJumpPressed;
             jump.canceled -= OnJumpReleased;
             dash.performed -= OnDash;
             ropeFire.performed -= OnRopeFire;
-            spitBomb.started -= OnSpitBomb;
-            spitBomb.canceled -= OnSpitBomb;
+            spitBomb.performed -= OnSpitBomb;
 
             move.Disable();
             aim.Disable();

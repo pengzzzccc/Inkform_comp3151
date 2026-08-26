@@ -5,12 +5,16 @@ using System.Reflection;
 using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Fx;
+using Inkform.Interactable;
+using Inkform.Interactable.Parts;
 using Inkform.Item;
 using Inkform.Player;
 using Inkform.Save;
+using Inkform.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Inkform.Tests
 {
@@ -26,7 +30,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void Inventory_HasFourSlotsAndKeepsSelectionValid()
+        public void Inventory_StartsAtOneAndUniquePickupsGrowBeyondFour()
         {
             InventoryStore.Clear();
             InventoryItemDefinition[] definitions = new InventoryItemDefinition[5];
@@ -38,14 +42,20 @@ namespace Inkform.Tests
                     SetField(definitions[i], "id", $"test-{i}");
                 }
 
-                for (int i = 0; i < InventoryStore.Capacity; i++)
-                    Assert.IsTrue(InventoryStore.TryAdd(definitions[i]));
-                Assert.IsFalse(InventoryStore.TryAdd(definitions[4]), "a fifth item must remain in the world");
+                Assert.AreEqual(1, InventoryStore.Capacity);
+                Assert.IsTrue(InventoryStore.TryAdd(definitions[0]));
+                Assert.IsFalse(InventoryStore.TryAdd(definitions[1]), "a second item must remain in the world before an upgrade");
 
-                Assert.IsTrue(InventoryStore.Select(3));
-                Assert.AreEqual(3, InventoryStore.SelectedIndex);
-                Assert.IsTrue(InventoryStore.RemoveSelected());
-                Assert.AreEqual(2, InventoryStore.SelectedIndex, "selection clamps after removing the last occupied slot");
+                for (int i = 1; i < definitions.Length; i++)
+                {
+                    Assert.IsTrue(InventoryStore.TryCollectCapacityPickup($"upgrade-{i}", 1));
+                    Assert.IsTrue(InventoryStore.TryAdd(definitions[i]));
+                }
+
+                Assert.AreEqual(5, InventoryStore.Capacity, "capacity has no four-slot gameplay ceiling");
+                CollectionAssert.AreEqual(definitions, InventoryStore.Items);
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("upgrade-1", 1),
+                    "the same stable pickup id cannot grant capacity twice");
             }
             finally
             {
@@ -55,7 +65,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV1_MigratesToV2WithEmptyInventory()
+        public void SaveV1_MigratesToV3WithEmptyOneSlotInventory()
         {
             string path = Path.Combine(Application.temporaryCachePath, $"inkform-v1-{Guid.NewGuid():N}.json");
             try
@@ -68,6 +78,9 @@ namespace Inkform.Tests
                 Assert.AreEqual(SaveData.CurrentVersion, data.version);
                 Assert.IsNotNull(data.inventoryItemIds);
                 Assert.IsEmpty(data.inventoryItemIds);
+                Assert.AreEqual(1, data.inventoryCapacity);
+                Assert.IsNotNull(data.collectedInventoryCapacityPickupIds);
+                Assert.IsEmpty(data.collectedInventoryCapacityPickupIds);
                 Assert.AreEqual("B2", data.sceneName);
             }
             finally
@@ -152,6 +165,7 @@ namespace Inkform.Tests
             go.AddComponent<Rigidbody2D>();
             RopeGun gun = go.AddComponent<RopeGun>();
             go.SetActive(true);
+            InitializeRopeGun(gun);
             object wide = new object();
             object narrow = new object();
             try
@@ -179,6 +193,7 @@ namespace Inkform.Tests
             }
             finally
             {
+                ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }
@@ -191,6 +206,7 @@ namespace Inkform.Tests
             go.AddComponent<Rigidbody2D>();
             RopeGun gun = go.AddComponent<RopeGun>();
             go.SetActive(true);
+            InitializeRopeGun(gun);
             try
             {
                 SetField(gun, "mouseAimSensitivity", 1f);
@@ -210,7 +226,484 @@ namespace Inkform.Tests
             }
             finally
             {
+                ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void CapacityUpgrade_RejectsInvalidDuplicateAndOverflowWithoutChangingState()
+        {
+            InventoryStore.Clear();
+            int changed = 0;
+            void OnChanged() => changed++;
+            InventoryStore.Changed += OnChanged;
+            try
+            {
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup(null, 1));
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("   ", 1));
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("zero", 0));
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("negative", -1));
+                Assert.AreEqual(1, InventoryStore.Capacity);
+                Assert.AreEqual(0, changed);
+
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("valid", 2));
+                Assert.AreEqual(3, InventoryStore.Capacity);
+                Assert.AreEqual(1, changed, "one capacity transaction must publish one inventory change");
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("valid", 2));
+                Assert.AreEqual(1, changed);
+
+                SetStaticField(typeof(InventoryStore), "capacity", int.MaxValue);
+                Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("overflow", 1));
+                Assert.IsFalse(InventoryStore.IsCapacityPickupCollected("overflow"));
+                Assert.AreEqual(1, changed);
+            }
+            finally
+            {
+                InventoryStore.Changed -= OnChanged;
+                InventoryStore.Clear();
+            }
+        }
+
+        [Test]
+        public void SaveV2_MigratesCapacityFromNonEmptyInventoryIds()
+        {
+            string path = Path.Combine(Application.temporaryCachePath, $"inkform-v2-{Guid.NewGuid():N}.json");
+            try
+            {
+                File.WriteAllText(path,
+                    "{\"version\":2,\"sceneName\":\"B2\",\"inventoryItemIds\":[\"allinone-bomb\",\"\",\"allinone-bomb\"]}");
+                MethodInfo read = typeof(SaveStore).GetMethod("TryRead", BindingFlags.Static | BindingFlags.NonPublic);
+                object[] args = { path, null };
+                Assert.IsTrue((bool)read.Invoke(null, args));
+                SaveData data = (SaveData)args[1];
+                Assert.AreEqual(SaveData.CurrentVersion, data.version);
+                Assert.AreEqual(2, data.inventoryCapacity);
+                Assert.IsEmpty(data.collectedInventoryCapacityPickupIds);
+            }
+            finally
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+
+        [Test]
+        public void SaveV3_RestoresLargeCapacityPickupIdsAndKeepsSlotsIsolated()
+        {
+            string directory = Path.Combine(Application.temporaryCachePath, $"inkform-v3-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(directory);
+            try
+            {
+                SaveData first = new SaveData
+                {
+                    sceneName = "B2",
+                    inventoryItemIds = new[] { "allinone-bomb" },
+                    inventoryCapacity = 7,
+                    collectedInventoryCapacityPickupIds = new[] { "cave-upgrade", "lab-upgrade" }
+                };
+                SaveData second = new SaveData
+                {
+                    sceneName = "B3",
+                    inventoryItemIds = Array.Empty<string>(),
+                    inventoryCapacity = 2,
+                    collectedInventoryCapacityPickupIds = new[] { "other-save-upgrade" }
+                };
+                File.WriteAllText(Path.Combine(directory, "slot0.json"), JsonUtility.ToJson(first));
+                File.WriteAllText(Path.Combine(directory, "slot1.json"), JsonUtility.ToJson(second));
+
+                SaveStore.UseTestSaveDirectory(directory);
+                SaveStore.ContinueRun(0);
+                Assert.AreEqual(7, InventoryStore.Capacity);
+                Assert.AreEqual(1, InventoryStore.Count);
+                Assert.IsTrue(InventoryStore.IsCapacityPickupCollected("cave-upgrade"));
+                Assert.IsFalse(InventoryStore.IsCapacityPickupCollected("other-save-upgrade"));
+
+                SaveStore.ContinueRun(1);
+                Assert.AreEqual(2, InventoryStore.Capacity);
+                Assert.AreEqual(0, InventoryStore.Count);
+                Assert.IsTrue(InventoryStore.IsCapacityPickupCollected("other-save-upgrade"));
+                Assert.IsFalse(InventoryStore.IsCapacityPickupCollected("cave-upgrade"));
+            }
+            finally
+            {
+                InvokeStatic(typeof(SaveStore), "ResetStatics");
+                InventoryStore.Clear();
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void Interactable_ResolvesCarriableCapabilityFromAChildPart()
+        {
+            GameObject root = new GameObject("Interactable carriable lookup test");
+            root.SetActive(false);
+            root.AddComponent<Rigidbody2D>();
+            root.AddComponent<BoxCollider2D>();
+            Inkform.Interactable.Interactable node =
+                root.AddComponent<Inkform.Interactable.Interactable>();
+            GameObject child = new GameObject("Carriable child part");
+            child.transform.SetParent(root.transform, false);
+            child.AddComponent<CarriablePart>();
+            root.SetActive(true);
+            try
+            {
+                Assert.IsTrue(node.TryGetPart(out ICarriable carriable));
+                Assert.IsNotNull(carriable);
+                Assert.AreEqual(child.transform, carriable.transform);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void InventoryCapacityPart_CollectsOnPlayerContactAndRemovesReloadedDuplicate()
+        {
+            InventoryStore.Clear();
+            GameObject player = new GameObject("Capacity pickup player");
+            player.tag = "Player";
+            Collider2D playerCollider = player.AddComponent<BoxCollider2D>();
+            player.AddComponent<PlayerInventory>();
+            GameObject pickup = null;
+            GameObject reloadedPickup = null;
+            int upgradeEvents = 0;
+            int reportedIncrease = 0;
+            Vector2 reportedPosition = Vector2.zero;
+            Action<Vector2, int> onCapacityUpgraded = (pos, increase) =>
+            {
+                upgradeEvents++;
+                reportedPosition = pos;
+                reportedIncrease = increase;
+            };
+            ItemBus.InventoryCapacityUpgraded += onCapacityUpgraded;
+            try
+            {
+                pickup = CreateCapacityPickup("cave-capacity-01", 2, out InventoryCapacityPart part);
+                pickup.transform.position = new Vector2(3f, 4f);
+                Assert.IsFalse((object)part is IRestorablePart,
+                    "permanent inventory upgrades must not participate in death/checkpoint restoration");
+                Assert.IsTrue(part.HandleContact(ContactPhase.Enter, playerCollider));
+                Assert.AreEqual(3, InventoryStore.Capacity);
+                Assert.IsTrue(InventoryStore.IsCapacityPickupCollected("cave-capacity-01"));
+                Assert.AreEqual(1, upgradeEvents);
+                Assert.AreEqual(2, reportedIncrease);
+                Assert.AreEqual(new Vector2(3f, 4f), reportedPosition);
+                Assert.IsTrue(pickup == null, "a collected world pickup must be destroyed immediately");
+
+                reloadedPickup = CreateCapacityPickup("cave-capacity-01", 2, out _);
+                Assert.IsTrue(reloadedPickup == null,
+                    "an already collected scene instance must remove itself as soon as it attaches");
+                Assert.AreEqual(3, InventoryStore.Capacity, "scene reload must not grant capacity again");
+                Assert.AreEqual(1, upgradeEvents, "a duplicate pickup must not replay the collection sound event");
+            }
+            finally
+            {
+                ItemBus.InventoryCapacityUpgraded -= onCapacityUpgraded;
+                if (pickup != null) UnityEngine.Object.DestroyImmediate(pickup);
+                if (reloadedPickup != null) UnityEngine.Object.DestroyImmediate(reloadedPickup);
+                UnityEngine.Object.DestroyImmediate(player);
+            }
+        }
+
+        [Test]
+        public void InventoryCapacityPickupPrefab_IsAnInteractableTriggerShellWithAssignableSprite()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/Item/InventoryCapacityPickup.prefab");
+            Assert.IsNotNull(prefab);
+            Assert.IsNotNull(prefab.GetComponent<Inkform.Interactable.Interactable>());
+            Assert.IsNotNull(prefab.GetComponent<InventoryCapacityPart>());
+            Assert.IsTrue(prefab.GetComponent<Collider2D>().isTrigger);
+            Assert.IsNotNull(prefab.GetComponent<SpriteRenderer>());
+        }
+
+        [Test]
+        public void AllinoneBomb_UsesInteractableCarriablePartAndIsDashFuel()
+        {
+            InventoryItemDefinition definition = AssetDatabase.LoadAssetAtPath<InventoryItemDefinition>(
+                "Assets/Resources/Inventory/AllinoneBomb.asset");
+            Assert.IsNotNull(definition);
+            Assert.IsTrue(definition.IsDashFuel);
+            Assert.IsNotNull(definition.WorldPrefab);
+
+            GameObject instance = UnityEngine.Object.Instantiate(definition.WorldPrefab);
+            try
+            {
+                Inkform.Interactable.Interactable node =
+                    instance.GetComponent<Inkform.Interactable.Interactable>();
+                Assert.IsNotNull(node);
+                Assert.IsTrue(node.TryGetPart(out ICarriable carriable));
+                Assert.AreSame(definition, carriable.Definition);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
+        [Test]
+        public void PlayerInventory_ReleaseFailureRetainsFifoHeadAndSuccessRemovesOnlyHead()
+        {
+            GameObject player = new GameObject("FIFO release test");
+            PlayerInventory inventory = player.AddComponent<PlayerInventory>();
+            InventoryItemDefinition first = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            InventoryItemDefinition second = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            InventoryItemDefinition bombDefinition = AssetDatabase.LoadAssetAtPath<InventoryItemDefinition>(
+                "Assets/Resources/Inventory/AllinoneBomb.asset");
+            SetField(first, "id", "fifo-first");
+            SetField(second, "id", "fifo-second");
+            try
+            {
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fifo-release-capacity", 1));
+                Assert.IsTrue(inventory.TryStore(first));
+                Assert.IsTrue(inventory.TryStore(second));
+
+                Assert.IsFalse(inventory.TryReleaseFirst(Vector2.right));
+                Assert.AreEqual(2, inventory.Count);
+                Assert.IsTrue(InventoryStore.TryPeekFirst(out InventoryItemDefinition retained));
+                Assert.AreSame(first, retained, "failed prefab creation must retain the FIFO head");
+
+                SetField(first, "worldPrefab", bombDefinition.WorldPrefab);
+                Assert.IsTrue(inventory.TryReleaseFirst(Vector2.right));
+                Assert.AreEqual(1, inventory.Count);
+                Assert.IsTrue(InventoryStore.TryPeekFirst(out InventoryItemDefinition next));
+                Assert.AreSame(second, next);
+            }
+            finally
+            {
+                foreach (Inkform.Interactable.Interactable spawned in
+                    UnityEngine.Object.FindObjectsByType<Inkform.Interactable.Interactable>())
+                {
+                    if (spawned != null && spawned.name == "AllinoneBomb(Clone)")
+                        UnityEngine.Object.DestroyImmediate(spawned.gameObject);
+                }
+                UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(second);
+                UnityEngine.Object.DestroyImmediate(player);
+            }
+        }
+
+        [Test]
+        public void InventoryHud_AlwaysShowsCountAndUsesFifoHeadIcon()
+        {
+            GameObject host = new GameObject("Inventory HUD test");
+            InventoryHud hud = host.AddComponent<InventoryHud>();
+            InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(item, "id", "hud-head");
+            try
+            {
+                Invoke(hud, "Awake");
+                Invoke(hud, "OnEnable");
+                Text count = GetField<Text>(hud, "countText");
+                Image icon = GetField<Image>(hud, "currentIcon");
+                Assert.AreEqual("0/1", count.text);
+                Assert.IsFalse(icon.enabled);
+
+                Assert.IsTrue(InventoryStore.TryAdd(item));
+                Assert.AreEqual("1/1", count.text);
+                Assert.AreSame(item.Icon, icon.sprite);
+            }
+            finally
+            {
+                Invoke(hud, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(item);
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void PlayerInventory_DashConsumesEarliestFuelAndPreservesFifoOrder()
+        {
+            GameObject go = new GameObject("PlayerInventory fuel test");
+            PlayerInventory inventory = go.AddComponent<PlayerInventory>();
+            InventoryItemDefinition fuelA = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            InventoryItemDefinition normal = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            InventoryItemDefinition fuelB = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(fuelA, "id", "fuel-a");
+            SetField(fuelA, "dashFuel", true);
+            SetField(normal, "id", "normal");
+            SetField(fuelB, "id", "fuel-b");
+            SetField(fuelB, "dashFuel", true);
+            try
+            {
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fuel-test-capacity", 2));
+                Assert.IsTrue(inventory.TryStore(normal));
+                Assert.IsTrue(inventory.TryStore(fuelA));
+                Assert.IsTrue(inventory.TryStore(fuelB));
+
+                int changed = 0;
+                InventoryStore.Changed += OnChanged;
+                try
+                {
+                    Assert.IsTrue(inventory.TryConsumeDashFuel());
+                    Assert.AreEqual(1, changed, "one fuel consumption must publish one inventory change");
+                }
+                finally
+                {
+                    InventoryStore.Changed -= OnChanged;
+                }
+
+                CollectionAssert.AreEqual(new[] { normal, fuelB }, InventoryStore.Items,
+                    "the earliest fuel must be removed without reordering non-consumed items");
+                Assert.IsTrue(inventory.TryConsumeDashFuel());
+                CollectionAssert.AreEqual(new[] { normal }, InventoryStore.Items);
+                Assert.IsFalse(inventory.TryConsumeDashFuel());
+
+                void OnChanged() => changed++;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(fuelA);
+                UnityEngine.Object.DestroyImmediate(normal);
+                UnityEngine.Object.DestroyImmediate(fuelB);
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PlayerDash_ConsumesFuelAndPublishesSuccessThenFailure()
+        {
+            GameObject go = new GameObject("Bomb-powered dash test");
+            go.SetActive(false);
+            Rigidbody2D body = go.AddComponent<Rigidbody2D>();
+            go.AddComponent<ContactSensor>();
+            PlayerMotor motor = go.AddComponent<PlayerMotor>();
+            AnimStateResolver anim = go.AddComponent<AnimStateResolver>();
+            PlayerInventory inventory = go.AddComponent<PlayerInventory>();
+            PlayerHandler player = go.AddComponent<PlayerHandler>();
+            InventoryItemDefinition fuel = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(fuel, "id", "dash-fuel");
+            SetField(fuel, "dashFuel", true);
+            go.SetActive(true);
+            Invoke(motor, "Awake");
+            Invoke(anim, "Awake");
+            Invoke(player, "Awake");
+
+            int attempts = 0;
+            bool lastSucceeded = false;
+            Action<Vector2, bool> onDashAttempted = (pos, succeeded) =>
+            {
+                attempts++;
+                lastSucceeded = succeeded;
+            };
+            PlayerBus.DashAttempted += onDashAttempted;
+            try
+            {
+                Assert.IsTrue(inventory.TryStore(fuel));
+                player.Dash();
+                Assert.AreEqual(0, inventory.Count);
+                Assert.Greater(body.linearVelocityX, 0f);
+                Assert.AreEqual(1, attempts);
+                Assert.IsTrue(lastSucceeded);
+
+                body.linearVelocity = Vector2.zero;
+                player.Dash();
+                Assert.AreEqual(Vector2.zero, body.linearVelocity,
+                    "a dash without fuel must not change velocity");
+                Assert.AreEqual(2, attempts);
+                Assert.IsFalse(lastSucceeded);
+
+            }
+            finally
+            {
+                PlayerBus.DashAttempted -= onDashAttempted;
+                UnityEngine.Object.DestroyImmediate(fuel);
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void AudioDirector_DashAttemptPlaysTriggerAndSuccessAddsBlastWithoutHazardBlast()
+        {
+            GameObject go = new GameObject("Dash audio routing test");
+            go.SetActive(false);
+            AudioManager manager = go.AddComponent<AudioManager>();
+            SetField(manager, "poolSize", 4);
+            AudioDirector director = go.AddComponent<AudioDirector>();
+            SoundCue trigger = ScriptableObject.CreateInstance<SoundCue>();
+            SoundCue blast = ScriptableObject.CreateInstance<SoundCue>();
+            AudioClip triggerClip = AudioClip.Create("dash-trigger", 32, 1, 8000, false);
+            AudioClip blastClip = AudioClip.Create("dash-blast", 32, 1, 8000, false);
+            trigger.clips = new[] { triggerClip };
+            trigger.cooldown = 0f;
+            trigger.maxConcurrent = 4;
+            blast.clips = new[] { blastClip };
+            blast.cooldown = 0f;
+            blast.maxConcurrent = 4;
+            SetField(director, "bombTick", trigger);
+            SetField(director, "blast", blast);
+            go.SetActive(true);
+            Invoke(manager, "Awake");
+            Invoke(manager, "OnEnable");
+            Invoke(director, "OnEnable");
+
+            int hazardBlasts = 0;
+            Action<Vector2, float, float> onHazardBlast = (center, radius, force) => hazardBlasts++;
+            HazardBus.Blast += onHazardBlast;
+            try
+            {
+                PlayerBus.RaiseDashAttempted(Vector2.zero, false);
+                Assert.AreEqual(1, trigger.activeCount);
+                Assert.AreEqual(0, blast.activeCount);
+
+                PlayerBus.RaiseDashAttempted(Vector2.zero, true);
+                Assert.AreEqual(2, trigger.activeCount);
+                Assert.AreEqual(1, blast.activeCount);
+                Assert.AreEqual(0, hazardBlasts,
+                    "dash audio must not publish a gameplay explosion");
+
+            }
+            finally
+            {
+                HazardBus.Blast -= onHazardBlast;
+                Invoke(director, "OnDisable");
+                Invoke(manager, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(go);
+                UnityEngine.Object.DestroyImmediate(trigger);
+                UnityEngine.Object.DestroyImmediate(blast);
+                UnityEngine.Object.DestroyImmediate(triggerClip);
+                UnityEngine.Object.DestroyImmediate(blastClip);
+            }
+        }
+
+        [Test]
+        public void AudioDirector_CapacityPickupUsesConfiguredItemSoundOnce()
+        {
+            GameObject gameManagerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/Control/GameManager.prefab");
+            AudioDirector prefabDirector = gameManagerPrefab.GetComponent<AudioDirector>();
+            Assert.IsNotNull(prefabDirector);
+            Assert.IsNotNull(GetField<SoundCue>(prefabDirector, "inventoryCapacityUpgrade"),
+                "the existing GameManager must ship with a capacity-pickup cue assigned");
+
+            GameObject go = new GameObject("Capacity pickup audio routing test");
+            go.SetActive(false);
+            AudioManager manager = go.AddComponent<AudioManager>();
+            SetField(manager, "poolSize", 2);
+            AudioDirector director = go.AddComponent<AudioDirector>();
+            SoundCue cue = ScriptableObject.CreateInstance<SoundCue>();
+            AudioClip clip = AudioClip.Create("capacity-pickup", 32, 1, 8000, false);
+            cue.clips = new[] { clip };
+            cue.cooldown = 0f;
+            cue.maxConcurrent = 2;
+            SetField(director, "inventoryCapacityUpgrade", cue);
+            go.SetActive(true);
+            Invoke(manager, "Awake");
+            Invoke(manager, "OnEnable");
+            Invoke(director, "OnEnable");
+            try
+            {
+                ItemBus.RaiseInventoryCapacityUpgraded(new Vector2(3f, 4f), 1);
+                Assert.AreEqual(1, cue.activeCount);
+            }
+            finally
+            {
+                Invoke(director, "OnDisable");
+                Invoke(manager, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(go);
+                UnityEngine.Object.DestroyImmediate(cue);
+                UnityEngine.Object.DestroyImmediate(clip);
             }
         }
 
@@ -224,6 +717,7 @@ namespace Inkform.Tests
             Rigidbody2D playerBody = go.AddComponent<Rigidbody2D>();
             RopeGun gun = go.AddComponent<RopeGun>();
             go.SetActive(true);
+            InitializeRopeGun(gun);
             try
             {
                 Vector2 freeCursor = new Vector2(1.2f, 0.5f);
@@ -246,6 +740,7 @@ namespace Inkform.Tests
             {
                 GameObject hook = GetField<GameObject>(gun, "hookGo");
                 if (hook != null) UnityEngine.Object.DestroyImmediate(hook);
+                ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }
@@ -261,6 +756,7 @@ namespace Inkform.Tests
             player.AddComponent<Rigidbody2D>();
             RopeGun gun = player.AddComponent<RopeGun>();
             player.SetActive(true);
+            InitializeRopeGun(gun);
             wall.layer = 6;
             BoxCollider2D box = wall.AddComponent<BoxCollider2D>();
             box.size = new Vector2(0.02f, 4f);
@@ -298,6 +794,7 @@ namespace Inkform.Tests
             finally
             {
                 UnityEngine.Object.DestroyImmediate(wall);
+                ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(player);
             }
         }
@@ -313,6 +810,172 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void PatrolMover_StartsFromPlacedPositionAndUsesForwardCurve()
+        {
+            AnimationCurve forward = new AnimationCurve(
+                new Keyframe(0f, 0f),
+                new Keyframe(0.5f, 0.25f),
+                new Keyframe(1f, 1f));
+            PatrolMover mover = CreatePatrolMover(
+                new Vector2(10f, 3f), new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                2f, 0f, 0f, 0f, forward, AnimationCurve.Linear(0f, 0f, 1f, 1f),
+                out GameObject go, out Rigidbody2D body);
+            try
+            {
+                AssertVector2(new Vector2(10f, 3f), go.transform.position,
+                    "Attach must not snap the placed object to point A");
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(10.5f, 3f), go.transform.position,
+                    "the forward curve must map normalized time to normalized distance");
+                AssertVector2(go.transform.position, body.position,
+                    "the transform and Rigidbody2D must remain synchronized");
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(12f, 3f), go.transform.position,
+                    "the mover must land exactly on point B");
+                AssertVector2(go.transform.position, body.position);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_WaitsAtBothEndsAndUsesIndependentReturnSettings()
+        {
+            AnimationCurve returnCurve = new AnimationCurve(
+                new Keyframe(0f, 0f),
+                new Keyframe(0.5f, 0.75f),
+                new Keyframe(1f, 1f));
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                2f, 4f, 0.25f, 0.5f, AnimationCurve.Linear(0f, 0f, 1f, 1f), returnCurve,
+                out GameObject go, out _);
+            try
+            {
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position);
+
+                AdvancePatrol(mover, 0.4f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position,
+                    "the mover must remain at B for the configured stop time");
+                AdvancePatrol(mover, 0.1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position);
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(-1f, 0f), go.transform.position,
+                    "the return leg must use its own speed and curve");
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(-2f, 0f), go.transform.position,
+                    "the mover must land exactly on point A");
+
+                AdvancePatrol(mover, 0.2f);
+                AssertVector2(new Vector2(-2f, 0f), go.transform.position,
+                    "the mover must remain at A for the configured stop time");
+                AdvancePatrol(mover, 0.05f);
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(-1f, 0f), go.transform.position,
+                    "after the A stop, the next forward cycle must begin normally");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_LargeStepMatchesSplitStepsAcrossMovementAndWait()
+        {
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            PatrolMover largeStepMover = CreatePatrolMover(
+                Vector2.zero, new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                2f, 4f, 0f, 0.5f, linear, linear,
+                out GameObject largeStepGo, out Rigidbody2D largeStepBody);
+            PatrolMover splitStepMover = CreatePatrolMover(
+                Vector2.zero, new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                2f, 4f, 0f, 0.5f, linear, linear,
+                out GameObject splitStepGo, out Rigidbody2D splitStepBody);
+            try
+            {
+                AdvancePatrol(largeStepMover, 1.75f);
+                for (int i = 0; i < 7; i++) AdvancePatrol(splitStepMover, 0.25f);
+
+                AssertVector2(splitStepGo.transform.position, largeStepGo.transform.position,
+                    "unused frame time must continue through endpoint waits and into the next leg");
+                AssertVector2(new Vector2(1f, 0f), largeStepGo.transform.position);
+                AssertVector2(largeStepGo.transform.position, largeStepBody.position);
+                AssertVector2(splitStepGo.transform.position, splitStepBody.position);
+
+                AdvancePatrol(largeStepMover, 0.5f);
+                AdvancePatrol(splitStepMover, 0.5f);
+                AssertVector2(splitStepGo.transform.position, largeStepGo.transform.position,
+                    "large and split steps must leave the state machine in the same state");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(largeStepGo);
+                UnityEngine.Object.DestroyImmediate(splitStepGo);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_ZeroReturnSpeedFallsBackToLegacyForwardSpeed()
+        {
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                2f, 0f, 0f, 0f,
+                AnimationCurve.Linear(0f, 0f, 1f, 1f), AnimationCurve.Linear(0f, 0f, 1f, 1f),
+                out GameObject go, out _);
+            try
+            {
+                Assert.AreEqual(2f, GetField<float>(mover, "speed"),
+                    "the legacy serialized speed field must remain the forward-speed backing field");
+                AdvancePatrol(mover, 1f);
+                AdvancePatrol(mover, 1f);
+                AssertVector2(Vector2.zero, go.transform.position,
+                    "returnSpeed zero must reuse the legacy forward speed");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_InvalidSpeedsAndZeroLengthRouteRemainStable()
+        {
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            PatrolMover stoppedMover = CreatePatrolMover(
+                new Vector2(3f, 4f), new Vector2(-2f, 0f), new Vector2(2f, 0f),
+                0f, 5f, 0f, 0f, linear, linear,
+                out GameObject stoppedGo, out Rigidbody2D stoppedBody);
+            PatrolMover zeroLengthMover = CreatePatrolMover(
+                new Vector2(7f, 8f), Vector2.zero, Vector2.zero,
+                2f, 2f, 0f, 0f, linear, linear,
+                out GameObject zeroLengthGo, out Rigidbody2D zeroLengthBody);
+            try
+            {
+                SetField(stoppedMover, "speed", -2f);
+                AdvancePatrol(stoppedMover, 100f);
+                AssertVector2(new Vector2(3f, 4f), stoppedGo.transform.position);
+                AssertVector2(stoppedGo.transform.position, stoppedBody.position);
+
+                AdvancePatrol(zeroLengthMover, 100f);
+                Vector2 stablePosition = zeroLengthGo.transform.position;
+                AssertVector2(new Vector2(7f, 8f), stablePosition);
+                Assert.IsFalse(float.IsNaN(stablePosition.x) || float.IsNaN(stablePosition.y));
+                AssertVector2(stablePosition, zeroLengthBody.position);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(stoppedGo);
+                UnityEngine.Object.DestroyImmediate(zeroLengthGo);
+            }
+        }
+
+        [Test]
         public void AudioManager_DestroyedActiveSourceRepairsCountAndPool()
         {
             GameObject go = new GameObject("AudioManager recycle test");
@@ -320,6 +983,8 @@ namespace Inkform.Tests
             AudioManager manager = go.AddComponent<AudioManager>();
             SetField(manager, "poolSize", 2);
             go.SetActive(true);
+            Invoke(manager, "Awake");
+            Invoke(manager, "OnEnable");
             SoundCue cue = ScriptableObject.CreateInstance<SoundCue>();
             AudioClip clip = AudioClip.Create("test", 32, 1, 8000, false);
             cue.clips = new[] { clip };
@@ -338,6 +1003,7 @@ namespace Inkform.Tests
             }
             finally
             {
+                Invoke(manager, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(cue);
                 UnityEngine.Object.DestroyImmediate(clip);
                 UnityEngine.Object.DestroyImmediate(go);
@@ -349,6 +1015,76 @@ namespace Inkform.Tests
 
         private static void InvokeStatic(Type type, string method) =>
             type.GetMethod(method, BindingFlags.Static | BindingFlags.NonPublic)?.Invoke(null, null);
+
+        private static void InitializeRopeGun(RopeGun gun)
+        {
+            Invoke(gun, "Awake");
+            Invoke(gun, "OnEnable");
+        }
+
+        private static void ShutdownRopeGun(RopeGun gun) => Invoke(gun, "OnDisable");
+
+        private static GameObject CreateCapacityPickup(
+            string pickupId,
+            int capacityIncrease,
+            out InventoryCapacityPart part)
+        {
+            GameObject go = new GameObject("Inventory capacity pickup test");
+            go.SetActive(false);
+            CircleCollider2D collider = go.AddComponent<CircleCollider2D>();
+            collider.isTrigger = true;
+            go.AddComponent<SpriteRenderer>();
+            Inkform.Interactable.Interactable node =
+                go.AddComponent<Inkform.Interactable.Interactable>();
+            part = go.AddComponent<InventoryCapacityPart>();
+            SetField(part, "pickupId", pickupId);
+            SetField(part, "capacityIncrease", capacityIncrease);
+            part.Attach(node);
+            return go;
+        }
+
+        private static PatrolMover CreatePatrolMover(
+            Vector2 placedPosition,
+            Vector2 pointA,
+            Vector2 pointB,
+            float forwardSpeed,
+            float returnSpeed,
+            float stopTimeAtA,
+            float stopTimeAtB,
+            AnimationCurve forwardCurve,
+            AnimationCurve returnCurve,
+            out GameObject go,
+            out Rigidbody2D body)
+        {
+            go = new GameObject("PatrolMover test");
+            go.SetActive(false);
+            go.transform.position = placedPosition;
+            body = go.AddComponent<Rigidbody2D>();
+            body.bodyType = RigidbodyType2D.Kinematic;
+            go.AddComponent<BoxCollider2D>();
+            PatrolMover mover = go.AddComponent<PatrolMover>();
+            SetField(mover, "pointA", pointA);
+            SetField(mover, "pointB", pointB);
+            SetField(mover, "speed", forwardSpeed);
+            SetField(mover, "returnSpeed", returnSpeed);
+            SetField(mover, "stopTimeAtA", stopTimeAtA);
+            SetField(mover, "stopTimeAtB", stopTimeAtB);
+            SetField(mover, "forwardCurve", forwardCurve);
+            SetField(mover, "returnCurve", returnCurve);
+            Inkform.Interactable.Interactable node =
+                go.AddComponent<Inkform.Interactable.Interactable>();
+            // EditMode tests do not run the normal player-loop Awake sequence, so attach explicitly.
+            mover.Attach(node);
+            go.SetActive(true);
+            return mover;
+        }
+
+        private static void AdvancePatrol(PatrolMover mover, float deltaTime) =>
+            mover.GetType().GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)?
+                .Invoke(mover, new object[] { deltaTime });
+
+        private static void AssertVector2(Vector2 expected, Vector2 actual, string message = null) =>
+            Assert.That(Vector2.Distance(expected, actual), Is.LessThanOrEqualTo(0.0001f), message);
 
         private static void SetField(object target, string name, object value) =>
             target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(target, value);

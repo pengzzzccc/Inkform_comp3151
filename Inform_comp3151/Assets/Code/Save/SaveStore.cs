@@ -90,7 +90,7 @@ namespace Inkform.Save
             slots[slot] = pendingPrevious ?? new SaveData();
             ActiveSlot = -1;
             ClearPending();
-            InventoryStore.Restore(slots[slot].inventoryItemIds, slots[slot].selectedInventoryIndex);
+            RestoreInventory(slots[slot]);
             Changed?.Invoke();
             return true;
         }
@@ -105,7 +105,7 @@ namespace Inkform.Save
 
             ClearPending();
             StartRun(slot, data.playSeconds, data.deaths);
-            InventoryStore.Restore(data.inventoryItemIds, data.selectedInventoryIndex);
+            RestoreInventory(data);
         }
 
         private static void StartRun(int slot, float playBase, int deathBase)
@@ -132,12 +132,13 @@ namespace Inkform.Save
             Changed?.Invoke();
         }
 
-        public static void RecordInventory(string[] ids, int selectedIndex)
+        public static void RecordInventory(string[] ids, int capacity, string[] collectedCapacityPickupIds)
         {
             if (ActiveSlot < 0) return;
             SaveData data = slots[ActiveSlot];
             data.inventoryItemIds = ids ?? Array.Empty<string>();
-            data.selectedInventoryIndex = selectedIndex;
+            data.inventoryCapacity = Mathf.Max(InventoryStore.InitialCapacity, capacity, data.inventoryItemIds.Length);
+            data.collectedInventoryCapacityPickupIds = collectedCapacityPickupIds ?? Array.Empty<string>();
 
             // A brand-new run is not committed until RespawnDirector supplies a loadable scene/position.
             if (data.IsEmpty) return;
@@ -182,9 +183,14 @@ namespace Inkform.Save
             EnsureLoaded();
             if (!IsValidSlot(slot)) return;
 
+            bool deletedActiveRun = ActiveSlot == slot;
             slots[slot] = new SaveData();
             DeleteFiles(slot);
-            if (ActiveSlot == slot) ActiveSlot = -1;
+            if (deletedActiveRun)
+            {
+                ActiveSlot = -1;
+                InventoryStore.ClearWithoutSaving();
+            }
             if (pendingNewSlot == slot) ClearPending();
             Changed?.Invoke();
         }
@@ -192,7 +198,16 @@ namespace Inkform.Save
         private static void CaptureInventory(SaveData data)
         {
             data.inventoryItemIds = InventoryStore.SnapshotIds();
-            data.selectedInventoryIndex = InventoryStore.SelectedIndex;
+            data.inventoryCapacity = InventoryStore.Capacity;
+            data.collectedInventoryCapacityPickupIds = InventoryStore.SnapshotCollectedCapacityPickupIds();
+        }
+
+        private static void RestoreInventory(SaveData data)
+        {
+            InventoryStore.Restore(
+                data.inventoryItemIds,
+                data.inventoryCapacity,
+                data.collectedInventoryCapacityPickupIds);
         }
 
         private static void Stamp(SaveData data)
@@ -271,7 +286,15 @@ namespace Inkform.Save
                 {
                     data.version = SaveData.CurrentVersion;
                     data.inventoryItemIds = Array.Empty<string>();
-                    data.selectedInventoryIndex = 0;
+                    data.inventoryCapacity = InventoryStore.InitialCapacity;
+                    data.collectedInventoryCapacityPickupIds = Array.Empty<string>();
+                }
+                else if (data.version == 2)
+                {
+                    data.version = SaveData.CurrentVersion;
+                    data.inventoryItemIds ??= Array.Empty<string>();
+                    data.inventoryCapacity = Mathf.Max(InventoryStore.InitialCapacity, CountValidIds(data.inventoryItemIds));
+                    data.collectedInventoryCapacityPickupIds = Array.Empty<string>();
                 }
                 else if (data.version != SaveData.CurrentVersion)
                 {
@@ -279,6 +302,11 @@ namespace Inkform.Save
                 }
 
                 data.inventoryItemIds ??= Array.Empty<string>();
+                data.collectedInventoryCapacityPickupIds ??= Array.Empty<string>();
+                data.inventoryCapacity = Mathf.Max(
+                    InventoryStore.InitialCapacity,
+                    data.inventoryCapacity,
+                    CountValidIds(data.inventoryItemIds));
                 return true;
             }
             catch (Exception e)
@@ -339,7 +367,23 @@ namespace Inkform.Save
             if (source == null) return new SaveData();
             SaveData clone = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(source));
             clone.inventoryItemIds ??= Array.Empty<string>();
+            clone.collectedInventoryCapacityPickupIds ??= Array.Empty<string>();
+            clone.inventoryCapacity = Mathf.Max(
+                InventoryStore.InitialCapacity,
+                clone.inventoryCapacity,
+                CountValidIds(clone.inventoryItemIds));
             return clone;
+        }
+
+        private static int CountValidIds(string[] ids)
+        {
+            if (ids == null) return 0;
+            int count = 0;
+            foreach (string id in ids)
+            {
+                if (!string.IsNullOrWhiteSpace(id)) count++;
+            }
+            return count;
         }
     }
 }

@@ -126,8 +126,9 @@ MonoBehaviour:
   bombTick: {fileID: 11400000, guid: 64bba8dad938a134a8392bee7dcc93eb, type: 2}
   itemEaten: {fileID: 11400000, guid: 8191e3ea866a3db41bb10c6fe152fb79, type: 2}
   itemSpit: {fileID: 11400000, guid: ee9dae4465f8a9d4e8711c5a30c4ca39, type: 2}
-  jump: {fileID: 0}
-  land: {fileID: 0}
+  inventoryCapacityUpgrade: {fileID: 11400000, guid: 98c71ef0d806eb94388de42aa85d97c3, type: 2}
+  jump: {fileID: 11400000, guid: 61e594f499b3788498461baee604a1f3, type: 2}
+  land: {fileID: 11400000, guid: 8910332ea935bd946962c594897611c8, type: 2}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 0}
 --- !u!114 &6402705293193736749

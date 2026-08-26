@@ -30,7 +30,7 @@ namespace Inkform.Player
     /// solve, collider off, catches nothing on the way).
     ///
     /// Special hits:
-    /// ① carriable objects (objects implementing ICarriable: CarriablePart-mounted objects, etc.):
+    /// ① carriable objects (Interactable nodes exposing an ICarriable part):
     ///    short hitstop, then pulls the player toward the target, swallowing on arrival
     ///    (ICarriable.TrySwallowByRope);
     /// ② bomb hanging chains: severs at the hit point (Chain.CutAt, probing the Chain static registry
@@ -320,7 +320,7 @@ namespace Inkform.Player
 
             // Terrain/Breakable layers may hold carriables (solid eatable entities like food crates):
             // when the hook physically hits one, route to "eat-pull" instead of a plain terrain anchor
-            if (collision.collider.TryGetComponent(out ICarriable carriable))
+            if (TryGetCarriable(collision.collider, out ICarriable carriable))
             {
                 StartPullingCarriable(carriable);
                 return;
@@ -553,22 +553,31 @@ namespace Inkform.Player
         }
 
         // During flight, probes for carriables segment by segment: the hook physically does not touch
-        // Default-layer objects (bombs etc.); found via the probe. The probe is layer-agnostic —
-        // TryGetComponent recognizes the interface; both the former Bomb (direct implementation) and
-        // CarriablePart (framework objects) hit
+        // Default-layer objects (bombs etc.); found via the layer-agnostic probe. Every collider is
+        // resolved to its Interactable node, then the ICarriable part is requested from that node.
         private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(
                 hookBody.position, bombDetectRadius + bulletRadius);
             foreach (Collider2D h in hits)
             {
-                if (h.TryGetComponent(out ICarriable carriable))
+                if (TryGetCarriable(h, out ICarriable carriable))
                 {
                     StartPullingCarriable(carriable);
                     return true;
                 }
             }
             return false;
+        }
+
+        private static bool TryGetCarriable(Collider2D collider, out ICarriable carriable)
+        {
+            carriable = null;
+            if (collider == null) return false;
+
+            Inkform.Interactable.Interactable node =
+                collider.GetComponentInParent<Inkform.Interactable.Interactable>();
+            return node != null && node.TryGetPart(out carriable);
         }
 
         // During flight, probes bomb hanging chains: point-to-segment distance under the radius severs

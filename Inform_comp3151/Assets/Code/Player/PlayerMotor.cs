@@ -33,7 +33,7 @@ namespace Inkform.Player
         [SerializeField][Range(0, 1)] private float wallKickMultiplier = 0.3f;
 
         [Header("Attack dash")]
-        [SerializeField][Range(1, 2)] private float attackMultiplier = 1f;
+        [SerializeField][Range(1, 5)] private float attackMultiplier = 1f;
         [SerializeField] private float attackTime = 0.22f;      // dash / move-lockout duration
 
         [Header("Knockback")]

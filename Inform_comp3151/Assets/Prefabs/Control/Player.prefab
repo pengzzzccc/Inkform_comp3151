@@ -332,7 +332,7 @@ MonoBehaviour:
   onWallGravityMultiplier: 0.1
   wallJumpTime: 0.15
   wallKickMultiplier: 0.3
-  attackMultiplier: 2
+  attackMultiplier: 3.19
   attackTime: 0.22
   knockbackTime: 0.35
 --- !u!114 &4511968466877940253
@@ -361,7 +361,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2620b5d37dce76646aec1bb3bd733d00, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.ItemCarrier
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.PlayerInventory
   spitOffset: 0.9
   spitSpeed: 24
 --- !u!1 &5765958816110314823

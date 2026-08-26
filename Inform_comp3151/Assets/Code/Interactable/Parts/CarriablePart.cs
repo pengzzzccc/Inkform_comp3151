@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Item;
+using Inkform.Player;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,12 +14,11 @@ namespace Inkform.Interactable.Parts
     /// into the world" is the same lifecycle for any carriable; detonating and the like are the
     /// concrete object's own business.
     ///
-    /// The player side only knows the ICarriable interface: ItemCarrier / ItemBus / RopeGun do not
+    /// The player side only knows the ICarriable interface: PlayerInventory / ItemBus / RopeGun do not
     /// know this class. Requires: Rigidbody2D on the Interactable root object (simulated is disabled
-    /// while hidden). Note: on a child object RopeGun's GetComponent probe would not find it — must
-    /// sit on the root object.
+    /// while hidden). The part itself may sit on the root or a child and is resolved through the node.
     /// </summary>
-    public class CarriablePart : MonoBehaviour, IInteractablePart, ICarriable
+    public class CarriablePart : MonoBehaviour, ICarriable
     {
         [Header("Carriable")]
         [Tooltip("Whether it can be swallowed (after the rope gun reels it in)")]
@@ -85,7 +85,9 @@ namespace Inkform.Interactable.Parts
                 Debug.LogWarning($"{name} has no InventoryItemDefinition and cannot be stored", root);
                 return false;
             }
-            if (!InventoryStore.TryAdd(definition)) return false;
+            PlayerInventory inventory = player.GetComponentInParent<PlayerInventory>();
+            if (inventory == null) return false;
+            if (!inventory.TryStore(definition)) return false;
 
             Swallow();
             return true;

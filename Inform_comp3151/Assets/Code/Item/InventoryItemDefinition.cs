@@ -10,10 +10,12 @@ namespace Inkform.Item
         [SerializeField] private string displayName;
         [SerializeField] private Sprite icon;
         [SerializeField] private GameObject worldPrefab;
+        [SerializeField] private bool dashFuel;
 
         public string Id => id;
         public string DisplayName => string.IsNullOrEmpty(displayName) ? name : displayName;
         public Sprite Icon => icon;
         public GameObject WorldPrefab => worldPrefab;
+        public bool IsDashFuel => dashFuel;
     }
 }

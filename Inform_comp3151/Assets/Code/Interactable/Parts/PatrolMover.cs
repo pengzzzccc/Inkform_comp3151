@@ -16,44 +16,149 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private Vector2 pointA = new Vector2(-2.5f, 0f);
         [Tooltip("Right endpoint (local offset relative to the initial position)")]
         [SerializeField] private Vector2 pointB = new Vector2(2.5f, 0f);
-        [Tooltip("Movement speed, units/second")]
-        [SerializeField] private float speed = 2.2f;
+        [Tooltip("Forward movement speed, units/second")]
+        [InspectorName("Forward Speed")]
+        [SerializeField, Min(0f)] private float speed = 2.2f;
+        [Tooltip("Return movement speed, units/second. Zero uses Forward Speed.")]
+        [SerializeField, Min(0f)] private float returnSpeed;
+
+        [Header("Endpoint Stops")]
+        [Tooltip("Seconds to remain at point A before moving toward point B")]
+        [SerializeField, Min(0f)] private float stopTimeAtA;
+        [Tooltip("Seconds to remain at point B before returning toward point A")]
+        [SerializeField, Min(0f)] private float stopTimeAtB;
+
+        [Header("Movement Curves")]
+        [Tooltip("Normalized time to normalized distance while moving toward point B")]
+        [SerializeField] private AnimationCurve forwardCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+        [Tooltip("Normalized time to normalized distance while returning toward point A")]
+        [SerializeField] private AnimationCurve returnCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
         private Interactable root;
         private Rigidbody2D body;       // when a rigidbody exists, sync its position so players standing on top get carried
         private Vector2 startPos;   // world position at Attach, patrol baseline
+        private Vector2 segmentStart;
         private Vector2 target;     // current target endpoint
         private bool goingToB = true;
+        private MotionPhase motionPhase;
+        private float segmentElapsed;
+        private float waitRemaining;
+
+        private const float DistanceEpsilon = 0.0001f;
+        private const int MaxTransitionsPerTick = 64;
+
+        private enum MotionPhase
+        {
+            Moving,
+            Waiting,
+            Stationary
+        }
 
         public void Attach(Interactable root)
         {
             this.root = root;
             body = root.GetComponent<Rigidbody2D>();
             startPos = root.transform.position;
+            segmentStart = startPos;
+            goingToB = true;
             target = startPos + pointB;
+            segmentElapsed = 0f;
+            waitRemaining = 0f;
+            motionPhase = MotionPhase.Moving;
         }
 
         public bool HandleContact(ContactPhase phase, Collider2D other) => false;
 
         void Update()
         {
-            Vector2 from = root.transform.position;
-            Vector2 to = target - from;
-            float dist = to.magnitude;
-            float step = speed * Time.deltaTime;
-            if (step <= 0f) return;
+            Advance(Time.deltaTime);
+        }
 
-            if (dist <= step)
+        // Kept separate from Update so movement remains deterministic and can be covered by EditMode tests.
+        private void Advance(float deltaTime)
+        {
+            if (root == null || deltaTime <= 0f || motionPhase == MotionPhase.Stationary) return;
+
+            float remaining = deltaTime;
+            for (int transitions = 0; transitions < MaxTransitionsPerTick && remaining > 0f; transitions++)
             {
-                // Arrived at the endpoint: land exactly on it (avoids per-frame cumulative error),
-                // turn around
-                SetPosition(target);
-                goingToB = !goingToB;
-                target = startPos + (goingToB ? pointB : pointA);
+                if (motionPhase == MotionPhase.Waiting)
+                {
+                    float waitStep = Mathf.Min(remaining, waitRemaining);
+                    waitRemaining -= waitStep;
+                    remaining -= waitStep;
+
+                    if (waitRemaining > 0f) return;
+                    BeginNextSegment();
+                    continue;
+                }
+
+                float movementSpeed = CurrentSpeed();
+                if (movementSpeed <= 0f) return;
+
+                float segmentDistance = Vector2.Distance(segmentStart, target);
+                if (segmentDistance <= DistanceEpsilon)
+                {
+                    SetPosition(target);
+                    FinishSegment();
+                    continue;
+                }
+
+                float duration = segmentDistance / movementSpeed;
+                float timeToEndpoint = Mathf.Max(0f, duration - segmentElapsed);
+                float movementStep = Mathf.Min(remaining, timeToEndpoint);
+                segmentElapsed += movementStep;
+                remaining -= movementStep;
+
+                if (segmentElapsed >= duration)
+                {
+                    SetPosition(target);
+                    FinishSegment();
+                    continue;
+                }
+
+                float normalizedTime = segmentElapsed / duration;
+                AnimationCurve curve = goingToB ? forwardCurve : returnCurve;
+                float normalizedDistance = curve == null || curve.length == 0
+                    ? normalizedTime
+                    : curve.Evaluate(normalizedTime);
+                SetPosition(Vector2.Lerp(segmentStart, target, Mathf.Clamp01(normalizedDistance)));
+                return;
             }
-            else
+        }
+
+        private float CurrentSpeed()
+        {
+            if (goingToB) return Mathf.Max(0f, speed);
+            return returnSpeed > 0f ? returnSpeed : Mathf.Max(0f, speed);
+        }
+
+        private void FinishSegment()
+        {
+            // A zero-length patrol has no meaningful direction change. The initial leg may still
+            // move from the placed position to the shared endpoint before becoming stationary.
+            if ((pointA - pointB).sqrMagnitude <= DistanceEpsilon * DistanceEpsilon)
             {
-                SetPosition(from + to / dist * step);
+                motionPhase = MotionPhase.Stationary;
+                return;
+            }
+
+            waitRemaining = Mathf.Max(0f, goingToB ? stopTimeAtB : stopTimeAtA);
+            motionPhase = MotionPhase.Waiting;
+        }
+
+        private void BeginNextSegment()
+        {
+            goingToB = !goingToB;
+            segmentStart = target;
+            target = startPos + (goingToB ? pointB : pointA);
+            segmentElapsed = 0f;
+            motionPhase = MotionPhase.Moving;
+
+            if (Vector2.Distance(segmentStart, target) <= DistanceEpsilon)
+            {
+                SetPosition(target);
+                motionPhase = MotionPhase.Stationary;
             }
         }
 

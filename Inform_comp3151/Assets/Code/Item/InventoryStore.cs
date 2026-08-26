@@ -5,70 +5,82 @@ using UnityEngine;
 
 namespace Inkform.Item
 {
-    /// <summary>Four-slot, data-backed inventory that survives scenes and is mirrored into SaveStore.</summary>
+    /// <summary>FIFO, data-backed inventory with a persistent, upgradeable capacity.</summary>
     public static class InventoryStore
     {
-        public const int Capacity = 4;
+        public const int InitialCapacity = 1;
 
         public static event Action Changed;
 
-        private static readonly List<InventoryItemDefinition> items = new List<InventoryItemDefinition>(Capacity);
+        private static readonly List<InventoryItemDefinition> items = new List<InventoryItemDefinition>();
+        private static readonly HashSet<string> collectedCapacityPickupIds =
+            new HashSet<string>(StringComparer.Ordinal);
         private static Dictionary<string, InventoryItemDefinition> catalogue;
-        private static int selectedIndex;
+        private static int capacity = InitialCapacity;
         private static bool suppressPersistence;
 
         public static IReadOnlyList<InventoryItemDefinition> Items => items;
         public static int Count => items.Count;
-        public static int SelectedIndex => items.Count == 0 ? -1 : selectedIndex;
+        public static int Capacity => capacity;
+        public static IReadOnlyCollection<string> CollectedCapacityPickupIds => collectedCapacityPickupIds;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             Changed = null;
             items.Clear();
+            collectedCapacityPickupIds.Clear();
             catalogue = null;
-            selectedIndex = 0;
+            capacity = InitialCapacity;
             suppressPersistence = false;
         }
 
         public static bool TryAdd(InventoryItemDefinition definition)
         {
-            if (definition == null || string.IsNullOrWhiteSpace(definition.Id) || items.Count >= Capacity)
+            if (definition == null || string.IsNullOrWhiteSpace(definition.Id) || items.Count >= capacity)
                 return false;
 
             items.Add(definition);
-            if (items.Count == 1) selectedIndex = 0;
             Notify();
             return true;
         }
 
-        public static bool Select(int index)
-        {
-            if (index < 0 || index >= items.Count || selectedIndex == index) return false;
-            selectedIndex = index;
-            Notify();
-            return true;
-        }
-
-        public static bool TryPeekSelected(out InventoryItemDefinition definition)
+        public static bool TryPeekFirst(out InventoryItemDefinition definition)
         {
             if (items.Count == 0)
             {
                 definition = null;
                 return false;
             }
-            selectedIndex = Mathf.Clamp(selectedIndex, 0, items.Count - 1);
-            definition = items[selectedIndex];
+
+            definition = items[0];
             return definition != null;
         }
 
-        public static bool RemoveSelected()
+        public static bool RemoveFirst() => RemoveAt(0);
+
+        /// <summary>Backing-model removal used by PlayerInventory for consuming the first matching item.</summary>
+        internal static bool RemoveAt(int index)
         {
-            if (items.Count == 0) return false;
-            selectedIndex = Mathf.Clamp(selectedIndex, 0, items.Count - 1);
-            items.RemoveAt(selectedIndex);
-            if (items.Count == 0) selectedIndex = 0;
-            else selectedIndex = Mathf.Min(selectedIndex, items.Count - 1);
+            if (index < 0 || index >= items.Count) return false;
+
+            items.RemoveAt(index);
+            Notify();
+            return true;
+        }
+
+        public static bool IsCapacityPickupCollected(string pickupId) =>
+            !string.IsNullOrWhiteSpace(pickupId) && collectedCapacityPickupIds.Contains(pickupId);
+
+        /// <summary>Atomically records a unique pickup and increases capacity with one notification/save.</summary>
+        public static bool TryCollectCapacityPickup(string pickupId, int capacityIncrease)
+        {
+            if (string.IsNullOrWhiteSpace(pickupId) || capacityIncrease <= 0 ||
+                collectedCapacityPickupIds.Contains(pickupId) || capacity > int.MaxValue - capacityIncrease)
+                return false;
+
+            collectedCapacityPickupIds.Add(pickupId);
+            capacity += capacityIncrease;
             Notify();
             return true;
         }
@@ -79,37 +91,47 @@ namespace Inkform.Item
 
         private static void ClearInternal(bool persist)
         {
-            bool changed = items.Count > 0 || selectedIndex != 0;
+            bool changed = items.Count > 0 || capacity != InitialCapacity || collectedCapacityPickupIds.Count > 0;
             items.Clear();
-            selectedIndex = 0;
+            collectedCapacityPickupIds.Clear();
+            capacity = InitialCapacity;
             if (changed) Notify(persist);
         }
 
-        public static void Restore(string[] ids, int selected)
+        public static void Restore(string[] ids, int savedCapacity, string[] collectedPickupIds)
         {
             suppressPersistence = true;
             try
             {
                 items.Clear();
+                collectedCapacityPickupIds.Clear();
                 EnsureCatalogue();
 
                 if (ids != null)
                 {
                     foreach (string id in ids)
                     {
-                        if (items.Count >= Capacity) break;
                         if (string.IsNullOrWhiteSpace(id)) continue;
                         if (catalogue.TryGetValue(id, out InventoryItemDefinition definition)) items.Add(definition);
                         else Debug.LogWarning($"InventoryStore: saved item id '{id}' has no definition; skipping it");
                     }
                 }
 
-                selectedIndex = items.Count == 0 ? 0 : Mathf.Clamp(selected, 0, items.Count - 1);
+                if (collectedPickupIds != null)
+                {
+                    foreach (string pickupId in collectedPickupIds)
+                    {
+                        if (!string.IsNullOrWhiteSpace(pickupId)) collectedCapacityPickupIds.Add(pickupId);
+                    }
+                }
+
+                capacity = Mathf.Max(InitialCapacity, savedCapacity, items.Count);
             }
             finally
             {
                 suppressPersistence = false;
             }
+
             Changed?.Invoke();
         }
 
@@ -117,6 +139,14 @@ namespace Inkform.Item
         {
             var result = new string[items.Count];
             for (int i = 0; i < items.Count; i++) result[i] = items[i] != null ? items[i].Id : string.Empty;
+            return result;
+        }
+
+        public static string[] SnapshotCollectedCapacityPickupIds()
+        {
+            var result = new string[collectedCapacityPickupIds.Count];
+            collectedCapacityPickupIds.CopyTo(result);
+            Array.Sort(result, StringComparer.Ordinal);
             return result;
         }
 
@@ -136,7 +166,12 @@ namespace Inkform.Item
         {
             Changed?.Invoke();
             if (persist && !suppressPersistence)
-                SaveStore.RecordInventory(SnapshotIds(), SelectedIndex);
+            {
+                SaveStore.RecordInventory(
+                    SnapshotIds(),
+                    Capacity,
+                    SnapshotCollectedCapacityPickupIds());
+            }
         }
     }
 }
