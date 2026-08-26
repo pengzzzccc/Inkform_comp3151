@@ -1,7 +1,6 @@
 using Inkform.Bus;
 using Inkform.Item;
 using Inkform.Player;
-using Inkform.Progression;
 using UnityEngine;
 
 namespace Inkform.Audio
@@ -28,12 +27,8 @@ namespace Inkform.Audio
         [SerializeField] private SoundCue jump;
         [SerializeField] private SoundCue land;
 
-        [Header("Crystal Mine progression")]
+        [Header("Equipment")]
         [SerializeField] private SoundCue ropeGunPickup;
-        [SerializeField] private SoundCue elevatorControllerPickup;
-        [SerializeField] private SoundCue crystalCollected;
-        [SerializeField] private SoundCue crystalDoorActivated;
-        [SerializeField] private SoundCue crystalDeposited;
 
         // Death sounds are not here: they dispatch by cause rather than by concern (spiked vs fallen
         // should sound different), so the Cue lives on the DeathStrategy asset and is played by the strategy.
@@ -51,10 +46,7 @@ namespace Inkform.Audio
             PlayerBus.StateChanged += OnPlayerState;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
-            ProgressionBus.RewardGranted += OnProgressionReward;
-            ProgressionBus.CrystalCollected += OnCrystalCollected;
-            ProgressionBus.DoorActivated += OnDoorActivated;
-            ProgressionBus.CrystalDeposited += OnCrystalDeposited;
+            EquipmentBus.RopeGunAcquired += OnRopeGunAcquired;
         }
 
         void OnDisable()
@@ -67,10 +59,7 @@ namespace Inkform.Audio
             PlayerBus.StateChanged -= OnPlayerState;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
-            ProgressionBus.RewardGranted -= OnProgressionReward;
-            ProgressionBus.CrystalCollected -= OnCrystalCollected;
-            ProgressionBus.DoorActivated -= OnDoorActivated;
-            ProgressionBus.CrystalDeposited -= OnCrystalDeposited;
+            EquipmentBus.RopeGunAcquired -= OnRopeGunAcquired;
         }
 
         // Explosions must only listen to Blast — Exploded fires per victim in a foreach, N victims = N sounds
@@ -91,12 +80,7 @@ namespace Inkform.Audio
 
         private void OnCheckpointSet(Vector2 pos) => Play(checkpoint);
 
-        private void OnProgressionReward(ProgressionRewardType reward) => Play(
-            reward == ProgressionRewardType.RopeGun ? ropeGunPickup : elevatorControllerPickup);
-
-        private void OnCrystalCollected(int amount, Vector2 position) => Play(crystalCollected, position);
-        private void OnDoorActivated(string id, int cost) => Play(crystalDoorActivated);
-        private void OnCrystalDeposited(int charge, int target) => Play(crystalDeposited);
+        private void OnRopeGunAcquired() => Play(ropeGunPickup);
 
         // The spit origin is always on the player ≈ camera center, so the attenuation factor is
         // necessarily near 1 — passing the position is only for "pass position when we have one"

@@ -26,10 +26,6 @@ namespace Inkform.Bus
         /// teleports (respawn), or the camera drags its follow inertia all the way from the old position.</summary>
         public static event Action SnapRequested;
 
-        /// <summary>Source-owned temporary camera focus. A later source supersedes the earlier one.</summary>
-        public static event Action<object, Vector2, float, float> FocusRequested;
-        public static event Action<object> FocusReleased;
-
         public static void RaiseShake(float amount)
         {
             ShakeRequested?.Invoke(amount);
@@ -55,18 +51,6 @@ namespace Inkform.Bus
             SnapRequested?.Invoke();
         }
 
-        public static void RequestFocus(object source, Vector2 point, float orthoSize, float blendTime)
-        {
-            if (source == null) return;
-            FocusRequested?.Invoke(source, point, Mathf.Max(0.1f, orthoSize), Mathf.Max(0f, blendTime));
-        }
-
-        public static void ReleaseFocus(object source)
-        {
-            if (source == null) return;
-            FocusReleased?.Invoke(source);
-        }
-
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -77,8 +61,6 @@ namespace Inkform.Bus
             ZoomRequested = null;
             PunchRequested = null;
             SnapRequested = null;
-            FocusRequested = null;
-            FocusReleased = null;
         }
     }
 }

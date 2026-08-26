@@ -171,11 +171,6 @@ namespace Inkform.Player
             if (ropeRenderer != null && !equipped) ropeRenderer.enabled = false;
         }
 
-        public void CancelForControlLock()
-        {
-            if (ropeRenderer != null) Finish();
-        }
-
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();

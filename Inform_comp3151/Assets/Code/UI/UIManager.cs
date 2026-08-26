@@ -224,8 +224,6 @@ namespace Inkform.UI
 
             GetComponent<InventoryHud>()?.RefreshVisibility();
             GetComponent<InteractionPromptHud>()?.RefreshVisibility();
-            GetComponent<CrystalCounterHud>()?.RefreshVisibility();
-            GetComponent<GuidanceHud>()?.RefreshVisibility();
         }
 
         /// <summary>
@@ -494,10 +492,6 @@ namespace Inkform.UI
         {
             if (GetComponent<InteractionPromptHud>() == null)
                 gameObject.AddComponent<InteractionPromptHud>();
-            if (GetComponent<CrystalCounterHud>() == null)
-                gameObject.AddComponent<CrystalCounterHud>();
-            if (GetComponent<GuidanceHud>() == null)
-                gameObject.AddComponent<GuidanceHud>();
         }
     }
 }

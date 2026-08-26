@@ -11,11 +11,11 @@ namespace Inkform.Player
         private void Awake() => ropeGun = GetComponent<RopeGun>();
         private void OnEnable()
         {
-            RunProgressStore.Changed += Refresh;
+            EquipmentProgressStore.Changed += Refresh;
             Refresh();
         }
 
-        private void OnDisable() => RunProgressStore.Changed -= Refresh;
-        private void Refresh() => ropeGun?.SetEquipped(RunProgressStore.RopeGunUnlocked);
+        private void OnDisable() => EquipmentProgressStore.Changed -= Refresh;
+        private void Refresh() => ropeGun?.SetEquipped(EquipmentProgressStore.RopeGunUnlocked);
     }
 }

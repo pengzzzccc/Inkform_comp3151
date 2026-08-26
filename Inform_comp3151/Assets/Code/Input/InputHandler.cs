@@ -116,7 +116,6 @@ namespace Inkform.Input
             // The bus holds the current scene's live player (registered by PlayerHandler on Awake);
             // a scene without a player (menu) leaves it null and the next sceneLoaded re-resolves
             player = PlayerBus.Player;
-            player?.SetGameplayControlBlocked(GameplayControlGate.IsBlocked);
         }
 
         void Update()
@@ -129,7 +128,6 @@ namespace Inkform.Input
             // charge, and ReadValue on a disabled action returns default which would push a stale
             // "no input" into PlayerHandler every frame.
             if (!actionsEnabled || player == null) return;
-            if (GameplayControlGate.IsBlocked) return;
 
             // Device filter: the Controls tab picks one input family; the other family's controls are
             // ignored so a gamepad left in the drawer cannot drive the player (and vice versa). The
@@ -215,28 +213,24 @@ namespace Inkform.Input
         private void OnJumpPressed(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (GameplayControlGate.IsBlocked) return;
             player?.JumpPressed();
         }
 
         private void OnJumpReleased(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (GameplayControlGate.IsBlocked) return;
             player?.JumpReleased();
         }
 
         private void OnDash(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (GameplayControlGate.IsBlocked) return;
             player?.Dash();
         }
 
         private void OnRopeFire(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (GameplayControlGate.IsBlocked) return;
             if (inventoryWheelOpened) return;
             player?.RopeFire();
         }
@@ -244,8 +238,6 @@ namespace Inkform.Input
         private void OnSpitBomb(InputAction.CallbackContext ctx)
         {
             if (!DeviceMatches(ctx.control)) return;
-            if (GameplayControlGate.IsBlocked) return;
-
             if (ctx.started)
             {
                 inventoryButtonHeld = true;
@@ -270,11 +262,6 @@ namespace Inkform.Input
 
         private void UpdateInventoryWheel()
         {
-            if (GameplayControlGate.IsBlocked)
-            {
-                CancelInventoryHold();
-                return;
-            }
             if (!actionsEnabled || !inventoryButtonHeld || player == null) return;
 
             if (!inventoryWheelOpened
@@ -309,13 +296,6 @@ namespace Inkform.Input
             if (ctx.canceled) player?.InteractReleased();
         }
 
-        private void OnControlGateChanged(bool blocked)
-        {
-            stick = Vector2.zero;
-            CancelInventoryHold();
-            player?.SetGameplayControlBlocked(blocked);
-        }
-
         void OnEnable()
         {
             // Re-resolve the player after every scene change: the persistent GameManager (kept alive by
@@ -323,8 +303,6 @@ namespace Inkform.Input
             // not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
             SettingsStore.Changed += OnSettingsChanged;
-            GameplayControlGate.Changed += OnControlGateChanged;
-
             if (wantsActionsEnabled) EnableActions();
         }
 
@@ -332,8 +310,6 @@ namespace Inkform.Input
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SettingsStore.Changed -= OnSettingsChanged;
-            GameplayControlGate.Changed -= OnControlGateChanged;
-
             DisableActions();
         }
 

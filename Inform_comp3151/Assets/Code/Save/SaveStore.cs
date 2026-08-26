@@ -78,7 +78,7 @@ namespace Inkform.Save
             pendingPrevious = Clone(slots[slot]);
             slots[slot] = new SaveData();
             InventoryStore.ClearWithoutSaving();
-            RunProgressStore.Clear();
+            EquipmentProgressStore.ClearWithoutSaving();
             StartRun(slot, 0f, 0);
             Changed?.Invoke();
         }
@@ -93,7 +93,7 @@ namespace Inkform.Save
             ActiveSlot = -1;
             ClearPending();
             InventoryStore.Restore(slots[slot].inventoryItemIds, slots[slot].selectedInventoryIndex);
-            RestoreProgression(slots[slot]);
+            RestoreEquipment(slots[slot]);
             Changed?.Invoke();
             return true;
         }
@@ -109,7 +109,7 @@ namespace Inkform.Save
             ClearPending();
             StartRun(slot, data.playSeconds, data.deaths);
             InventoryStore.Restore(data.inventoryItemIds, data.selectedInventoryIndex);
-            RestoreProgression(data);
+            RestoreEquipment(data);
         }
 
         private static void StartRun(int slot, float playBase, int deathBase)
@@ -130,7 +130,7 @@ namespace Inkform.Save
             data.spawnX = spawn.x;
             data.spawnY = spawn.y;
             CaptureInventory(data);
-            CaptureProgression(data);
+            CaptureEquipment(data);
             Stamp(data);
 
             if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
@@ -143,7 +143,7 @@ namespace Inkform.Save
             SaveData data = slots[ActiveSlot];
             data.inventoryItemIds = ids ?? Array.Empty<string>();
             data.selectedInventoryIndex = selectedIndex;
-            CaptureProgression(data);
+            CaptureEquipment(data);
 
             // A brand-new run is not committed until RespawnDirector supplies a loadable scene/position.
             if (data.IsEmpty) return;
@@ -160,7 +160,7 @@ namespace Inkform.Save
             if (data.IsEmpty) return;
 
             CaptureInventory(data);
-            CaptureProgression(data);
+            CaptureEquipment(data);
             Stamp(data);
             if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
             Changed?.Invoke();
@@ -202,29 +202,29 @@ namespace Inkform.Save
             data.selectedInventoryIndex = InventoryStore.SelectedIndex;
         }
 
-        private static void CaptureProgression(SaveData data)
+        /// <summary>Persists the one-time Rope Gun pickup without coupling the world pickup to files.</summary>
+        public static void RecordRopeGunUnlocked(bool unlocked)
         {
-            RunProgressSnapshot snapshot = RunProgressStore.Snapshot();
-            data.crystalCount = snapshot.crystalCount;
-            data.ropeGunUnlocked = snapshot.ropeGunUnlocked;
-            data.elevatorControllerAcquired = snapshot.elevatorControllerAcquired;
-            data.controlRoomCharge = snapshot.controlRoomCharge;
-            data.tutorialStep = snapshot.tutorialStep;
-            data.activatedDoorIds = snapshot.activatedDoorIds;
+            if (ActiveSlot < 0) return;
+
+            SaveData data = slots[ActiveSlot];
+            data.ropeGunUnlocked = unlocked;
+
+            // A brand-new run stays transactional until its entry scene records a valid position.
+            if (data.IsEmpty) return;
+
+            Stamp(data);
+            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            Changed?.Invoke();
         }
 
-        private static void RestoreProgression(SaveData data)
+        private static void CaptureEquipment(SaveData data)
         {
-            RunProgressStore.Restore(new RunProgressSnapshot
-            {
-                crystalCount = data?.crystalCount ?? 0,
-                ropeGunUnlocked = data != null && data.ropeGunUnlocked,
-                elevatorControllerAcquired = data != null && data.elevatorControllerAcquired,
-                controlRoomCharge = data?.controlRoomCharge ?? 0,
-                tutorialStep = data?.tutorialStep ?? 0,
-                activatedDoorIds = data?.activatedDoorIds ?? Array.Empty<string>()
-            });
+            data.ropeGunUnlocked = EquipmentProgressStore.RopeGunUnlocked;
         }
+
+        private static void RestoreEquipment(SaveData data) =>
+            EquipmentProgressStore.Restore(data != null && data.ropeGunUnlocked);
 
         private static void Stamp(SaveData data)
         {
@@ -310,7 +310,6 @@ namespace Inkform.Save
 
                 data.version = SaveData.CurrentVersion;
                 data.inventoryItemIds ??= Array.Empty<string>();
-                data.activatedDoorIds ??= Array.Empty<string>();
                 return true;
             }
             catch (Exception e)
@@ -371,7 +370,6 @@ namespace Inkform.Save
             if (source == null) return new SaveData();
             SaveData clone = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(source));
             clone.inventoryItemIds ??= Array.Empty<string>();
-            clone.activatedDoorIds ??= Array.Empty<string>();
             return clone;
         }
     }
