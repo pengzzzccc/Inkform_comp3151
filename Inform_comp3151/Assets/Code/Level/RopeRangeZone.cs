@@ -13,7 +13,7 @@ namespace Inkform.Level
     [RequireComponent(typeof(Collider2D))]
     public class RopeRangeZone : MonoBehaviour
     {
-        [SerializeField] private float maxRange = 4.2f;    // rope gun max range inside the zone
+        [SerializeField] private float maxRange = 4f;      // rope gun max range inside the zone
         private readonly HashSet<Collider2D> playerColliders = new HashSet<Collider2D>();
 
         void OnTriggerEnter2D(Collider2D other)

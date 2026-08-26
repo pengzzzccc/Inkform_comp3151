@@ -161,6 +161,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.RopeGun
   maxRange: 4
+  minAimDistance: 1
   hitMask:
     serializedVersion: 2
     m_Bits: 2112
@@ -177,7 +178,6 @@ MonoBehaviour:
   crosshairSize: 1.2
   hitColor: {r: 0.35, g: 1, b: 0.35, a: 1}
   missColor: {r: 1, g: 0.35, b: 0.35, a: 1}
-  previewStepDt: 0.033333335
   ropeSegmentSprite: {fileID: 8662384261516989540, guid: b2d0975fb0601c044b19e6fafdfd69eb, type: 3}
   ropeMaterial: {fileID: 2100000, guid: ad356daa7ad746649b493886ba56dd33, type: 2}
   ropeWidth: 0.06

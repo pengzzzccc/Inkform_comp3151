@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 1730478320715146546}
   - component: {fileID: 1620247936938350023}
   - component: {fileID: 1073894374236196325}
-  m_Layer: 0
+  m_Layer: 11
   m_Name: BreakableWall
   m_TagString: Untagged
   m_Icon: {fileID: 0}
