@@ -10,6 +10,7 @@ using Inkform.Interactable.Parts;
 using Inkform.Item;
 using Inkform.Player;
 using Inkform.Save;
+using Inkform.Settings;
 using Inkform.UI;
 using NUnit.Framework;
 using UnityEditor;
@@ -23,6 +24,7 @@ namespace Inkform.Tests
         [TearDown]
         public void TearDown()
         {
+            DestroyAllBlastWaves();
             InventoryStore.Clear();
             InvokeStatic(typeof(SaveStore), "ResetStatics");
             Time.timeScale = 1f;
@@ -133,7 +135,8 @@ namespace Inkform.Tests
             GameObject go = new GameObject("GameTimeController test");
             go.SetActive(false);
             GameTimeController controller = go.AddComponent<GameTimeController>();
-            go.SetActive(true);
+            Invoke(controller, "Awake");
+            Invoke(controller, "OnEnable");
             try
             {
                 controller.RequestHitStop(0.2f);
@@ -144,15 +147,20 @@ namespace Inkform.Tests
                 controller.ClearHitStop();
                 Assert.IsTrue(controller.IsUserPaused);
                 Assert.AreEqual(0f, Time.timeScale, "ending hitstop must not release a user pause");
+                Assert.AreEqual(0f, GameTimeController.PresentationDeltaTime,
+                    "presentation effects must freeze during a user pause");
 
                 controller.RequestHitStop(0.2f);
                 controller.SetUserPaused(false);
                 Assert.IsFalse(controller.IsUserPaused);
                 Assert.IsTrue(controller.IsHitStopped);
                 Assert.AreEqual(0f, Time.timeScale, "unpausing must preserve a remaining hitstop");
+                Assert.AreEqual(Time.unscaledDeltaTime, GameTimeController.PresentationDeltaTime, 0.000001f,
+                    "presentation effects must keep advancing while only hitstop is active");
             }
             finally
             {
+                Invoke(controller, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }
@@ -196,6 +204,149 @@ namespace Inkform.Tests
                 ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
             }
+        }
+
+        [Test]
+        public void BlastWaveFx_ExpandsWithEaseOutThinsFadesAndRemainsPresentationOnly()
+        {
+            int blastCount = 0;
+            int explodedCount = 0;
+            Action<Vector2, float, float> onBlast = (_, _, _) => blastCount++;
+            Action<GameObject, Vector2, float> onExploded = (_, _, _) => explodedCount++;
+            HazardBus.Blast += onBlast;
+            HazardBus.Exploded += onExploded;
+
+            BlastWaveFx wave = null;
+            try
+            {
+                Color color = new Color(1f, 0.8f, 0.3f, 0.95f);
+                wave = BlastWaveFx.Spawn(
+                    new Vector2(3f, 4f), 2f, color, 0.28f, 0.12f, 0.22f, 0.04f, 64, 100, 1f);
+
+                Assert.IsNotNull(wave);
+                AssertVector2(new Vector2(3f, 4f), wave.transform.position);
+                LineRenderer line = wave.GetComponent<LineRenderer>();
+                Assert.IsNotNull(line);
+                Assert.IsTrue(line.loop);
+                Assert.AreEqual(64, line.positionCount);
+                Assert.AreEqual(100, line.sortingOrder);
+                Assert.AreEqual(0, wave.GetComponents<Collider2D>().Length);
+                Assert.IsNull(wave.GetComponent<Rigidbody2D>());
+                Assert.AreEqual(0, blastCount, "the visual must not publish another Blast");
+                Assert.AreEqual(0, explodedCount, "the visual must not publish gameplay damage");
+                Assert.AreEqual(0.12f, wave.CurrentRadius, 0.0001f);
+                Assert.AreEqual(0.22f, line.widthMultiplier, 0.0001f);
+                Assert.AreEqual(0.95f, line.startColor.a, 0.002f,
+                    "LineRenderer colors are stored with 8-bit channel precision");
+
+                AdvanceBlastWave(wave, 0.14f);
+                float expectedHalfRadius = Mathf.Lerp(0.12f, 2f, 0.875f);
+                Assert.AreEqual(expectedHalfRadius, wave.CurrentRadius, 0.0001f,
+                    "half time must use cubic ease-out displacement");
+                Assert.AreEqual(0.13f, line.widthMultiplier, 0.0001f);
+                Assert.AreEqual(0.475f, line.startColor.a, 0.002f);
+
+                ApplyBlastWave(wave, 1f);
+                Assert.AreEqual(2f, wave.CurrentRadius, 0.0001f,
+                    "the rendered radius must land exactly on the gameplay blast radius");
+                Assert.AreEqual(0.04f, line.widthMultiplier, 0.0001f);
+                Assert.AreEqual(0f, line.startColor.a, 0.0001f);
+
+                AdvanceBlastWave(wave, 0.14f);
+                Assert.IsTrue(wave == null, "the one-shot object must remove itself at the end");
+            }
+            finally
+            {
+                HazardBus.Blast -= onBlast;
+                HazardBus.Exploded -= onExploded;
+                if (wave != null) UnityEngine.Object.DestroyImmediate(wave.gameObject);
+            }
+        }
+
+        [Test]
+        public void FxDirector_CreatesOneWavePerBlastAndHonorsIntensityAndFalloff()
+        {
+            DestroyAllBlastWaves();
+            float previousIntensity = SettingsStore.FxIntensity;
+            GameObject go = new GameObject("FxDirector blast-wave test");
+            go.SetActive(false);
+            FxDirector director = go.AddComponent<FxDirector>();
+            Invoke(director, "OnEnable");
+            try
+            {
+                SetStaticProperty(typeof(SettingsStore), "FxIntensity", 1f);
+
+                HazardBus.RaiseExploded(null, Vector2.zero, 1f);
+                HazardBus.RaiseExploded(null, Vector2.zero, 1f);
+                Assert.AreEqual(0, FindBlastWaves().Length,
+                    "per-victim Exploded signals must not create duplicate rings");
+
+                HazardBus.RaiseBlast(Vector2.zero, 2f, 1f);
+                BlastWaveFx[] waves = FindBlastWaves();
+                Assert.AreEqual(1, waves.Length, "one overall Blast must create exactly one ring");
+                Assert.AreEqual(2f, GetField<float>(waves[0], "targetRadius"), 0.0001f);
+
+                HazardBus.RaiseBlast(new Vector2(0.5f, 0f), 3f, 1f);
+                Assert.AreEqual(2, FindBlastWaves().Length,
+                    "separate explosions must own independent wave objects");
+
+                DestroyAllBlastWaves();
+                SetStaticProperty(typeof(SettingsStore), "FxIntensity", 0f);
+                HazardBus.RaiseBlast(Vector2.zero, 2f, 1f);
+                Assert.AreEqual(0, FindBlastWaves().Length, "zero FX intensity must disable the ring");
+
+                SetStaticProperty(typeof(SettingsStore), "FxIntensity", 0.5f);
+                HazardBus.RaiseBlast(Vector2.zero, 2f, 1f);
+                waves = FindBlastWaves();
+                Assert.AreEqual(1, waves.Length);
+                Assert.AreEqual(2f, GetField<float>(waves[0], "targetRadius"), 0.0001f,
+                    "FX intensity must never change the represented blast radius");
+                Assert.AreEqual(0.475f, waves[0].GetComponent<LineRenderer>().startColor.a, 0.002f);
+
+                DestroyAllBlastWaves();
+                SetStaticProperty(typeof(SettingsStore), "FxIntensity", 1f);
+                SetField(director, "falloffRange", 2f);
+                HazardBus.RaiseBlast(new Vector2(1f, 0f), 4f, 1f);
+                waves = FindBlastWaves();
+                Assert.AreEqual(1, waves.Length);
+                Assert.AreEqual(4f, GetField<float>(waves[0], "targetRadius"), 0.0001f);
+                Assert.AreEqual(0.475f, waves[0].GetComponent<LineRenderer>().startColor.a, 0.002f,
+                    "distance falloff must scale opacity only");
+
+                DestroyAllBlastWaves();
+                HazardBus.RaiseBlast(new Vector2(2f, 0f), 4f, 1f);
+                Assert.AreEqual(0, FindBlastWaves().Length,
+                    "an explosion at or beyond the falloff edge must not create an invisible ring");
+            }
+            finally
+            {
+                SetStaticProperty(typeof(SettingsStore), "FxIntensity", previousIntensity);
+                Invoke(director, "OnDisable");
+                DestroyAllBlastWaves();
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void MainCameraPrefab_HasBlastWaveDefaults()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Control/MainCamera.prefab");
+            Assert.IsNotNull(prefab);
+            FxDirector director = prefab.GetComponent<FxDirector>();
+            Assert.IsNotNull(director);
+
+            Assert.IsTrue(GetField<bool>(director, "blastWaveEnabled"));
+            Color color = GetField<Color>(director, "blastWaveColor");
+            Assert.AreEqual(1f, color.r, 0.0001f);
+            Assert.AreEqual(0.81960785f, color.g, 0.0001f);
+            Assert.AreEqual(0.36078432f, color.b, 0.0001f);
+            Assert.AreEqual(0.95f, color.a, 0.0001f);
+            Assert.AreEqual(0.28f, GetField<float>(director, "blastWaveDuration"), 0.0001f);
+            Assert.AreEqual(0.12f, GetField<float>(director, "blastWaveStartRadius"), 0.0001f);
+            Assert.AreEqual(0.22f, GetField<float>(director, "blastWaveStartWidth"), 0.0001f);
+            Assert.AreEqual(0.04f, GetField<float>(director, "blastWaveEndWidth"), 0.0001f);
+            Assert.AreEqual(64, GetField<int>(director, "blastWaveSegments"));
+            Assert.AreEqual(100, GetField<int>(director, "blastWaveSortingOrder"));
         }
 
         [Test]
@@ -1083,6 +1234,23 @@ namespace Inkform.Tests
             mover.GetType().GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)?
                 .Invoke(mover, new object[] { deltaTime });
 
+        private static void AdvanceBlastWave(BlastWaveFx wave, float deltaTime) =>
+            wave.GetType().GetMethod("Advance", BindingFlags.Instance | BindingFlags.NonPublic)?
+                .Invoke(wave, new object[] { deltaTime });
+
+        private static void ApplyBlastWave(BlastWaveFx wave, float normalized) =>
+            wave.GetType().GetMethod("Apply", BindingFlags.Instance | BindingFlags.NonPublic)?
+                .Invoke(wave, new object[] { normalized });
+
+        private static BlastWaveFx[] FindBlastWaves() =>
+            UnityEngine.Object.FindObjectsByType<BlastWaveFx>(FindObjectsInactive.Include);
+
+        private static void DestroyAllBlastWaves()
+        {
+            foreach (BlastWaveFx wave in FindBlastWaves())
+                if (wave != null) UnityEngine.Object.DestroyImmediate(wave.gameObject);
+        }
+
         private static void AssertVector2(Vector2 expected, Vector2 actual, string message = null) =>
             Assert.That(Vector2.Distance(expected, actual), Is.LessThanOrEqualTo(0.0001f), message);
 
@@ -1094,6 +1262,10 @@ namespace Inkform.Tests
 
         private static void SetStaticField(Type type, string name, object value) =>
             type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic)?.SetValue(null, value);
+
+        private static void SetStaticProperty(Type type, string name, object value) =>
+            type.GetProperty(name, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)?
+                .SetValue(null, value);
     }
 }
 #endif
