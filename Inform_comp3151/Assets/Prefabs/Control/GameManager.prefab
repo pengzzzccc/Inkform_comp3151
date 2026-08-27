@@ -22,6 +22,7 @@ GameObject:
   - component: {fileID: 7645394820213847150}
   - component: {fileID: 1503010808642312737}
   - component: {fileID: 8368835806917013791}
+  - component: {fileID: 9903000014}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -244,6 +245,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.SceneDirector
   levelGraphFile: {fileID: 4900000, guid: 92bd8891d35dcab409367f58d2994522, type: 3}
+--- !u!114 &9903000014
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3174349163457537239}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 203e51728a0ac1487da25054c9c7f02e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Tool.PerformanceRecorder
 --- !u!114 &1503010808642312737
 MonoBehaviour:
   m_ObjectHideFlags: 0
