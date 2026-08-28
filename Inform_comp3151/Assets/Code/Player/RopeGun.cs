@@ -13,11 +13,11 @@ namespace Inkform.Player
     /// line — no hanging, no swinging.
     ///
     /// Aiming: the reticle is a free cursor, driven by mouse delta / right stick (the Aim action),
-    /// moving freely around the player within the range radius, always visible — firing and spitting
-    /// always go exactly toward it, no movement-direction fallback. The muzzle and reticle solve an
-    /// initial velocity that passes through the reticle (ballistic solve); the bullet flies along that
-    /// parabola — the reticle is tinted green when the trajectory is intercepted by terrain before it
-    /// (will hook), red when clear (will miss → reel in).
+    /// moving around the player between a small safety radius and the current maximum range. Firing
+    /// and spitting always go exactly toward it, no movement-direction fallback. The muzzle and reticle
+    /// solve an initial velocity that passes through the reticle (ballistic solve); the bullet flies
+    /// along that parabola — the reticle is tinted green when terrain intercepts the trajectory within
+    /// the maximum range (will hook), red when clear (will miss → reel in).
     ///
     /// Flight: the bullet is a real rigidbody (gravity, initial velocity = solve result, damping 0
     /// matches the preview; excludeLayers excludes the player/bombs etc., terrain only); the rope
@@ -44,7 +44,8 @@ namespace Inkform.Player
         private enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
-        [SerializeField] private float maxRange = 4.2f;                     // default max range (also reticle radius / hook travel cap)
+        [SerializeField] private float maxRange = 4f;                       // default reticle / hook travel cap
+        [SerializeField, Min(0f)] private float minAimDistance = 0.7f;      // keeps the target safely ahead of the muzzle
         [SerializeField] private LayerMask hitMask = (1 << 6) | (1 << 11);  // Terrain | Breakable
 
         [Header("Projectile")]
@@ -63,9 +64,6 @@ namespace Inkform.Player
         [SerializeField] private float crosshairSize = 0.6f;
         [SerializeField] private Color hitColor = new Color(0.35f, 1f, 0.35f);
         [SerializeField] private Color missColor = new Color(1f, 0.35f, 0.35f);
-
-        [Header("Reticle prediction")]
-        [SerializeField] private float previewStepDt = 1f / 30f;            // trajectory sample step for the hit prediction
 
         [Header("Rope")]
         [SerializeField] private Sprite ropeSegmentSprite;                  // vertical rope strip: the art runs along the sprite's +Y, tiled along the rope's length
@@ -98,7 +96,13 @@ namespace Inkform.Player
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
 
-        private Vector2 aimOffset;      // aim cursor offset from the player (world units), free-moving around the player
+        private Vector2 aimOffset;      // free cursor offset, clamped between the safe inner radius and current range
+
+        // A shot keeps the player position and range that were valid when fire was pressed. The player
+        // remains free to move while the hook flies, without invalidating an already-green prediction.
+        private Vector2 shotPlayerPosition;
+        private float shotMaxRange;
+        private Vector2 shotAimOffset;
 
         private GameObject hookGo;
         private Rigidbody2D hookBody;
@@ -117,6 +121,7 @@ namespace Inkform.Player
 
         private Transform reticle;
         private SpriteRenderer reticleSprite;
+        private readonly RaycastHit2D[] previewCastHits = new RaycastHit2D[8];
 
         private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
 
@@ -190,6 +195,7 @@ namespace Inkform.Player
             // Re-apply here too: after a scene reload this RopeGun is fresh while the settings live on.
             SettingsStore.Changed += OnSettingsChanged;
             ApplySensitivity();
+            ClampAimOffsetToCurrentRange();
         }
 
         void OnDisable()
@@ -214,7 +220,8 @@ namespace Inkform.Player
         // ---- Input entries (forwarded by PlayerHandler) ----
 
         /// <summary>Aiming input. pixelDelta = mouse pixel delta (needs conversion to world units by screen
-        /// height), otherwise a right-stick analog value (speed × dt). Moves the always-visible reticle.</summary>
+        /// height), otherwise a right-stick analog value (speed × dt). Freely moves the always-visible
+        /// reticle within its safe minimum and current maximum range.</summary>
         public void Aim(Vector2 delta, bool pixelDelta)
         {
             if (phase != RopePhase.Idle || LifeBus.IsDead) return;
@@ -232,8 +239,7 @@ namespace Inkform.Player
                 aimOffset += delta * (stickAimSpeed * Time.deltaTime);
             }
 
-            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
-                aimOffset = aimOffset.normalized * currentMaxRange;
+            ClampAimOffsetToCurrentRange();
         }
 
         public void TryFire()
@@ -247,9 +253,12 @@ namespace Inkform.Player
 
             // Always exactly toward the reticle (EffectiveFireDir), no movement-direction fallback
             Vector2 fireDir = EffectiveFireDir;
-            Vector2 origin = playerBody.position + fireDir * muzzleOffset;
+            shotPlayerPosition = playerBody.position;
+            shotMaxRange = currentMaxRange;
+            shotAimOffset = aimOffset;
+            Vector2 origin = shotPlayerPosition + fireDir * muzzleOffset;
             // Ballistic target = the reticle point: the bullet passes through it exactly
-            Vector2 target = playerBody.position + aimOffset;
+            Vector2 target = shotPlayerPosition + shotAimOffset;
             SolveBallistic(origin, target, launchSpeed, Physics2D.gravity * bulletGravityScale,
                 out Vector2 v0, out _);
 
@@ -262,6 +271,7 @@ namespace Inkform.Player
             hookBody = hookGo.AddComponent<Rigidbody2D>();
             hookBody.gravityScale = bulletGravityScale;
             hookBody.linearDamping = 0f;                // matches the preview solve, so the parabola lines up
+            hookBody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             // includeLayers has "append-allowed" semantics and does not restrict collisions — must use
             // excludeLayers to exclude everything but terrain (player/bombs etc.; the layer collision
             // matrix is all-on by default, without the exclusion the hook would hit the player at spawn)
@@ -330,7 +340,7 @@ namespace Inkform.Player
             // (plus the normal offset above) — hitting a wall at the edge of the range without this
             // slack would mark a legal hit as over-range
             float rangeSlack = bulletRadius + Mathf.Max(anchorClearance, 0.01f);
-            if (Vector2.Distance(playerBody.position, hitPoint) > currentMaxRange + rangeSlack)
+            if (Vector2.Distance(shotPlayerPosition, hitPoint) > shotMaxRange + rangeSlack)
             {
                 StartMiss();        // beyond range: treat as a miss
                 return;
@@ -453,7 +463,7 @@ namespace Inkform.Player
             if (phase == RopePhase.Idle || LifeBus.IsDead) return;
 
             float dt = Time.fixedDeltaTime;
-            Vector2 origin = playerBody.position;
+            Vector2 playerPosition = playerBody.position;
 
             switch (phase)
             {
@@ -461,7 +471,7 @@ namespace Inkform.Player
                     // Range cap: reaching the range circle is a miss — recovery starts immediately,
                     // no grace frame for an edge-of-range hook (the hook must physically hit terrain
                     // while still inside the range to ever pull)
-                    if (Vector2.Distance(origin, hookBody.position) >= currentMaxRange)
+                    if (Vector2.Distance(shotPlayerPosition, hookBody.position) >= shotMaxRange)
                     {
                         StartMiss();
                         break;
@@ -480,9 +490,9 @@ namespace Inkform.Player
                     // reelSpeed (no rope solve: position written directly, velocity zeroed so gravity
                     // never curves the path; the collider is off so nothing can block it)
                     hookBody.position = Vector2.MoveTowards(
-                        hookBody.position, origin, reelSpeed * dt);
+                        hookBody.position, playerPosition, reelSpeed * dt);
                     hookBody.linearVelocity = Vector2.zero;
-                    if (Vector2.Distance(origin, hookBody.position) <= detachDistance)
+                    if (Vector2.Distance(playerPosition, hookBody.position) <= detachDistance)
                         Finish();
                     break;
 
@@ -574,53 +584,84 @@ namespace Inkform.Player
             }
         }
 
-        // Aim prediction: reticle = free cursor (around the player); the trajectory is the parabola
-        // solved to pass through the reticle, sampled segment by segment — terrain blocking before the
-        // reticle → green (will hook); clear → red (will miss, reel in). The reticle is always visible;
-        // firing and spitting always go exactly toward it.
+        // Aim prediction: the reticle is a free cursor and the trajectory is the parabola solved to pass
+        // through it. Fixed-step circle casts use the real hook radius and stop exactly at the maximum
+        // range boundary. Only solid Terrain/Breakable colliders can make the reticle green.
         private void UpdatePreview()
         {
             Vector2 aim = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : Vector2.right;
+            Vector2 rangeCenter = playerBody.position;
 
             // Muzzle origin identical to firing: preview and actual trajectory strictly match
-            Vector2 origin = playerBody.position + aim * muzzleOffset;
-            Vector2 target = playerBody.position + aimOffset;
+            Vector2 origin = rangeCenter + aim * muzzleOffset;
+            Vector2 target = rangeCenter + aimOffset;
             Vector2 g = Physics2D.gravity * bulletGravityScale;
 
-            SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0, out float flightTime);
+            SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0, out _);
 
-            float maxT = Mathf.Max(flightTime, previewStepDt);
+            float stepDt = Time.fixedDeltaTime;
             Vector2 last = origin;
             bool hit = false;
 
-            // Sample slightly past the reticle (inertia continues past it and may hit farther terrain)
-            for (float t = previewStepDt; ; t += previewStepDt)
+            // The final segment is clipped before the query, so terrain beyond the legal range can
+            // never make the reticle green.
+            for (float t = stepDt; ; t += stepDt)
             {
-                if (t > maxT + 0.25f) break;
                 Vector2 p = origin + v0 * t + 0.5f * g * t * t;
+                p = ClipSegmentToRange(rangeCenter, last, p, currentMaxRange, out bool reachedRange);
 
                 Vector2 seg = p - last;
                 float segLen = seg.magnitude;
                 if (segLen > 0.0001f)
                 {
-                    RaycastHit2D rh = Physics2D.Raycast(last, seg / segLen, segLen, hitMask);
-                    if (rh.collider != null)
+                    ContactFilter2D filter = new ContactFilter2D();
+                    filter.SetLayerMask(hitMask);
+                    filter.useTriggers = false;
+                    int hitCount = Physics2D.CircleCast(
+                        last, bulletRadius, seg / segLen, filter, previewCastHits, segLen);
+                    if (hitCount > 0)
                     {
                         hit = true;
                         break;
                     }
                 }
 
-                if (Vector2.Distance(origin, p) >= currentMaxRange) break;
+                if (reachedRange) break;
                 last = p;
             }
 
-            // Reticle = the free cursor itself; color hint: green = trajectory intercepted by terrain
-            // (will hook), red = will miss
+            // Reticle = the free cursor; green = solid hookable terrain, red = miss
             reticle.position = target;
             reticleSprite.color = hit ? hitColor : missColor;
             float s = crosshairSize * (hit ? 1.25f : 1f);
             reticle.localScale = new Vector3(s, s, 1f);
+        }
+
+        // Clips start→end to the first exit from a circle. Callers keep start inside the circle; an
+        // already-outside muzzle (only possible with a deliberately tiny range) collapses safely.
+        private static Vector2 ClipSegmentToRange(Vector2 center, Vector2 start, Vector2 end,
+                                                  float range, out bool clipped)
+        {
+            float rangeSq = range * range;
+            if ((end - center).sqrMagnitude <= rangeSq)
+            {
+                clipped = false;
+                return end;
+            }
+
+            clipped = true;
+            Vector2 d = end - start;
+            float a = Vector2.Dot(d, d);
+            if (a <= 0.0000001f) return start;
+
+            Vector2 m = start - center;
+            float b = 2f * Vector2.Dot(m, d);
+            float c = Vector2.Dot(m, m) - rangeSq;
+            float discriminant = b * b - 4f * a * c;
+            if (discriminant < 0f) return start;
+
+            float t = (-b + Mathf.Sqrt(discriminant)) / (2f * a);
+            return start + d * Mathf.Clamp01(t);
         }
 
         /// <summary>
@@ -723,8 +764,17 @@ namespace Inkform.Player
             foreach (float range in rangeOverrides.Values)
                 currentMaxRange = Mathf.Min(currentMaxRange, range);
 
-            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
-                aimOffset = aimOffset.normalized * currentMaxRange;
+            ClampAimOffsetToCurrentRange();
+        }
+
+        private void ClampAimOffsetToCurrentRange()
+        {
+            float effectiveMax = Mathf.Max(0.1f, currentMaxRange);
+            float effectiveMin = Mathf.Min(Mathf.Max(0f, minAimDistance), effectiveMax);
+            Vector2 fallback = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
+            Vector2 direction = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : fallback;
+            float distance = Mathf.Clamp(aimOffset.magnitude, effectiveMin, effectiveMax);
+            aimOffset = direction * distance;
         }
 
         private void OnDied(DeathContext ctx)
@@ -739,7 +789,9 @@ namespace Inkform.Player
         private void OnRespawned(GameObject victim, Vector2 pos)
         {
             if (victim != gameObject) return;
-            aimOffset = (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left) * currentMaxRange * 0.6f;
+            aimOffset = (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left)
+                * currentMaxRange * 0.6f;
+            ClampAimOffsetToCurrentRange();
             // The reticle repositions from the new aimOffset on the next UpdatePreview
         }
 

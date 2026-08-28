@@ -9,6 +9,7 @@ using Inkform.Item;
 using Inkform.Player;
 using Inkform.Save;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 namespace Inkform.Tests
@@ -155,19 +156,160 @@ namespace Inkform.Tests
             object narrow = new object();
             try
             {
+                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
+                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
+
                 RopeGunBus.RaiseRangeOverride(wide, 3f);
+                Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
+                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
+                    "a wider boundary must not push a free cursor outward");
+
                 RopeGunBus.RaiseRangeOverride(narrow, 2f);
                 Assert.AreEqual(2f, GetField<float>(gun, "currentMaxRange"));
+                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
+                    "a shorter range must pull an out-of-bounds cursor inward");
 
                 RopeGunBus.RaiseRangeRestored(narrow);
                 Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
+                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
+                    "restoring range must preserve the free cursor distance");
                 RopeGunBus.RaiseRangeRestored(wide);
-                Assert.AreEqual(4.2f, GetField<float>(gun, "currentMaxRange"), 0.001f);
+                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
+                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
             }
             finally
             {
                 UnityEngine.Object.DestroyImmediate(go);
             }
+        }
+
+        [Test]
+        public void RopeAim_MovesFreelyAndClampsToSafeBounds()
+        {
+            GameObject go = new GameObject("RopeGun free aim test");
+            go.SetActive(false);
+            go.AddComponent<Rigidbody2D>();
+            RopeGun gun = go.AddComponent<RopeGun>();
+            go.SetActive(true);
+            try
+            {
+                SetField(gun, "mouseAimSensitivity", 1f);
+                SetField(gun, "aimOffset", new Vector2(1.5f, 0f));
+                gun.Aim(new Vector2(1f, 0f), true);
+                float movedDistance = GetField<Vector2>(gun, "aimOffset").magnitude;
+                Assert.Greater(movedDistance, 1.5f, "aim input must be able to change cursor distance");
+                Assert.Less(movedDistance, 4f, "ordinary input must not force the cursor to max range");
+
+                SetField(gun, "aimOffset", new Vector2(0.1f, 0f));
+                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Assert.AreEqual(0.7f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
+
+                SetField(gun, "aimOffset", new Vector2(10f, 0f));
+                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Assert.AreEqual(4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void RopeFire_KeepsShotRangeAnchoredAtFirePositionAndUsesContinuousCollision()
+        {
+            GameObject go = new GameObject("RopeGun shot origin test");
+            Vector2 testOrigin = new Vector2(10000f, 10000f);
+            go.transform.position = testOrigin;
+            go.SetActive(false);
+            Rigidbody2D playerBody = go.AddComponent<Rigidbody2D>();
+            RopeGun gun = go.AddComponent<RopeGun>();
+            go.SetActive(true);
+            try
+            {
+                Vector2 freeCursor = new Vector2(1.2f, 0.5f);
+                SetField(gun, "aimOffset", freeCursor);
+                gun.TryFire();
+                Rigidbody2D hookBody = GetField<Rigidbody2D>(gun, "hookBody");
+                Assert.AreEqual(CollisionDetectionMode2D.Continuous, hookBody.collisionDetectionMode);
+                Assert.AreEqual(testOrigin, GetField<Vector2>(gun, "shotPlayerPosition"));
+                Assert.AreEqual(4f, GetField<float>(gun, "shotMaxRange"), 0.001f);
+                Assert.AreEqual(freeCursor, GetField<Vector2>(gun, "shotAimOffset"),
+                    "the shot must snapshot the free cursor target at fire time");
+
+                hookBody.position = testOrigin + new Vector2(3f, 0f);
+                playerBody.position = testOrigin + new Vector2(-10f, 0f);
+                Invoke(gun, "FixedUpdate");
+                Assert.AreEqual("Flying", GetField<object>(gun, "phase").ToString(),
+                    "moving the player after firing must not invalidate the shot range");
+            }
+            finally
+            {
+                GameObject hook = GetField<GameObject>(gun, "hookGo");
+                if (hook != null) UnityEngine.Object.DestroyImmediate(hook);
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void RopePreview_IgnoresTriggersAndTerrainPastTheRangeBoundary()
+        {
+            GameObject player = new GameObject("RopeGun preview test");
+            GameObject wall = new GameObject("preview wall");
+            Vector2 testOrigin = new Vector2(10000f, 10000f);
+            player.transform.position = testOrigin;
+            player.SetActive(false);
+            player.AddComponent<Rigidbody2D>();
+            RopeGun gun = player.AddComponent<RopeGun>();
+            player.SetActive(true);
+            wall.layer = 6;
+            BoxCollider2D box = wall.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.02f, 4f);
+            try
+            {
+                wall.transform.position = testOrigin + new Vector2(2f, 0f);
+                box.isTrigger = true;
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                Assert.AreEqual(GetField<Color>(gun, "missColor"),
+                    GetField<SpriteRenderer>(gun, "reticleSprite").color,
+                    "a trigger must not make the reticle green");
+
+                box.isTrigger = false;
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                Assert.AreEqual(GetField<Color>(gun, "hitColor"),
+                    GetField<SpriteRenderer>(gun, "reticleSprite").color,
+                    "thin solid terrain inside the range must make the reticle green");
+
+                wall.transform.position = testOrigin + new Vector2(4.1f, 0f);
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                Assert.AreEqual(GetField<Color>(gun, "hitColor"),
+                    GetField<SpriteRenderer>(gun, "reticleSprite").color,
+                    "the hook radius must allow a legal contact at the range boundary");
+
+                wall.transform.position = testOrigin + new Vector2(4.35f, 0f);
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                Assert.AreEqual(GetField<Color>(gun, "missColor"),
+                    GetField<SpriteRenderer>(gun, "reticleSprite").color,
+                    "terrain beyond the range boundary must not make the reticle green");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(wall);
+                UnityEngine.Object.DestroyImmediate(player);
+            }
+        }
+
+        [Test]
+        public void BreakableWallPrefab_IsOnTheHookableBreakableLayer()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/Item/BreakableWall.prefab");
+            Assert.IsNotNull(prefab);
+            Assert.AreEqual(11, prefab.layer,
+                "direct BreakableWall instances must not inherit the unhookable Default layer");
         }
 
         [Test]

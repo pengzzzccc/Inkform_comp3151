@@ -54,7 +54,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5f7e80c6b7ea4c46a9fb9354d75ba881, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Core.PersistentGameRoot
 --- !u!114 &7085439240873709234
 MonoBehaviour:
@@ -124,8 +124,8 @@ MonoBehaviour:
   blast: {fileID: 11400000, guid: 0ec1aedd8b689a1498affbb33b64375e, type: 2}
   wallBreak: {fileID: 11400000, guid: b8abcbfba51dd124d8a107e676e86a0c, type: 2}
   bombTick: {fileID: 11400000, guid: 64bba8dad938a134a8392bee7dcc93eb, type: 2}
-  itemEaten: {fileID: 0}
-  itemSpit: {fileID: 0}
+  itemEaten: {fileID: 11400000, guid: 8191e3ea866a3db41bb10c6fe152fb79, type: 2}
+  itemSpit: {fileID: 11400000, guid: ee9dae4465f8a9d4e8711c5a30c4ca39, type: 2}
   jump: {fileID: 0}
   land: {fileID: 0}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
