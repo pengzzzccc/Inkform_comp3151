@@ -24,14 +24,15 @@ namespace Inkform.Input
         // Shared wrapper (InputActions) — not `new`ed here anymore, see InputActions.
         private InputSystem_Actions playerInput;
 
-        // The six actions actually used in this game from the Player map, all taken straight from the
-        // generated wrapper
+        // The seven actions actually used in this game from the Player map, all taken straight from
+        // the generated wrapper
         private InputAction move;
         private InputAction aim;
         private InputAction jump;
         private InputAction dash;
         private InputAction ropeFire;
         private InputAction spitBomb;
+        private InputAction interact;
         private bool actionsInitialized;
 
         // Held-button actions feeding the device auto-detection (a held button = deliberate input)
@@ -85,7 +86,8 @@ namespace Inkform.Input
             dash = playerInput.Player.Dash;
             ropeFire = playerInput.Player.RopeFire;
             spitBomb = playerInput.Player.SpitBomb;
-            pressButtons = new[] { jump, dash, ropeFire, spitBomb };
+            interact = playerInput.Player.Interact;
+            pressButtons = new[] { jump, dash, ropeFire, spitBomb, interact };
 
             actionsInitialized = true;
         }
@@ -230,6 +232,14 @@ namespace Inkform.Input
             player?.SpitBomb();
         }
 
+        // Confirm is not a player verb: it addresses whatever world part the player stands near
+        // (AbilityPickupPart...), so it goes out on the bus instead of into PlayerHandler
+        private void OnInteract(InputAction.CallbackContext ctx)
+        {
+            if (!DeviceMatches(ctx.control)) return;
+            PlayerBus.RaiseInteractPressed();
+        }
+
         void OnEnable()
         {
             // Re-resolve the player after every scene change: the persistent GameManager (kept alive by
@@ -279,20 +289,22 @@ namespace Inkform.Input
             actionsEnabled = true;
 
             // Enable one by one rather than playerInput.Player.Enable(): the map still holds
-            // Interact / Crouch / Previous / Next — four actions this game does not use; enabling the
-            // whole map would light them up too
+            // Crouch / Previous / Next — three actions this game does not use; enabling the whole
+            // map would light them up too
             move.Enable();
             aim.Enable();
             jump.Enable();
             dash.Enable();
             ropeFire.Enable();
             spitBomb.Enable();
+            interact.Enable();
 
             jump.performed += OnJumpPressed;
             jump.canceled += OnJumpReleased;
             dash.performed += OnDash;
             ropeFire.performed += OnRopeFire;
             spitBomb.performed += OnSpitBomb;
+            interact.performed += OnInteract;
         }
 
         private void DisableActions()
@@ -305,6 +317,7 @@ namespace Inkform.Input
             dash.performed -= OnDash;
             ropeFire.performed -= OnRopeFire;
             spitBomb.performed -= OnSpitBomb;
+            interact.performed -= OnInteract;
 
             move.Disable();
             aim.Disable();
@@ -312,6 +325,7 @@ namespace Inkform.Input
             dash.Disable();
             ropeFire.Disable();
             spitBomb.Disable();
+            interact.Disable();
         }
 
         private bool actionsEnabled;

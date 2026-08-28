@@ -5,14 +5,20 @@ using Inkform.Player;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// Player state/action bus: the only publisher is PlayerHandler; subscribers need no serialized
-    /// player reference. State changes are deduped and snapshotted; DashAttempted is transient.
+    /// Player state/action bus: the only publisher is PlayerHandler — except InteractPressed, which
+    /// InputHandler raises because "confirm" targets whatever the player stands near (world parts),
+    /// not the player itself. Subscribers need no serialized player reference. State changes are
+    /// deduped and snapshotted; DashAttempted is transient.
     /// </summary>
     public static class PlayerBus
     {
         public static event Action<PlayerState> StateChanged;
         public static event Action<FaceDirection> FaceChanged;
         public static event Action<Vector2, bool> DashAttempted;
+
+        /// <summary>One confirm press (E / gamepad north) — consumed by world parts that are currently
+        /// in range (e.g. AbilityPickupPart), not by PlayerHandler.</summary>
+        public static event Action InteractPressed;
 
         // Current snapshot: subscribers can read it in OnEnable to complete initial sync
         public static PlayerState State { get; private set; }
@@ -51,6 +57,8 @@ namespace Inkform.Bus
         public static void RaiseDashAttempted(Vector2 position, bool succeeded) =>
             DashAttempted?.Invoke(position, succeeded);
 
+        public static void RaiseInteractPressed() => InteractPressed?.Invoke();
+
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -59,6 +67,7 @@ namespace Inkform.Bus
             StateChanged = null;
             FaceChanged = null;
             DashAttempted = null;
+            InteractPressed = null;
             // Match PlayerHandler's field defaults (Idle / R) to avoid an extra broadcast at startup
             State = PlayerState.Idle;
             Face = FaceDirection.R;

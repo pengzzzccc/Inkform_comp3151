@@ -1,17 +1,18 @@
+using Inkform.Ability;
 using Inkform.Audio;
 using Inkform.Bus;
-using Inkform.Item;
 using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Level
 {
     /// <summary>
-    /// Checkpoint: a timecard machine. Touching it with an identity card in the inventory stamps the
-    /// card and records the respawn position here; touching it without the card only plays a denial
+    /// Checkpoint: a timecard machine. Touching it with the checkpoint ability earned (granted by
+    /// picking up the timecard — a save-level unlock, not an inventory item anymore) stamps the card
+    /// and records the respawn position here; touching it without the ability only plays a denial
     /// sound and changes nothing. The one with isStartPoint checked also serves as the level spawn
-    /// point — at startup RespawnDirector teleports the player there, so "spawn point" and "checkpoint"
-    /// remain the same kind of object, just gated behind the card now.
+    /// point — at startup RespawnDirector teleports the player there, so "spawn point" and
+    /// "checkpoint" remain the same kind of object, just gated behind the ability now.
     ///
     /// Presentation is a hand-driven sprite sequence rather than an Animator: frame 0 stands resident
     /// while idle, activation steps through every frame once and freezes on the last one — which falls
@@ -21,7 +22,6 @@ namespace Inkform.Level
     [RequireComponent(typeof(Collider2D))]
     public class Checkpoint : MonoBehaviour
     {
-        public const string TimeCardItemId = "time-card";
 
         [Header("Checkpoint setting")]
         [SerializeField] private bool isStartPoint = false;                     // checked = also the level spawn point; only one per level
@@ -31,7 +31,7 @@ namespace Inkform.Level
         [Tooltip("Activation sequence: first frame = idle resident, last frame = stamped freeze-frame")]
         [SerializeField] private Sprite[] frames;
         [SerializeField] private float framesPerSecond = 12f;
-        [Tooltip("Played when a player without an identity card touches the machine")]
+        [Tooltip("Played when a player without the checkpoint ability touches the machine")]
         [SerializeField] private SoundCue deniedCue;
 
         private SpriteRenderer spriteRenderer;
@@ -53,9 +53,9 @@ namespace Inkform.Level
             if (active) return;
             if (!other.CompareTag(Tags.Player)) return;
 
-            // No identity card: the machine refuses — a sound and nothing else. Re-entering replays it,
-            // which mirrors how a failed dash keeps its denied cue on every attempt.
-            if (!InventoryStore.Owns(TimeCardItemId))
+            // No checkpoint ability: the machine refuses — a sound and nothing else. Re-entering
+            // replays it, which mirrors how a failed dash keeps its denied cue on every attempt.
+            if (!AbilityStore.Owns(AbilityIds.Checkpoint))
             {
                 PlayCue(deniedCue);
                 return;

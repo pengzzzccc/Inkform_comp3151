@@ -57,22 +57,6 @@ namespace Inkform.Item
             return definition != null;
         }
 
-        /// <summary>
-        /// Whether any carried item has this id. Gates item-locked world interactions (e.g. the
-        /// timecard checkpoint machine) without forcing callers to know about FIFO order — the card
-        /// may sit anywhere in the bag, not just at the head.
-        /// </summary>
-        public static bool Owns(string itemId)
-        {
-            if (string.IsNullOrWhiteSpace(itemId)) return false;
-
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (items[i] != null && items[i].Id == itemId) return true;
-            }
-            return false;
-        }
-
         public static bool RemoveFirst() => RemoveAt(0);
 
         /// <summary>Backing-model removal used by PlayerInventory for consuming the first matching item.</summary>

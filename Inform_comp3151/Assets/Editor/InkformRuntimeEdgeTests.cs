@@ -1127,6 +1127,153 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void PatrolMover_Loop_ThreeWaypointsWrapsToFirst()
+        {
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            // A return curve that parks at zero for the whole first half: if Loop wrongly shaped
+            // the wrap leg with it, the mid-wrap position would sit still at (4,0)
+            AnimationCurve parkingReturn = new AnimationCurve(
+                new Keyframe(0f, 0f), new Keyframe(0.5f, 0f), new Keyframe(1f, 1f));
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, Vector2.zero, Vector2.zero,
+                2f, 4f, 0f, 0f, linear, parkingReturn,
+                out GameObject go, out _,
+                waypoints: new[] { Vector2.zero, new Vector2(2f, 0f), new Vector2(4f, 0f) },
+                mode: PatrolMover.PatrolMode.Loop);
+            try
+            {
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position, "first leg: placed → waypoint 1");
+
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(4f, 0f), go.transform.position, "second leg: waypoint 1 → waypoint 2");
+
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position,
+                    "the wrap leg (waypoint 2 → waypoint 0) must travel and use the forward curve, not the return curve");
+
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(0f, 0f), go.transform.position, "the wrap must land exactly on waypoint 0");
+
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position, "after wrapping, the circle repeats from waypoint 1");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_PingPong_ThreeWaypointsReversesAtBothEnds()
+        {
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, Vector2.zero, Vector2.zero,
+                2f, 4f, 0f, 0f, linear, linear,
+                out GameObject go, out _,
+                waypoints: new[] { Vector2.zero, new Vector2(2f, 0f), new Vector2(4f, 0f) });
+            try
+            {
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position, "first leg: placed → waypoint 1");
+
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(4f, 0f), go.transform.position, "second leg reaches the route end");
+
+                // return speed 4: the reversal at the end must switch to the descending direction
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position,
+                    "after the route end the mover must reverse with the return speed");
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(0f, 0f), go.transform.position, "the reversal at the first waypoint lands exactly");
+
+                AdvancePatrol(mover, 0.25f);
+                AssertVector2(new Vector2(1f, 0f), go.transform.position,
+                    "after the first waypoint the mover must ascend again with the forward speed");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_RandomSpeed_RollsPerLegWithinRange()
+        {
+            UnityEngine.Random.InitState(12345);
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, Vector2.zero, Vector2.zero,
+                2f, 2f, 0f, 0f, linear, linear,
+                out GameObject go, out _,
+                waypoints: new[] { Vector2.zero, new Vector2(2f, 0f), new Vector2(4f, 0f) },
+                speedMode: PatrolMover.SpeedMode.RandomRange,
+                randomSpeedMin: 1f, randomSpeedMax: 3f);
+            try
+            {
+                float first = GetField<float>(mover, "legSpeed");
+                Assert.GreaterOrEqual(first, 1f, "the opening leg's rolled speed must respect the interval floor");
+                Assert.LessOrEqual(first, 3f, "the opening leg's rolled speed must respect the interval ceiling");
+
+                // drive several legs; every re-rolled speed must stay within [min, max] and the
+                // mover must never leave the route's span
+                for (int i = 0; i < 12; i++)
+                {
+                    AdvancePatrol(mover, 0.2f);
+                    float rolled = GetField<float>(mover, "legSpeed");
+                    Assert.GreaterOrEqual(rolled, 1f, $"leg {i}: rolled speed below the interval floor");
+                    Assert.LessOrEqual(rolled, 3f, $"leg {i}: rolled speed above the interval ceiling");
+
+                    float x = go.transform.position.x;
+                    Assert.GreaterOrEqual(x, -0.01f, $"leg {i}: the mover escaped the route span");
+                    Assert.LessOrEqual(x, 4.01f, $"leg {i}: the mover escaped the route span");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PatrolMover_MultiWaypoint_PerPointStops()
+        {
+            AnimationCurve linear = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+            PatrolMover mover = CreatePatrolMover(
+                Vector2.zero, Vector2.zero, Vector2.zero,
+                2f, 2f, 9f, 9f, linear, linear,      // endpoint fallbacks set absurdly high: any stop observed must come from Stop Times
+                out GameObject go, out _,
+                waypoints: new[] { Vector2.zero, new Vector2(2f, 0f), new Vector2(4f, 0f) },
+                stopTimes: new[] { 0.5f, 0.25f, 1f });
+            try
+            {
+                AdvancePatrol(mover, 1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position, "first leg arrives at waypoint 1");
+
+                AdvancePatrol(mover, 0.1f);
+                AssertVector2(new Vector2(2f, 0f), go.transform.position,
+                    "the 0.25s per-point stop at waypoint 1 must hold the mover");
+
+                AdvancePatrol(mover, 0.15f + 0.5f);
+                AssertVector2(new Vector2(3f, 0f), go.transform.position,
+                    "after the per-point stop the next leg departs on schedule (fallback endpoint stops must not apply)");
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(4f, 0f), go.transform.position, "arrival at the route end");
+
+                AdvancePatrol(mover, 0.5f);
+                AssertVector2(new Vector2(4f, 0f), go.transform.position,
+                    "the 1s per-point stop at the route end must hold the mover");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
         public void AudioManager_DestroyedActiveSourceRepairsCountAndPool()
         {
             GameObject go = new GameObject("AudioManager recycle test");
@@ -1205,7 +1352,15 @@ namespace Inkform.Tests
             AnimationCurve forwardCurve,
             AnimationCurve returnCurve,
             out GameObject go,
-            out Rigidbody2D body)
+            out Rigidbody2D body,
+            Vector2[] waypoints = null,
+            Inkform.Interactable.Parts.PatrolMover.PatrolMode mode =
+                Inkform.Interactable.Parts.PatrolMover.PatrolMode.PingPong,
+            Inkform.Interactable.Parts.PatrolMover.SpeedMode speedMode =
+                Inkform.Interactable.Parts.PatrolMover.SpeedMode.Fixed,
+            float randomSpeedMin = 0f,
+            float randomSpeedMax = 0f,
+            float[] stopTimes = null)
         {
             go = new GameObject("PatrolMover test");
             go.SetActive(false);
@@ -1222,6 +1377,12 @@ namespace Inkform.Tests
             SetField(mover, "stopTimeAtB", stopTimeAtB);
             SetField(mover, "forwardCurve", forwardCurve);
             SetField(mover, "returnCurve", returnCurve);
+            if (waypoints != null) SetField(mover, "waypoints", waypoints);
+            SetField(mover, "mode", mode);
+            SetField(mover, "speedMode", speedMode);
+            SetField(mover, "randomSpeedMin", randomSpeedMin);
+            SetField(mover, "randomSpeedMax", randomSpeedMax);
+            if (stopTimes != null) SetField(mover, "stopTimes", stopTimes);
             Inkform.Interactable.Interactable node =
                 go.AddComponent<Inkform.Interactable.Interactable>();
             // EditMode tests do not run the normal player-loop Awake sequence, so attach explicitly.

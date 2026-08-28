@@ -1,5 +1,6 @@
 using Inkform.Bus;
 using Inkform.Life;
+using System.Collections;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -18,10 +19,13 @@ namespace Inkform.Player
     public class PlayerDeathFx : MonoBehaviour, IDeathBody
     {
         private SpriteRenderer sprite;
+        private Vector3 baseScale;      // captured at Awake; Flatten animates away from it, respawn restores it
+        private Coroutine flatten;
 
         void Awake()
         {
             sprite = GetComponent<SpriteRenderer>();
+            baseScale = sprite.transform.localScale;
         }
 
         void OnEnable()
@@ -49,6 +53,33 @@ namespace Inkform.Player
 
         public void Show() => sprite.enabled = true;
 
+        // Scale only, never position: the sprite transform may be the player root itself, and writing
+        // position here would fight PlayerHandler's respawn teleport (which runs on the same bus
+        // event). A flattened pancake at body-center height reads fine; a corrupted respawn does not.
+        public void Flatten(Vector2 scaleMultiplier, float duration)
+        {
+            if (flatten != null) StopCoroutine(flatten);
+            flatten = StartCoroutine(FlattenRoutine(scaleMultiplier, duration));
+        }
+
+        private IEnumerator FlattenRoutine(Vector2 scaleMultiplier, float duration)
+        {
+            Vector3 target = new Vector3(
+                baseScale.x * scaleMultiplier.x,
+                baseScale.y * scaleMultiplier.y,
+                baseScale.z);
+
+            // Unscaled time: the crush hitStop pins timeScale to 0 — the squash itself must still
+            // play through, that punch is the whole point of the death
+            for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
+            {
+                sprite.transform.localScale = Vector3.Lerp(baseScale, target, Mathf.Clamp01(t / duration));
+                yield return null;
+            }
+            sprite.transform.localScale = target;
+            flatten = null;
+        }
+
         // Death is driven by DeathDirector (which has the strategy); respawn needs no strategy — no
         // matter how the player died, showing the body back is the same thing, so this half still
         // listens to the bus directly
@@ -56,6 +87,14 @@ namespace Inkform.Player
         {
             if (victim != gameObject) return;
 
+            // Undo however the last life ended the body: a Flatten left mid-run or finished must
+            // never leak into the next life's silhouette
+            if (flatten != null)
+            {
+                StopCoroutine(flatten);
+                flatten = null;
+            }
+            sprite.transform.localScale = baseScale;
             Show();
         }
     }
