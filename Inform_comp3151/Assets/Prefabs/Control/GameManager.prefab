@@ -131,7 +131,7 @@ MonoBehaviour:
   jump: {fileID: 11400000, guid: 61e594f499b3788498461baee604a1f3, type: 2}
   land: {fileID: 11400000, guid: 8910332ea935bd946962c594897611c8, type: 2}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
-  checkpoint: {fileID: 0}
+  checkpoint: {fileID: 11400000, guid: 969a79cb96c05b0b8eac1d2a35a600fc, type: 2}
 --- !u!114 &6402705293193736749
 MonoBehaviour:
   m_ObjectHideFlags: 0
