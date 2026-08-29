@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c595f7a85dba4c948adf6f0f5ef37b5a
+guid: f9884b713f8e55d4ebd9692507afc26b
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -5544089830799249238
-    second: Floating Crystal_0
+      213: 2312393905664041061
+    second: BombSpawner_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -100,13 +100,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Floating Crystal_0
+      name: BombSpawner_0
       rect:
         serializedVersion: 2
         x: 0
-        y: 0
+        y: 24
         width: 32
-        height: 32
+        height: 8
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -115,8 +115,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: aa0fa583caf6f03b0800000000000000
-      internalID: -5544089830799249238
+      spriteID: 56022ef6106471020800000000000000
+      internalID: 2312393905664041061
       vertices: []
       indices: 
       edges: []
@@ -135,7 +135,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Floating Crystal_0: -5544089830799249238
+      BombSpawner_0: 2312393905664041061
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
