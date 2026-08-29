@@ -31,12 +31,14 @@ namespace Inkform.Interactable
     public class Interactable : MonoBehaviour
     {
         private readonly List<IInteractablePart> parts = new List<IInteractablePart>();
+        private bool partsAttached;
 
-        /// <summary>Part lookup: unified entry for the player/system side (e.g. ItemCarrier looks up the
+        /// <summary>Part lookup: unified entry for the player/system side (e.g. PlayerInventory looks up the
         /// carriable part, RopeGun the grabbable part). Returns false when absent — the caller degrades
         /// to "no such behavior".</summary>
         public bool TryGetPart<T>(out T part) where T : class, IInteractablePart
         {
+            EnsurePartsAttached();
             foreach (IInteractablePart p in parts)
             {
                 if (p is T t)
@@ -62,6 +64,7 @@ namespace Inkform.Interactable
         /// </summary>
         public void GetParts<T>(List<T> into) where T : class
         {
+            EnsurePartsAttached();
             foreach (IInteractablePart p in parts)
             {
                 if (p is T t) into.Add(t);
@@ -70,6 +73,14 @@ namespace Inkform.Interactable
 
         void Awake()
         {
+            EnsurePartsAttached();
+        }
+
+        private void EnsurePartsAttached()
+        {
+            if (partsAttached) return;
+            partsAttached = true;
+
             // Parts must be collected before any physics callback: callbacks can only arrive after Awake
             parts.Clear();
             foreach (IInteractablePart p in GetComponentsInChildren<IInteractablePart>(true))

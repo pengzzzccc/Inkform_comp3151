@@ -122,9 +122,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingLayerID: -1112191443
+  m_SortingLayer: 1
+  m_SortingOrder: 100
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4621391574002942694, guid: ff50abeed78ba564a86e071f97a9f437, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -332,7 +332,7 @@ MonoBehaviour:
   onWallGravityMultiplier: 0.1
   wallJumpTime: 0.15
   wallKickMultiplier: 0.3
-  attackMultiplier: 2
+  attackMultiplier: 3.19
   attackTime: 0.22
   knockbackTime: 0.35
 --- !u!114 &4511968466877940253
@@ -361,7 +361,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2620b5d37dce76646aec1bb3bd733d00, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.ItemCarrier
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Player.PlayerInventory
   spitOffset: 0.9
   spitSpeed: 24
 --- !u!1 &5765958816110314823

@@ -9,7 +9,7 @@ namespace Inkform.Player
     /// Player coordinator: receives input, drives each subsystem in a fixed order, responds to death
     /// and respawn. Concrete responsibilities have been split to four components on the same object —
     /// ContactSensor (four-way contact), PlayerMotor (kinematics), AnimStateResolver (animation
-    /// derivation), ItemCarrier (carrying). The rope gun (RopeGun) is an optional fifth component:
+    /// derivation), PlayerInventory (carrying). The rope gun (RopeGun) is an optional fifth component:
     /// the game plays fine without it; with it, wiring happens via TryGetComponent.
     ///
     /// Why keep this class instead of having InputHandler talk to PlayerMotor directly:
@@ -30,10 +30,12 @@ namespace Inkform.Player
         private ContactSensor contact;
         private PlayerMotor motor;
         private AnimStateResolver anim;
-        private ItemCarrier items;      // may be null: levels without the item gameplay need not attach it
+        private PlayerInventory inventory; // may be null: levels without item gameplay need not attach it
         private RopeGun ropeGun;        // may be null: levels without the rope gun play fine
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
+
+        public PlayerInventory Inventory => inventory;
 
         void Awake()
         {
@@ -43,7 +45,7 @@ namespace Inkform.Player
             contact = GetComponent<ContactSensor>();
             motor = GetComponent<PlayerMotor>();
             anim = GetComponent<AnimStateResolver>();
-            TryGetComponent(out items);
+            TryGetComponent(out inventory);
             TryGetComponent(out ropeGun);
 
             // Broadcast once at startup so the bus snapshot is correct from the first frame
@@ -124,10 +126,14 @@ namespace Inkform.Player
         {
             if (LifeBus.IsDead) return;
 
-            // Pure dash: no eat animation, no item interaction (dash into a bomb only detonates;
-            // spitting goes through Q / right trigger)
-            float dir = PlayerBus.Face == FaceDirection.R ? 1f : -1f;
-            motor.Dash(dir);
+            bool succeeded = inventory != null && inventory.TryConsumeDashFuel();
+            if (succeeded)
+            {
+                float dir = PlayerBus.Face == FaceDirection.R ? 1f : -1f;
+                motor.Dash(dir);
+            }
+
+            PlayerBus.RaiseDashAttempted(transform.position, succeeded);
         }
 
         // ---- Rope gun input entries ----
@@ -148,7 +154,7 @@ namespace Inkform.Player
         public void SpitBomb()
         {
             if (LifeBus.IsDead) return;
-            if (items == null || items.IsEmpty) return;
+            if (inventory == null || inventory.IsEmpty) return;
 
             Vector2 dir;
             if (ropeGun != null)
@@ -158,7 +164,7 @@ namespace Inkform.Player
             else
                 dir = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
 
-            if (items.TryRelease(dir))
+            if (inventory.TryReleaseFirst(dir))
             {
                 anim.SetFace(dir.x >= 0f ? FaceDirection.R : FaceDirection.L);
                 // no spit animation (the Release animation was removed)

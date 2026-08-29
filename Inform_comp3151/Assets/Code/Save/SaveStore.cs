@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using Inkform.Ability;
 using Inkform.Bus;
 using Inkform.Item;
 using UnityEngine;
@@ -77,6 +79,7 @@ namespace Inkform.Save
             pendingPrevious = Clone(slots[slot]);
             slots[slot] = new SaveData();
             InventoryStore.ClearWithoutSaving();
+            AbilityStore.ClearWithoutSaving();
             StartRun(slot, 0f, 0);
             Changed?.Invoke();
         }
@@ -90,7 +93,7 @@ namespace Inkform.Save
             slots[slot] = pendingPrevious ?? new SaveData();
             ActiveSlot = -1;
             ClearPending();
-            InventoryStore.Restore(slots[slot].inventoryItemIds, slots[slot].selectedInventoryIndex);
+            RestoreInventory(slots[slot]);
             Changed?.Invoke();
             return true;
         }
@@ -105,7 +108,7 @@ namespace Inkform.Save
 
             ClearPending();
             StartRun(slot, data.playSeconds, data.deaths);
-            InventoryStore.Restore(data.inventoryItemIds, data.selectedInventoryIndex);
+            RestoreInventory(data);
         }
 
         private static void StartRun(int slot, float playBase, int deathBase)
@@ -132,14 +135,30 @@ namespace Inkform.Save
             Changed?.Invoke();
         }
 
-        public static void RecordInventory(string[] ids, int selectedIndex)
+        public static void RecordInventory(string[] ids, int capacity, string[] collectedCapacityPickupIds)
         {
             if (ActiveSlot < 0) return;
             SaveData data = slots[ActiveSlot];
             data.inventoryItemIds = ids ?? Array.Empty<string>();
-            data.selectedInventoryIndex = selectedIndex;
+            data.inventoryCapacity = Mathf.Max(InventoryStore.InitialCapacity, capacity, data.inventoryItemIds.Length);
+            data.collectedInventoryCapacityPickupIds = collectedCapacityPickupIds ?? Array.Empty<string>();
 
             // A brand-new run is not committed until RespawnDirector supplies a loadable scene/position.
+            if (data.IsEmpty) return;
+
+            Stamp(data);
+            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Mirror of RecordInventory for AbilityStore: an unlock lands in the slot file the
+        /// moment it happens, so a crash right after pickup cannot eat an ability.</summary>
+        public static void RecordAbilities(string[] abilityIds)
+        {
+            if (ActiveSlot < 0) return;
+            SaveData data = slots[ActiveSlot];
+            data.unlockedAbilityIds = abilityIds ?? Array.Empty<string>();
+
             if (data.IsEmpty) return;
 
             Stamp(data);
@@ -182,9 +201,15 @@ namespace Inkform.Save
             EnsureLoaded();
             if (!IsValidSlot(slot)) return;
 
+            bool deletedActiveRun = ActiveSlot == slot;
             slots[slot] = new SaveData();
             DeleteFiles(slot);
-            if (ActiveSlot == slot) ActiveSlot = -1;
+            if (deletedActiveRun)
+            {
+                ActiveSlot = -1;
+                InventoryStore.ClearWithoutSaving();
+                AbilityStore.ClearWithoutSaving();
+            }
             if (pendingNewSlot == slot) ClearPending();
             Changed?.Invoke();
         }
@@ -192,7 +217,18 @@ namespace Inkform.Save
         private static void CaptureInventory(SaveData data)
         {
             data.inventoryItemIds = InventoryStore.SnapshotIds();
-            data.selectedInventoryIndex = InventoryStore.SelectedIndex;
+            data.inventoryCapacity = InventoryStore.Capacity;
+            data.collectedInventoryCapacityPickupIds = InventoryStore.SnapshotCollectedCapacityPickupIds();
+            data.unlockedAbilityIds = AbilityStore.SnapshotIds();
+        }
+
+        private static void RestoreInventory(SaveData data)
+        {
+            InventoryStore.Restore(
+                data.inventoryItemIds,
+                data.inventoryCapacity,
+                data.collectedInventoryCapacityPickupIds);
+            AbilityStore.Restore(data.unlockedAbilityIds);
         }
 
         private static void Stamp(SaveData data)
@@ -271,7 +307,22 @@ namespace Inkform.Save
                 {
                     data.version = SaveData.CurrentVersion;
                     data.inventoryItemIds = Array.Empty<string>();
-                    data.selectedInventoryIndex = 0;
+                    data.inventoryCapacity = InventoryStore.InitialCapacity;
+                    data.collectedInventoryCapacityPickupIds = Array.Empty<string>();
+                    data.unlockedAbilityIds = Array.Empty<string>();
+                }
+                else if (data.version == 2)
+                {
+                    data.version = SaveData.CurrentVersion;
+                    data.inventoryItemIds ??= Array.Empty<string>();
+                    data.inventoryCapacity = Mathf.Max(InventoryStore.InitialCapacity, data.inventoryCapacity, CountValidIds(data.inventoryItemIds));
+                    data.collectedInventoryCapacityPickupIds = Array.Empty<string>();
+                    MigrateRetiredTimeCard(data);
+                }
+                else if (data.version == 3)
+                {
+                    data.version = SaveData.CurrentVersion;
+                    MigrateRetiredTimeCard(data);
                 }
                 else if (data.version != SaveData.CurrentVersion)
                 {
@@ -279,6 +330,12 @@ namespace Inkform.Save
                 }
 
                 data.inventoryItemIds ??= Array.Empty<string>();
+                data.collectedInventoryCapacityPickupIds ??= Array.Empty<string>();
+                data.unlockedAbilityIds ??= Array.Empty<string>();
+                data.inventoryCapacity = Mathf.Max(
+                    InventoryStore.InitialCapacity,
+                    data.inventoryCapacity,
+                    CountValidIds(data.inventoryItemIds));
                 return true;
             }
             catch (Exception e)
@@ -339,7 +396,59 @@ namespace Inkform.Save
             if (source == null) return new SaveData();
             SaveData clone = JsonUtility.FromJson<SaveData>(JsonUtility.ToJson(source));
             clone.inventoryItemIds ??= Array.Empty<string>();
+            clone.collectedInventoryCapacityPickupIds ??= Array.Empty<string>();
+            clone.unlockedAbilityIds ??= Array.Empty<string>();
+            clone.inventoryCapacity = Mathf.Max(
+                InventoryStore.InitialCapacity,
+                clone.inventoryCapacity,
+                CountValidIds(clone.inventoryItemIds));
             return clone;
+        }
+
+        // The pre-v4 world: the timecard rode the backpack and gated checkpoints from there. v4 turned
+        // it into an ability, so migration strips the retired item (its definition is gone from the
+        // catalogue — Restore would drop it with a warning) and grants the ability it used to gate.
+        private const string RetiredTimeCardItemId = "time-card";
+
+        /// <summary>Strips the retired time-card item and grants the checkpoint ability in its place,
+        /// so a v2/v3 player who had the card keeps working checkpoints after the change.</summary>
+        private static void MigrateRetiredTimeCard(SaveData data)
+        {
+            data.inventoryItemIds ??= Array.Empty<string>();
+            if (!ContainsId(data.inventoryItemIds, RetiredTimeCardItemId))
+            {
+                data.unlockedAbilityIds = Array.Empty<string>();
+                return;
+            }
+
+            var kept = new List<string>(data.inventoryItemIds.Length - 1);
+            foreach (string id in data.inventoryItemIds)
+            {
+                if (id != RetiredTimeCardItemId) kept.Add(id);
+            }
+            data.inventoryItemIds = kept.ToArray();
+            data.unlockedAbilityIds = new[] { AbilityIds.Checkpoint };
+        }
+
+        private static bool ContainsId(string[] ids, string id)
+        {
+            if (ids == null) return false;
+            foreach (string candidate in ids)
+            {
+                if (candidate == id) return true;
+            }
+            return false;
+        }
+
+        private static int CountValidIds(string[] ids)
+        {
+            if (ids == null) return 0;
+            int count = 0;
+            foreach (string id in ids)
+            {
+                if (!string.IsNullOrWhiteSpace(id)) count++;
+            }
+            return count;
         }
     }
 }

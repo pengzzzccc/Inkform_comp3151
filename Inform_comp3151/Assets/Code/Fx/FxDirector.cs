@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Settings;
 using UnityEngine;
 
 namespace Inkform.Fx
@@ -27,6 +28,16 @@ namespace Inkform.Fx
         [SerializeField] private float blastZoom = -0.35f;      // negative = push in
         [SerializeField] private float blastZoomTime = 0.25f;
 
+        [Header("Blast Wave")]
+        [SerializeField] private bool blastWaveEnabled = true;
+        [SerializeField] private Color blastWaveColor = new Color(1f, 0.81960785f, 0.36078432f, 0.95f);
+        [SerializeField, Min(0f)] private float blastWaveDuration = 0.28f;
+        [SerializeField, Min(0f)] private float blastWaveStartRadius = 0.12f;
+        [SerializeField, Min(0f)] private float blastWaveStartWidth = 0.22f;
+        [SerializeField, Min(0f)] private float blastWaveEndWidth = 0.04f;
+        [SerializeField, Range(24, 128)] private int blastWaveSegments = 64;
+        [SerializeField] private int blastWaveSortingOrder = 100;
+
         void OnEnable()
         {
             HazardBus.Blast += OnBlast;
@@ -43,6 +54,22 @@ namespace Inkform.Fx
                 ? 1f
                 : Mathf.Clamp01(1f - Vector2.Distance(center, transform.position) / falloffRange);
             if (k <= 0f) return;
+
+            float waveOpacity = Mathf.Clamp01(SettingsStore.FxIntensity) * k;
+            if (blastWaveEnabled && waveOpacity > 0f)
+            {
+                BlastWaveFx.Spawn(
+                    center,
+                    radius,
+                    blastWaveColor,
+                    blastWaveDuration,
+                    blastWaveStartRadius,
+                    blastWaveStartWidth,
+                    blastWaveEndWidth,
+                    blastWaveSegments,
+                    blastWaveSortingOrder,
+                    waveOpacity);
+            }
 
             // Each item can be zeroed out separately in the Inspector without affecting the others
             if (blastTrauma > 0f) FxBus.RaiseShake(blastTrauma * k);

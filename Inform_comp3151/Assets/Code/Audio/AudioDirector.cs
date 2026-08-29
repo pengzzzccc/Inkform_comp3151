@@ -15,13 +15,14 @@ namespace Inkform.Audio
     public class AudioDirector : MonoBehaviour
     {
         [Header("Hazard")]
-        [SerializeField] private SoundCue blast;        // explosion (exactly once per explosion)
+        [SerializeField] private SoundCue blast;        // explosion / successful bomb-powered dash
         [SerializeField] private SoundCue wallBreak;    // breakable wall shatter
-        [SerializeField] private SoundCue bombTick;     // bomb warning frame advance (proximity warning + fuse countdown share it)
+        [SerializeField] private SoundCue bombTick;     // bomb warning frame advance / dash trigger
 
         [Header("Item")]
         [SerializeField] private SoundCue itemEaten;    // swallow
         [SerializeField] private SoundCue itemSpit;     // spit out
+        [SerializeField] private SoundCue inventoryCapacityUpgrade; // permanent backpack expansion pickup
 
         [Header("Player")]
         [SerializeField] private SoundCue jump;
@@ -40,7 +41,9 @@ namespace Inkform.Audio
             HazardBus.Ticked += OnTicked;
             ItemBus.ItemStored += OnItemEaten;
             ItemBus.ItemReleased += OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded += OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged += OnPlayerState;
+            PlayerBus.DashAttempted += OnDashAttempted;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -52,7 +55,9 @@ namespace Inkform.Audio
             HazardBus.Ticked -= OnTicked;
             ItemBus.ItemStored -= OnItemEaten;
             ItemBus.ItemReleased -= OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded -= OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged -= OnPlayerState;
+            PlayerBus.DashAttempted -= OnDashAttempted;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
         }
@@ -66,7 +71,16 @@ namespace Inkform.Audio
         // kept so "higher pitch as it gets closer" needs no bus signature change later
         private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
 
+        private void OnDashAttempted(Vector2 pos, bool succeeded)
+        {
+            Play(bombTick, pos);
+            if (succeeded) Play(blast, pos);
+        }
+
         private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
+
+        private void OnInventoryCapacityUpgraded(Vector2 pos, int capacityIncrease) =>
+            Play(inventoryCapacityUpgrade, pos);
 
         // Both of these are "the player's own sounds", always at the camera center, so like
         // attack/jump/land they pass no position. The matching Cue assets should keep spatial off —

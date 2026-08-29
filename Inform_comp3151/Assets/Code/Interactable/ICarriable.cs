@@ -4,21 +4,16 @@ using Inkform.Item;
 namespace Inkform.Interactable
 {
     /// <summary>
-    /// Carriable item interface: the player systems (ItemCarrier / ItemBus / RopeGun) **only deal with
-    /// this interface** and never know any concrete implementation — "the player needs only interface
-    /// storage; concrete logic lives in the concrete object".
+    /// Carriable item part capability: player systems deal only with this interface and resolve it
+    /// through Interactable.TryGetPart — never by probing concrete components directly.
     ///
-    /// Implementations:
-    /// ① standalone classes implement it directly (the former Bomb monolith's method signatures
-    ///    already matched, just declared);
-    /// ② framework objects attach it to an Interactable, implemented by CarriablePart — note the
-    ///    implementation must sit on the Interactable's **root object** (RopeGun probes with
-    ///    GetComponent; a child object would not be found).
+    /// The implementation may sit on the Interactable root or a child: the node collects every
+    /// IInteractablePart in its hierarchy and is the single capability lookup entry.
     ///
     /// Release is a direct command on the freshly instantiated world object. ItemBus only announces
     /// the completed fact to feedback systems.
     /// </summary>
-    public interface ICarriable
+    public interface ICarriable : IInteractablePart
     {
         InventoryItemDefinition Definition { get; }
 

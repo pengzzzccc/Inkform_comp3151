@@ -16,3 +16,4 @@ MonoBehaviour:
   displayName: Bomb
   icon: {fileID: -43189483694800998, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   worldPrefab: {fileID: 2329586824147779645, guid: 4d1d4cf98ba47444d908f50b998c268a, type: 3}
+  dashFuel: 1

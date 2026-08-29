@@ -24,5 +24,12 @@ namespace Inkform.Life
 
         /// <summary>Shows the body back on respawn.</summary>
         void Show();
+
+        /// <summary>
+        /// Flattens the body in place (crush death): the visible body squashes by scaleMultiplier
+        /// over duration — x widens, y flattens — and stays visible. No shards, no hide. Implementors
+        /// must restore the original scale on respawn, so the squash never leaks into the next life.
+        /// </summary>
+        void Flatten(Vector2 scaleMultiplier, float duration);
     }
 }

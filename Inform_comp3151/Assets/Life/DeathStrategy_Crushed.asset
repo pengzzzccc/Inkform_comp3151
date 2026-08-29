@@ -9,17 +9,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0e86588c8cc23d147af59e0aff778bc0, type: 3}
+  m_Script: {fileID: 11500000, guid: aa5855664cc39c41d141fcb03583fbe9, type: 3}
   m_Name: DeathStrategy_Crushed
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Life.CrushDeathStrategy
   cause: 4
   respawnDelay: 1
-  pieces: {fileID: 11400000, guid: b24fb8940b7c18f290359a0c0f615dff, type: 2}
-  burstForce: 16
+  squash: {x: 1.6, y: 0.12}
+  flattenTime: 0.1
   trauma: 0.9
   hitStop: 0.18
   zoom: -0.6
   zoomTime: 0.4
   punch: 0.85
   punchTime: 0.5
-  deathCue: {fileID: 11400000, guid: 360ed3774a98fa742be7fc7f79800244, type: 2}
+  deathCue: {fileID: 11400000, guid: 8749ff9b59b3cde390b225d72d335506, type: 2}

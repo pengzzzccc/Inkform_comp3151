@@ -140,6 +140,14 @@ MonoBehaviour:
   blastHitStop: 0.06
   blastZoom: -0.35
   blastZoomTime: 0.25
+  blastWaveEnabled: 1
+  blastWaveColor: {r: 1, g: 0.81960785, b: 0.36078432, a: 0.95}
+  blastWaveDuration: 0.28
+  blastWaveStartRadius: 0.12
+  blastWaveStartWidth: 0.22
+  blastWaveEndWidth: 0.04
+  blastWaveSegments: 64
+  blastWaveSortingOrder: 100
 --- !u!81 &5689670982028208817
 AudioListener:
   m_ObjectHideFlags: 0
