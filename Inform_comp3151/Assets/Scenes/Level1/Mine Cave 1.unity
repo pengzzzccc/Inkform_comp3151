@@ -6595,6 +6595,10 @@ PrefabInstance:
       value: Gear (2)
       objectReference: {fileID: 0}
     - target: {fileID: 5855175853729645294, guid: 6546db56898c4328836ed57bd0d3e47c, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.11
+      objectReference: {fileID: 0}
+    - target: {fileID: 5855175853729645294, guid: 6546db56898c4328836ed57bd0d3e47c, type: 3}
       propertyPath: m_LocalPosition.x
       value: 425.18
       objectReference: {fileID: 0}
