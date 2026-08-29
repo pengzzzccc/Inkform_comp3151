@@ -103,9 +103,9 @@ TextureImporter:
       name: LaserEmitter_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 3
         y: 0
-        width: 32
+        width: 26
         height: 6
       alignment: 0
       pivot: {x: 0, y: 0}
