@@ -25,6 +25,8 @@ namespace Inkform.Interactable.Parts
         [Header("Outline glow")]
         [Tooltip("Material with the Inkform/SpriteOutline shader. Fade is driven per frame by this component; colour and width live in the material.")]
         [SerializeField] private Material outlineMaterial;
+        [Tooltip("Glow drawing space around the sprite, as a fraction of the sprite size. A sprite mesh has no pixels outside its silhouette, so the outline quad is scaled up by this and the shader remaps its UVs — raise it together with the material's Outline Width.")]
+        [SerializeField, Min(0f)] private float outlinePadding = 0.25f;
         [Tooltip("Breaths per second of the glow while visible; 0 = steady.")]
         [SerializeField, Min(0f)] private float pulseSpeed = 2.2f;
         [Tooltip("How much the breathing dims the glow at its trough, 0..1.")]
@@ -51,6 +53,10 @@ namespace Inkform.Interactable.Parts
 
         private Interactable root;
         private readonly HashSet<Collider2D> players = new HashSet<Collider2D>();
+
+        private static readonly int FadeId = Shader.PropertyToID("_Fade");
+        private static readonly int SpriteRectId = Shader.PropertyToID("_SpriteRect");
+        private static readonly int SpriteScaleId = Shader.PropertyToID("_SpriteScale");
 
         private SpriteRenderer baseRenderer;
         private SpriteRenderer outlineRenderer;
@@ -105,7 +111,7 @@ namespace Inkform.Interactable.Parts
             // Glow breathes around its fade level; the icon fades without breathing (readability)
             float pulse = 1f - pulseStrength * 0.5f * (1f + Mathf.Sin(Time.time * pulseSpeed));
             if (outlineMaterialInstance != null)
-                outlineMaterialInstance.SetFloat("_Fade", fade * pulse);
+                outlineMaterialInstance.SetFloat(FadeId, fade * pulse);
 
             canvasGroup.alpha = fade;
 
@@ -129,9 +135,26 @@ namespace Inkform.Interactable.Parts
                 outlineRenderer.sharedMaterial = outlineMaterial;
                 outlineRenderer.sortingLayerID = baseRenderer.sortingLayerID;
                 outlineRenderer.sortingOrder = baseRenderer.sortingOrder + 1;
+
+                // A sprite mesh has no pixels outside the silhouette, so the glow quad is scaled up
+                // by the padding and the shader remaps its UVs back into sprite space (_SpriteRect /
+                // _SpriteScale): the silhouette still renders at its original size and the ring
+                // around it becomes drawable band
+                float outlineScale = 1f + 2f * outlinePadding;
+                outlineRenderer.transform.localScale = Vector3.one * outlineScale;
+
+                // Scaling about the pivot would shove an off-centre pivot's sprite aside — anchor the
+                // outline's sprite centre on the base sprite's centre instead (upright, unscaled roots)
+                Vector2 baseCenter = (Vector2)baseRenderer.transform.localPosition +
+                    (Vector2)baseRenderer.localBounds.center;
+                outlineObject.transform.localPosition =
+                    baseCenter - outlineScale * (Vector2)outlineRenderer.localBounds.center;
+
                 // The per-renderer copy the fade drives; released in OnDestroy
                 outlineMaterialInstance = outlineRenderer.material;
-                outlineMaterialInstance.SetFloat("_Fade", 0f);
+                outlineMaterialInstance.SetVector(SpriteRectId, SpriteUvRect(baseRenderer.sprite));
+                outlineMaterialInstance.SetFloat(SpriteScaleId, outlineScale);
+                outlineMaterialInstance.SetFloat(FadeId, 0f);
             }
 
             var canvasObject = new GameObject("Prompt Canvas", typeof(RectTransform));
@@ -217,6 +240,19 @@ namespace Inkform.Interactable.Parts
                 ? InteractPromptIcons.XboxGlyph
                 : InteractPromptIcons.KeyboardGlyph;
             label.raycastTarget = false;
+        }
+
+        /// <summary>The sprite's slice rectangle in texture UV space (x0, y0, x1, y1) — the region the
+        /// outline shader treats as "the sprite", masking everything outside it.</summary>
+        private static Vector4 SpriteUvRect(Sprite sprite)
+        {
+            Texture2D texture = sprite.texture;
+            Rect pixelRect = sprite.textureRect;
+            return new Vector4(
+                pixelRect.x / texture.width,
+                pixelRect.y / texture.height,
+                (pixelRect.x + pixelRect.width) / texture.width,
+                (pixelRect.y + pixelRect.height) / texture.height);
         }
 
         void OnDestroy()
