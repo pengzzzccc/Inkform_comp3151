@@ -6,6 +6,7 @@ using Inkform.Ability;
 using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
+using Inkform.Level;
 using Inkform.Save;
 using Inkform.Settings;
 using Inkform.Tool;
@@ -214,6 +215,63 @@ namespace Inkform.Tests
             Assert.IsTrue(node.TryGetPart(out AbilityPickupPart _));
             Assert.IsTrue(root == null, "an already-earned ability consumes its world copy on load");
         }
+
+        [Test]
+        public void Checkpoints_NewestStampResetsPreviousMachines()
+        {
+            AbilityStore.ClearWithoutSaving();
+            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+
+            GameObject player = new GameObject("Player");
+            player.tag = Tags.Player;
+            BoxCollider2D playerCollider = player.AddComponent<BoxCollider2D>();
+            Checkpoint first = NewCheckpoint(new Vector3(0f, 0f, 0f));
+            Checkpoint second = NewCheckpoint(new Vector3(10f, 0f, 0f));
+            try
+            {
+                Touch(first, playerCollider);
+                Assert.IsTrue(IsStamped(first));
+                Assert.IsFalse(IsStamped(second));
+
+                Touch(second, playerCollider);
+                Assert.IsTrue(IsStamped(second));
+                Assert.IsFalse(IsStamped(first), "stamping a machine must reset the previous one to un-stamped");
+
+                Touch(first, playerCollider);
+                Assert.IsTrue(IsStamped(first), "a reset machine opens its gate and can be stamped again");
+                Assert.IsFalse(IsStamped(second));
+            }
+            finally
+            {
+                if (first != null) { InvokeInstance(first, "OnDisable"); UnityEngine.Object.DestroyImmediate(first.gameObject); }
+                if (second != null) { InvokeInstance(second, "OnDisable"); UnityEngine.Object.DestroyImmediate(second.gameObject); }
+                UnityEngine.Object.DestroyImmediate(player);
+            }
+        }
+
+        private static Checkpoint NewCheckpoint(Vector3 position)
+        {
+            GameObject go = new GameObject("Checkpoint test");
+            go.SetActive(false);
+            go.transform.position = position;
+            go.AddComponent<SpriteRenderer>();
+            go.AddComponent<BoxCollider2D>();
+            Checkpoint checkpoint = go.AddComponent<Checkpoint>();
+            InvokeInstance(checkpoint, "Awake");
+            InvokeInstance(checkpoint, "OnEnable");
+            return checkpoint;
+        }
+
+        private static void Touch(Checkpoint checkpoint, Collider2D other) =>
+            checkpoint.GetType().GetMethod("OnTriggerEnter2D", BindingFlags.Instance | BindingFlags.NonPublic)?
+                .Invoke(checkpoint, new object[] { other });
+
+        private static bool IsStamped(Checkpoint checkpoint) =>
+            (bool)checkpoint.GetType().GetField("active", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(checkpoint);
+
+        private static void InvokeInstance(object target, string method) =>
+            target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);
 
         private static SaveData ReadSave(string path)
         {

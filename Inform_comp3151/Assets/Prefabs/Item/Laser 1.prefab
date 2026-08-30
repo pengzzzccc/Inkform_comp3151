@@ -224,6 +224,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 3645470477116585488}
     m_Modifications:
+    - target: {fileID: 2769706574686744557, guid: 3b252a8e3a6d46b1b58344fe35e31e9f, type: 3}
+      propertyPath: cause
+      value: 3
+      objectReference: {fileID: 0}
     - target: {fileID: 7072248482715684300, guid: 3b252a8e3a6d46b1b58344fe35e31e9f, type: 3}
       propertyPath: m_Name
       value: laser

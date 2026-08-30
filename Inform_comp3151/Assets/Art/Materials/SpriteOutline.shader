@@ -1,12 +1,18 @@
 // Inkform sprite-outline — URP 2D sprite edge glow for interaction prompts. A second SpriteRenderer
-// above the original draws with this material: it discards the body and paints only a band hugging
-// the alpha silhouette (8 directions × 2 sample rings in texel space), so the light reads as a rim
-// around the sprite whatever its shape — no scaled-sprite hacks, no per-art outline assets.
+// (scaled up by the prompt's padding, same sprite) draws with this material: it discards the body
+// and paints only a band hugging the alpha silhouette (8 directions × 2 sample rings in texel
+// space), so the light reads as a rim around the sprite whatever its shape.
+//
+// A sprite mesh never has drawable pixels outside its silhouette, so the quad is scaled up around
+// the sprite and the fragment UVs are remapped back into sprite space (_SpriteRect/_SpriteScale):
+// the sprite still renders at its original size while the padding ring around it becomes free
+// space for the band. Samples outside the sprite's UV rect are masked out — clamped edge reads
+// would otherwise smear the texture border into the glow.
 //
 // Driven by InteractionPromptPart:
 //   • _Fade (0..1) is the fade-in/out of the whole glow (plus the breathing pulse), set per frame;
-//   • _OutlineWidth is in texels, so one setting looks equally thick on small and large sprites and
-//     stays blocky on point-filtered pixel art.
+//   • _OutlineWidth is in texels of the sprite texture; widen _SpriteRect's padding (the prompt's
+//     Outline Padding field) together with it so the band has room.
 Shader "Inkform/SpriteOutline"
 {
     Properties
@@ -15,8 +21,12 @@ Shader "Inkform/SpriteOutline"
         _Color ("Tint", Color) = (1,1,1,1)
 
         _OutlineColor ("Outline Color", Color) = (1, 0.85, 0.35, 1)
-        _OutlineWidth ("Outline Width (texels)", Range(1, 8)) = 3
+        _OutlineWidth ("Outline Width (texels)", Range(1, 8)) = 4
         _Fade ("Fade", Range(0, 1)) = 0
+
+        // Runtime-driven by InteractionPromptPart; defaults cover the whole texture
+        _SpriteRect ("Sprite UV Rect (x0, y0, x1, y1)", Vector) = (0, 0, 1, 1)
+        _SpriteScale ("Outline Quad Scale", Float) = 1
     }
 
     SubShader
@@ -55,6 +65,8 @@ Shader "Inkform/SpriteOutline"
                 half4  _OutlineColor;
                 float  _OutlineWidth;
                 float  _Fade;
+                float4 _SpriteRect;
+                float  _SpriteScale;
             CBUFFER_END
 
             struct Attributes
@@ -87,9 +99,20 @@ Shader "Inkform/SpriteOutline"
                 float2( 0.70710678, -0.70710678), float2(-0.70710678, -0.70710678)
             };
 
+            // Alpha masked to the sprite's own UV rect: reads outside it (the padding margin, or a
+            // clamped fetch past the rect edge) contribute nothing instead of smearing the border
+            half MaskedAlpha(float2 uv)
+            {
+                float2 inside = step(_SpriteRect.xy, uv) * step(uv, _SpriteRect.zw);
+                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv).a * inside.x * inside.y;
+            }
+
             half4 Frag(Varyings IN) : SV_Target
             {
-                half center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv).a;
+                // Undo the quad's padding scale: the fragment maps back to where the unscaled sprite
+                // mesh would have sampled, so the silhouette lands at its original size/position
+                float2 rectCenter = (_SpriteRect.xy + _SpriteRect.zw) * 0.5;
+                float2 suv = rectCenter + (IN.uv - rectCenter) * _SpriteScale;
 
                 // Two rings per direction (full width and half) — the half ring fills the diagonal
                 // gaps so the band is solid instead of dotted at the corners
@@ -100,9 +123,10 @@ Shader "Inkform/SpriteOutline"
                 for (int i = 0; i < 8; i++)
                 {
                     float2 d = kDirs[i];
-                    ring = max(ring, SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv + d * stepFull).a);
-                    ring = max(ring, SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv + d * stepHalf).a);
+                    ring = max(ring, MaskedAlpha(suv + d * stepFull));
+                    ring = max(ring, MaskedAlpha(suv + d * stepHalf));
                 }
+                half center = MaskedAlpha(suv);
 
                 // Band strictly outside the silhouette: a pixel with its own alpha keeps none of the glow
                 half band = saturate(ring * (1.0 - saturate(center)));

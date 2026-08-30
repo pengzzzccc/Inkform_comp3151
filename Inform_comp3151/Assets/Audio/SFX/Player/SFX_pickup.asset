@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SFX_pickup
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.SoundCue
   clips:
-  - {fileID: 8300000, guid: 87d1c9ff72ae2b646a8aac1ffe2ced10, type: 3}
+  - {fileID: 8300000, guid: e0a5f8507f71a304fb8ba33ebf2e8baf, type: 3}
   output: {fileID: 0}
   volume: 1
   category: 0
