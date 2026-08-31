@@ -8,6 +8,16 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
+    /// Item-lifecycle hook: fired by CarriablePart.Release the moment the item is spat back into
+    /// the world. Parts whose behavior changes when thrown (ExplodePart arms world-contact
+    /// detonation) implement this; CarriablePart never learns what the parts do with it.
+    /// </summary>
+    public interface IOnSpit
+    {
+        void OnSpit();
+    }
+
+    /// <summary>
     /// Carriable part: an object that can be swallowed after the rope gun hits it, carried in the
     /// backpack and spit out. The common behavior of the former Bomb's item lifecycle, extracted
     /// (minus the bomb-specific fuse) — "stored then put back
@@ -132,6 +142,11 @@ namespace Inkform.Interactable.Parts
             // Spit protection: right after being spit out the velocity is high and the player is often
             // still touching — this window blocks any explosion trigger from player contact
             if (spitArmTime > 0f) spitTimer.Set(spitArmTime);
+
+            // Tell the parts the item is now "thrown": an armed explosive detonates on world contact
+            // from here on (the player-contact immunity window above is what keeps it from going off
+            // at the muzzle instead)
+            foreach (IOnSpit onSpit in root.GetComponentsInChildren<IOnSpit>(true)) onSpit.OnSpit();
         }
 
         // Pull-mark: after the rope gun hits, the player is reeled in; during that contact with the

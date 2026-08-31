@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   volumeScale: 0.85
   cutoff: 3000
-  reverbWet: 0.55
+  reverbWet: 0.7
   blendIn: 0.6
   blendOut: 1

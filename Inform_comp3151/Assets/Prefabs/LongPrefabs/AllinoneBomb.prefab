@@ -11,11 +11,8 @@ GameObject:
   - component: {fileID: 686532617301129227}
   - component: {fileID: 2663986350927360183}
   - component: {fileID: 8420452527259773381}
-  - component: {fileID: 2328259817796380993}
-  - component: {fileID: 6287612744335083670}
-  - component: {fileID: 1315766406854013499}
-  - component: {fileID: 2331397283232399007}
-  - component: {fileID: 1689052385538600397}
+    - component: {fileID: 6287612744335083670}
+      - component: {fileID: 1689052385538600397}
   - component: {fileID: 7055706096835111339}
   - component: {fileID: 7442671295014257853}
   - component: {fileID: 2969007430487722875}
@@ -68,19 +65,6 @@ MonoBehaviour:
   eatAble: 1
   spitArmTime: 0.1
   definition: {fileID: 11400000, guid: 4c47f4713fa047c1a234516b37b36dc4, type: 2}
---- !u!114 &2328259817796380993
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5221940754332694303}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ef71459cee344c3901e9474491580a4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnBlast
-  chainDelay: 0.1
 --- !u!114 &6287612744335083670
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -106,35 +90,6 @@ MonoBehaviour:
   - {fileID: -8756790491359087728, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: -3034200899849956086, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   proximityRadius: 4
---- !u!114 &1315766406854013499
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5221940754332694303}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 01d213b5ad474a33aa776b4170384ba9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnImpact
-  threshold: 5
-  impactMask:
-    serializedVersion: 2
-    m_Bits: 10304
---- !u!114 &2331397283232399007
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5221940754332694303}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d071132458284dee8674394ee5ae5f02, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnContact
-  targetTag: Player
 --- !u!114 &1689052385538600397
 MonoBehaviour:
   m_ObjectHideFlags: 0

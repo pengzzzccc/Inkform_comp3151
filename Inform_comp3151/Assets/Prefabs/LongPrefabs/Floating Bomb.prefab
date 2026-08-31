@@ -12,10 +12,8 @@ GameObject:
   - component: {fileID: 978652543122846978}
   - component: {fileID: 5713076287492010071}
   - component: {fileID: 3029611092000652681}
-  - component: {fileID: 7633286874167689058}
-  - component: {fileID: 1391212707012425504}
-  - component: {fileID: 4598473542990691007}
-  - component: {fileID: 6899676052817514577}
+    - component: {fileID: 1391212707012425504}
+    - component: {fileID: 6899676052817514577}
   - component: {fileID: 6226552708803336386}
   - component: {fileID: 3816028758277302456}
   - component: {fileID: 7095600481869306254}
@@ -82,19 +80,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba180997b2205c6479539a20dcb5b72d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.RestorablePart
---- !u!114 &7633286874167689058
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ef71459cee344c3901e9474491580a4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnBlast
-  chainDelay: 0.1
 --- !u!114 &1391212707012425504
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -120,19 +105,6 @@ MonoBehaviour:
   - {fileID: -8756790491359087728, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: -3034200899849956086, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   proximityRadius: 4
---- !u!114 &4598473542990691007
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d071132458284dee8674394ee5ae5f02, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnContact
-  targetTag: Player
 --- !u!114 &6899676052817514577
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -5,10 +5,12 @@ namespace Inkform.Audio
 {
     /// <summary>
     /// A volume of space with its own acoustic (its AudioZoneProfile). The player entering pushes
-    /// the profile onto the listener's zone stack, leaving pops it, and AudioManager blends the
-    /// strictest-wins mix into every zoned sound — one-shots snapshot it at post time, persistent
-    /// loops re-read it each frame. The player is identified by the Player tag, same convention
-    /// as Checkpoint; the AudioListener rides on the camera, which has no collider of its own.
+    /// the profile onto the listener's zone stack, leaving pops it. Muffling and volume scale
+    /// blend strictest-wins into every zoned sound — one-shots snapshot them at post time,
+    /// persistent loops re-read them each frame — while the zone's reverb wet drives one global
+    /// filter on the AudioListener, so everything heard inside the cave carries a tail that rings
+    /// out naturally. The player is identified by the Player tag, same convention as Checkpoint;
+    /// the AudioListener rides on the camera, which has no collider of its own.
     /// The collider must be a trigger; Reset enforces it in the editor.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
@@ -68,14 +70,53 @@ namespace Inkform.Audio
         }
 
 #if UNITY_EDITOR
+        // Always-on, size-accurate volume: the shape drawn is the collider's actual world shape
+        // (rotation and scale included through the local-to-world matrix), dim when unselected so
+        // a level full of zones stays readable, bright with an outline and the profile name when
+        // selected. What designers see is exactly what the trigger covers
+        private void OnDrawGizmos() => DrawZoneGizmo(false);
+
         private void OnDrawGizmosSelected()
         {
-            // Blue = dry/open, towards violet = wet; the shape shown is the exact trigger volume
-            Gizmos.color = profile != null
-                ? new Color(0.45f, 0.35f + 0.5f * profile.reverbWet, 1f, 0.55f)
-                : new Color(0.5f, 0.5f, 0.5f, 0.4f);
+            DrawZoneGizmo(true);
+            if (profile != null)
+                UnityEditor.Handles.Label(transform.position + Vector3.up * 1.5f, profile.name);
+        }
+
+        private void DrawZoneGizmo(bool selected)
+        {
+            // Gizmo code runs before Awake ever does in edit mode, so the cached collider is not
+            // available here — fetch it per call, editor-only cost
             Collider2D collider = GetComponent<Collider2D>();
-            if (collider != null) Gizmos.DrawCube(collider.bounds.center, collider.bounds.size);
+            if (collider == null) return;
+
+            // Blue = dry/open, violet = wet; grey = no profile wired yet
+            Gizmos.color = profile != null
+                ? new Color(0.45f, 0.35f + 0.5f * profile.reverbWet, 1f, selected ? 0.5f : 0.13f)
+                : new Color(0.5f, 0.5f, 0.5f, selected ? 0.4f : 0.1f);
+
+            // Local-space drawing: the matrix carries the transform, the shape comes from the
+            // collider itself — no fixed radius, no stale AABB
+            Gizmos.matrix = transform.localToWorldMatrix;
+            if (collider is BoxCollider2D box)
+            {
+                Vector3 center = box.offset;
+                Gizmos.DrawCube(center, box.size);
+                if (selected) Gizmos.DrawWireCube(center, box.size);
+            }
+            else if (collider is CircleCollider2D circle)
+            {
+                Vector3 center = circle.offset;
+                Gizmos.DrawSphere(center, circle.radius);
+                if (selected) Gizmos.DrawWireSphere(center, circle.radius);
+            }
+            else
+            {
+                // Composite/polygon/edge: fall back to the world-space bounds box
+                Gizmos.matrix = Matrix4x4.identity;
+                Gizmos.DrawCube(collider.bounds.center, collider.bounds.size);
+            }
+            Gizmos.matrix = Matrix4x4.identity;
         }
 #endif
     }

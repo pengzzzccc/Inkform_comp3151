@@ -7,10 +7,19 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// Explosion core: defines "the blast itself" — radius, push, affected layers, shatter look, with
-    /// an idempotent Explode() entry. Fully passive itself: subscribes to no bus, consumes no contact;
-    /// trigger parts (ExplodeOnContact / ExplodeOnBlast / ExplodeAfterDelay / ExplodeOnImpact) call
-    /// Explode() when their condition is met.
+    /// The whole explosive in one part: the blast itself plus the two ways it is set off.
+    ///
+    /// Detonation paths (deliberately just these — the old speed-threshold part read the
+    /// post-solve velocity in the collision callback, where a head-on hit has its normal component
+    /// already zeroed, so bombs spat straight into the ground never detonated):
+    /// 1. Contact: touching the target (the player) detonates, armed or not;
+    /// 2. Hazard contact: touching a hazardDetonatorMask layer (spikes) detonates, armed or not —
+    ///    an explosive does not survive resting on spikes;
+    /// 3. Contact while armed: a spat/thrown bomb (CarriablePart.Release fires IOnSpit) detonates
+    ///    on contact with anything else — terrain, walls, breakables. Unarmed bombs ignore world
+    ///    contact, which is what lets spawner bombs lie on the ground waiting for the player;
+    /// 4. Chain: caught in another explosion (HazardBus.Exploded, claimed via the victim) it
+    ///    detonates after chainDelay, so a row of bombs blows in sequence instead of one frame.
     ///
     /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakablePart
     /// shatters, PlayerHandler gets knocked back, other explosives chain) + one RaiseBlast overall
@@ -21,7 +30,7 @@ namespace Inkform.Interactable.Parts
     /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
     /// distance-driven branch only.
     /// </summary>
-    public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart
+    public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart, IOnSpit
     {
         [Header("Blast")]
         [SerializeField] private float blastRadius = 2f;
@@ -29,6 +38,18 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private LayerMask blastMask;
         [Tooltip("What the shatter looks like, all written in this asset; null = silent, no fragments")]
         [SerializeField] private FragmentCue breakCue;
+
+        [Header("Detonation")]
+        [Tooltip("Who detonates it by touch, armed or not. CompareTag never errors on a wrong string, it just never matches — use the Tags constants")]
+        [SerializeField] private string targetTag = Tags.Player;
+        [Tooltip("Once spat out (armed), contact with anything other than the target detonates too." +
+            " Off restores pure target-touch behavior")]
+        [SerializeField] private bool explodeOnWorldContactWhenArmed = true;
+        [Tooltip("Contact with these layers detonates regardless of arming — spikes and other" +
+            " hazards. Defaults to the Hazard layer; existing prefabs take it via this default")]
+        [SerializeField] private LayerMask hazardDetonatorMask = 1 << 13;
+        [Tooltip("Delay before detonating after being caught in another explosion (0 = same-frame chain)")]
+        [SerializeField] private float chainDelay = 0.1f;
 
         [Header("Animation")]
         [Tooltip("Proximity warning frames, 0 = normal, later = closer to the player; null/empty = animation off")]
@@ -40,6 +61,9 @@ namespace Inkform.Interactable.Parts
         private Collider2D body;
         private SpriteRenderer sprite;
         private bool exploded;      // idempotent: multiple triggers in one frame only detonate once
+        private bool armed;         // spat out: world contact detonates from here on
+        private bool chainPending;  // caught in a blast, fuse running
+        private Timer chainTimer;
 
         // ---- Proximity warning animation state ----
 
@@ -71,12 +95,55 @@ namespace Inkform.Interactable.Parts
             sprite = root.GetComponent<SpriteRenderer>();
         }
 
-        // Does not consume contact: trigger parts receive the dispatch normally
-        public bool HandleContact(ContactPhase phase, Collider2D other) => false;
+        void OnEnable() { HazardBus.Exploded += OnChainExploded; }
+
+        void OnDisable() { HazardBus.Exploded -= OnChainExploded; }
 
         void Update()
         {
+            if (chainPending && !chainTimer.IsRunning)
+            {
+                chainPending = false;
+                Explode();
+            }
             RefreshFrame();
+        }
+
+        // Contact detonation. Enter and Stay both count: a bomb pushed into the player between
+        // frames must still go off. The spit-immunity window lives in CarriablePart, which sits
+        // earlier in the dispatch order and swallows player contact right after Release
+        public bool HandleContact(ContactPhase phase, Collider2D other)
+        {
+            if (phase == ContactPhase.Exit) return false;
+            if (exploded) return false;
+
+            if (other.CompareTag(targetTag))
+            {
+                Explode();
+                return true;    // handled: short-circuit later parts
+            }
+            if ((hazardDetonatorMask.value & (1 << other.gameObject.layer)) != 0)
+            {
+                Explode();      // spikes and kin: an explosive does not survive resting on them
+                return true;
+            }
+            if (armed && explodeOnWorldContactWhenArmed)
+            {
+                Explode();
+                return true;
+            }
+            return false;
+        }
+
+        // IOnSpit: the item left the player's mouth — from now on, world contact detonates
+        void IOnSpit.OnSpit() => armed = true;
+
+        // Called by HazardBus when another explosion affects this object: the victim claims itself
+        private void OnChainExploded(GameObject victim, Vector2 center, float force)
+        {
+            if (root == null || victim != root.gameObject) return;
+            chainPending = true;
+            chainTimer.Set(chainDelay);
         }
 
         /// <summary>
@@ -120,7 +187,7 @@ namespace Inkform.Interactable.Parts
             if (sprite != null) sprite.sprite = s;
         }
 
-        /// <summary>Detonate. Idempotent: takes effect exactly once; trigger parts may call freely.</summary>
+        /// <summary>Detonate. Idempotent: takes effect exactly once; callers may invoke freely.</summary>
         public void Explode()
         {
             if (exploded) return;
@@ -160,8 +227,13 @@ namespace Inkform.Interactable.Parts
             // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
 
-            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright
-            if (!restorable) Destroy(root.gameObject);
+            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright.
+            // The EditMode branch exists so tests can drive Explode() — Destroy is refused outside play mode
+            if (!restorable)
+            {
+                if (Application.isPlaying) Destroy(root.gameObject);
+                else DestroyImmediate(root.gameObject);
+            }
         }
 
         // ---- IRestorablePart ----
@@ -169,23 +241,33 @@ namespace Inkform.Interactable.Parts
         /// <summary>
         /// `exploded` is the state that matters here, and leaving it out of the snapshot is what made a
         /// restored bomb inert forever: RestorablePart brought the body back but Explode() still
-        /// short-circuited on the first line, and ExplodeOnContact reported the contact as handled, so
+        /// short-circuited on the first line, and the contact path reported the contact as handled, so
         /// no later part saw it either.
         ///
         /// Captured rather than reset: a bomb that was already spent when the checkpoint was taken
-        /// should still be spent after the respawn.
+        /// should still be spent after the respawn. The chain fuse and the armed flag ride along for
+        /// the same reason — a snapshot reproduces the checkpoint, not "the checkpoint, plus whatever
+        /// this part happened to do since".
         /// </summary>
-        public IMemento Capture() => new ExplodeMemento(this, exploded);
+        public IMemento Capture() =>
+            new ExplodeMemento(this, exploded, armed, chainPending, chainTimer.Remaining);
 
         private class ExplodeMemento : IMemento
         {
             private readonly ExplodePart part;
             private readonly bool exploded;
+            private readonly bool armed;
+            private readonly bool chainPending;
+            private readonly float chainRemaining;
 
-            public ExplodeMemento(ExplodePart part, bool exploded)
+            public ExplodeMemento(ExplodePart part, bool exploded, bool armed,
+                bool chainPending, float chainRemaining)
             {
                 this.part = part;
                 this.exploded = exploded;
+                this.armed = armed;
+                this.chainPending = chainPending;
+                this.chainRemaining = chainRemaining;
             }
 
             public void Restore()
@@ -193,6 +275,10 @@ namespace Inkform.Interactable.Parts
                 if (part == null) return;   // part gone (scene change etc.), skip silently
 
                 part.exploded = exploded;
+                part.armed = armed;
+                part.chainPending = chainPending;
+                if (chainRemaining > 0f) part.chainTimer.Set(chainRemaining);
+                else part.chainTimer.Clear();
 
                 // Presentation caches, not state — but they still have to be cleared. RefreshFrame only
                 // rewrites the sprite when the derived index *changes*, so a bomb that blew up on a late

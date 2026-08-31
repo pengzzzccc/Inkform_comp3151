@@ -18,7 +18,8 @@ namespace Inkform.Audio
             " a muffled cave sits around 2000-4000")]
         public float cutoff = AudioPremix.FullBandwidth;
 
-        [Tooltip("Reverb wet 0..1 mixed onto zoned sounds. 0 = dry, 1 = soaked")]
+        [Tooltip("Reverb wet 0..1 applied to everything heard inside the zone (listener-side" +
+            " global filter — tails ring out after sounds end). 0 = dry, 1 = soaked")]
         [Range(0f, 1f)] public float reverbWet;
 
         [Tooltip("Seconds to blend in when the listener enters")]

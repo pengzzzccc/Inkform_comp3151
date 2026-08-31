@@ -3,10 +3,11 @@ using UnityEngine;
 namespace Inkform.Audio
 {
     /// <summary>
-    /// What one audio zone does to a sound passing through it: scales volume, caps the low-pass
-    /// cutoff, adds reverb wet. Neutral is "no zone" (nothing changed). Used both for the
-    /// listener's blended state (ZoneMixer) and for per-source lookups, so all combining rules
-    /// live next to the struct they manipulate.
+    /// What one audio zone does to what the listener hears: scales volume, caps the low-pass
+    /// cutoff, adds reverb wet. Neutral is "no zone" (nothing changed). Volume and cutoff combine
+    /// strictest-wins between the listener's and a spatial sound's emitter zones; reverb wet is
+    /// consumed listener-side only — it drives one global filter on the AudioListener (tails ring
+    /// out after clips end), so the emitter half of a zone does not wet anything.
     /// </summary>
     public readonly struct ZoneMix
     {
@@ -26,14 +27,15 @@ namespace Inkform.Audio
     }
 
     /// <summary>
-    /// Pure parameter premix: turns (Cue, distance, settings volumes, zone states) into the three
-    /// numbers a voice needs — volume, low-pass cutoff, reverb wet. No AudioSource access, so
-    /// EditMode tests cover the whole audible maths without a running audio engine.
+    /// Pure parameter premix: turns (Cue, distance, settings volumes, zone states) into the
+    /// numbers a voice needs — volume and low-pass cutoff. No AudioSource access, so EditMode
+    /// tests cover the whole audible maths without a running audio engine.
     ///
-    /// Zone combining is deliberately "strictest wins" per parameter: a sound heard through the
-    /// listener's cave AND emitted in another cave gets the smaller cutoff and the larger wet.
-    /// The alternative — letting the emitter's zone overwrite the listener's — loses the
+    /// Volume and cutoff combining is deliberately "strictest wins" per parameter: a sound heard
+    /// through the listener's cave AND emitted in another cave gets the smaller cutoff. The
+    /// alternative — letting the emitter's zone overwrite the listener's — loses the
     /// "everything goes dull when I step into a cave" feel for sounds emitted outside it.
+    /// Reverb is not premixed per voice at all; see WetToHundredthsDb for the listener-side path.
     /// </summary>
     public static class AudioPremix
     {
@@ -80,11 +82,14 @@ namespace Inkform.Audio
             return Mathf.Max(10f, cutoff);
         }
 
-        /// <summary>Reverb wet 0..1: the wetter of the two zones, scaled by the Cue's own amount
-        /// (0 = this sound never gets reverb, whatever the zone says).</summary>
-        public static float Wet(SoundCue cue, in ZoneMix listener, in ZoneMix emitter)
+        /// <summary>Maps a 0..1 reverb wet amount onto the listener filter's wet-path levels, in
+        /// hundredths of a dB (the unit AudioReverbFilter's level fields use): wet 1 = 0 dB (full),
+        /// every halving = -6 dB, floor at -100 dB = effectively silent. Only the wet path is
+        /// driven; the dry path stays at unity so the untouched signal never dips.</summary>
+        public static float WetToHundredthsDb(float wet)
         {
-            return Mathf.Clamp01(Mathf.Max(listener.reverbWet, emitter.reverbWet) * cue.reverbAmount);
+            if (wet <= 0.0001f) return -10000f;
+            return Mathf.Max(-10000f, 20f * Mathf.Log10(wet)) * 100f;
         }
 
         /// <summary>Which settings track scales this Cue. The Music track only matters once the

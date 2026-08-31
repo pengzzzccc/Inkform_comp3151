@@ -1,4 +1,4 @@
-using Inkform.Bus;
+﻿using Inkform.Bus;
 using Inkform.Tool;
 using UnityEngine;
 
@@ -52,7 +52,7 @@ namespace Inkform.Interactable.Parts
         }
 
         // Player push: flung along the 8-way "player → self" direction. Does not consume the contact,
-        // so explosion triggers (ExplodeOnContact and the like) still receive it
+        // so detonation parts (ExplodePart) still receive it
         public bool HandleContact(ContactPhase phase, Collider2D other)
         {
             if (phase == ContactPhase.Exit) return false;

@@ -6,9 +6,11 @@ using UnityEngine;
 namespace Inkform.Audio
 {
     /// <summary>
-    /// Audio voice host: keeps a pool of AudioSources (each with its own low-pass + reverb filter
-    /// chain), grows it up to a hard cap under pressure, steals the least important live voice
-    /// when the cap is hit, and refreshes persistent loops (ambience, music beds) every frame.
+    /// Audio voice host: keeps a pool of AudioSources (each with its own low-pass filter for
+    /// distance/zone muffling), grows it up to a hard cap under pressure, steals the least
+    /// important live voice when the cap is hit, and refreshes persistent loops (ambience) every
+    /// frame. Zone reverb is NOT on these voices: it lives on the AudioListener's own filter (see
+    /// DriveListenerReverb), so tails keep ringing after the pool recycles a source.
     /// Playback policy (random variants / cooldown / concurrency cap / distance falloff) is all
     /// configured in SoundCue; the audible maths lives in AudioPremix, the capacity decisions in
     /// VoiceArbiter — this class only executes them against real AudioSources.
@@ -54,14 +56,12 @@ namespace Inkform.Audio
         private readonly HashSet<SoundCue> seen = new HashSet<SoundCue>();
         private int nextSourceId;
 
-        // A source and its filter chain must be stored as a bundle: every play resets cutoff by
-        // distance and wet by zone; GetComponent per play is wasteful, fetch once at pool build.
-        // The reverb filter sits disabled until a voice actually goes wet (see ApplyReverb)
+        // A source and its low-pass filter must be stored as a pair: every play resets the cutoff
+        // by distance/zone; GetComponent per play is wasteful, fetch once at pool build
         private struct Source
         {
             public AudioSource src;
             public AudioLowPassFilter lpf;
-            public AudioReverbFilter rvb;
         }
 
         // On recycle we must know which Cue to decrement, so the source, the Cue and the voice's
@@ -82,6 +82,12 @@ namespace Inkform.Audio
         // camera, so it cannot use transform.position like FxDirector (which sits on the camera).
         // After a scene change the old listener becomes a Unity fake-null; it is re-looked-up on next use
         private Transform listenerCache;
+
+        // Zone reverb rides the listener's own filter, not the voices: the listener's DSP processes
+        // the whole mix and keeps running after any single clip ends, so reverb tails ring out
+        // naturally instead of being cut the moment the pool recycles a one-shot's source
+        private AudioReverbFilter listenerReverb;
+        private Transform listenerReverbOwner;
 
         // Music runs on its own two dedicated sources, never the voice pool (see MusicPlayer)
         private MusicPlayer music;
@@ -162,6 +168,7 @@ namespace Inkform.Audio
         {
             // Unscaled: a hitstop must not freeze a cave fade halfway
             zones.Tick(Time.unscaledDeltaTime);
+            DriveListenerReverb();
             // Zone components destroyed by teardown leave fake-null entries behind; prune lazily
             zoneRegistry.RemoveAll(z => z == null);
 
@@ -299,7 +306,6 @@ namespace Inkform.Audio
                 * SettingsStore.MasterVolume
                 * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
             s.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
-            ApplyReverb(s.rvb, AudioPremix.Wet(cue, listenerZone, emitterZone));
             src.outputAudioMixerGroup = cue.output;
 
             src.Play();
@@ -431,11 +437,9 @@ namespace Inkform.Audio
 
             // Must restore: the source is recycled, and after a distant explosion crushed the cutoff to
             // a few hundred Hz, the next nearby sound borrowing this source (e.g. the player's jump)
-            // would mysteriously go dull. The reverb filter powers off rather than to a "neutral" wet —
-            // disabled is the no-cost state it idles in. outputAudioMixerGroup needs no restore — every
+            // would mysteriously go dull. outputAudioMixerGroup needs no restore — every
             // Play sets it explicitly
             v.source.lpf.cutoffFrequency = AudioPremix.FullBandwidth;
-            if (v.source.rvb != null) v.source.rvb.enabled = false;
 
             if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
             pool.Enqueue(v.source);
@@ -450,30 +454,41 @@ namespace Inkform.Audio
             src.spatialBlend = 0f;
             AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
             lpf.cutoffFrequency = AudioPremix.FullBandwidth;
-            // Disabled until a voice actually goes wet: a reverb DSP is one of the most expensive
-            // per-source effects, dozens of them idling enabled would be pure waste. Cave flavor is
-            // the decay/diffusion shape; the wet amount is driven per voice by ApplyReverb
-            AudioReverbFilter rvb = go.AddComponent<AudioReverbFilter>();
-            rvb.reverbPreset = AudioReverbPreset.Cave;
-            rvb.enabled = false;
-            return new Source { src = src, lpf = lpf, rvb = rvb };
+            return new Source { src = src, lpf = lpf };
         }
 
-        /// <summary>Maps a 0..1 wet amount onto the filter's wet-path levels, in hundredths of a dB
-        /// (the engine's own unit for these fields): wet 1 = 0 dB (full), every halving = -6 dB,
-        /// floor at -100 dB = effectively silent. Only the wet path is driven; the dry path stays
-        /// at unity so the untouched signal never dips.</summary>
-        private static void ApplyReverb(AudioReverbFilter rvb, float wet)
+        // Zone reverb driver: one AudioReverbFilter on whatever carries the AudioListener. The
+        // listener's filter is the master bus — everything the player hears inside a wet zone gets
+        // the tail, and because the bus never stops when a pooled voice recycles, tails ring out
+        // to their natural end. Reverb deliberately ignores zones' emitter side: a global filter
+        // cannot wet one sound and dry another, and "the cave I am in colors what I hear" is the
+        // audible half of the strictest-wins rule anyway (the emitter side still muffs and scales)
+        private void DriveListenerReverb()
         {
-            if (rvb == null) return;
+            // Re-attach when the listener is (re)found: scene changes swap the camera, and the
+            // filter belongs to whatever carries the AudioListener now
+            Transform ear = Listener;
+            if (listenerReverbOwner != ear || listenerReverb == null)
+            {
+                listenerReverbOwner = ear;
+                listenerReverb = ear != null ? ear.GetComponent<AudioReverbFilter>() : null;
+                if (listenerReverb == null && ear != null)
+                {
+                    listenerReverb = ear.gameObject.AddComponent<AudioReverbFilter>();
+                    listenerReverb.reverbPreset = AudioReverbPreset.Cave;   // decay/diffusion flavor; levels driven below
+                }
+            }
+            if (listenerReverb == null) return;
+
+            float wet = zones.ListenerState.reverbWet;
             bool audible = wet > 0.01f;
-            rvb.enabled = audible;
+            listenerReverb.enabled = audible;
             if (!audible) return;
-            float dB = Mathf.Max(-100f, 20f * Mathf.Log10(Mathf.Max(wet, 0.0001f)));
-            float hundredths = dB * 100f;
-            rvb.room = hundredths;
-            rvb.roomHF = hundredths;
-            rvb.reverbLevel = hundredths;
+
+            float hundredths = AudioPremix.WetToHundredthsDb(wet);
+            listenerReverb.room = hundredths;           // early reflections level
+            listenerReverb.roomHF = hundredths;         // ...at high frequency
+            listenerReverb.reverbLevel = hundredths;    // late reverberation level — the audible tail
         }
 
         // Dequeue skips dead slots (Unity fake-null after partial teardown) and compensates the
@@ -486,7 +501,6 @@ namespace Inkform.Audio
                 Source source = pool.Dequeue();
                 if (source.src == null) { missing++; continue; }
                 if (source.lpf == null) source.lpf = source.src.gameObject.AddComponent<AudioLowPassFilter>();
-                if (source.rvb == null) source.rvb = source.src.gameObject.AddComponent<AudioReverbFilter>();
                 for (int i = 0; i < missing; i++) pool.Enqueue(CreateSource());
                 return source;
             }
@@ -537,7 +551,6 @@ namespace Inkform.Audio
                 * SettingsStore.MasterVolume
                 * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
             voice.source.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
-            ApplyReverb(voice.source.rvb, AudioPremix.Wet(cue, listenerZone, emitterZone));
         }
 
         // Settings changed: re-scale every live voice through its stored baseGain. Persistent

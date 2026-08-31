@@ -150,13 +150,14 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void Premix_WetTakesWetterZone_ScaledByCueAmount()
+        public void Premix_WetToHundredthsDb_FollowsLogCurveWithFloor()
         {
-            SoundCue cue = NewCue(reverbAmount: 0.5f);
-            Assert.AreEqual(0.35f,
-                AudioPremix.Wet(cue, new ZoneMix(1f, 22000f, 0.4f), new ZoneMix(1f, 22000f, 0.7f)), 1e-4f);
-            Assert.AreEqual(0f, AudioPremix.Wet(NewCue(reverbAmount: 0f),
-                new ZoneMix(1f, 22000f, 0.9f), ZoneMix.Neutral), "a cue with no reverb amount stays dry");
+            // hundredths-of-dB mapping for AudioReverbFilter level fields: full wet = 0, halving
+            // = -6 dB, silence floors at -100 dB — the mapping the listener filter is driven with
+            Assert.AreEqual(0f, AudioPremix.WetToHundredthsDb(1f), 0.01f);
+            Assert.AreEqual(-602.06f, AudioPremix.WetToHundredthsDb(0.5f), 1f);
+            Assert.AreEqual(-4000f, AudioPremix.WetToHundredthsDb(0.01f), 1f);
+            Assert.AreEqual(-10000f, AudioPremix.WetToHundredthsDb(0f), 0.01f);
         }
 
         [Test]
