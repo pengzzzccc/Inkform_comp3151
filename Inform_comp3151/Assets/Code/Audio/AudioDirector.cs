@@ -115,7 +115,7 @@ namespace Inkform.Audio
         {
             if (cue == null) return;                        // slot unconfigured, skip silently
             if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Play(cue, position);
+            AudioManager.Instance.Post(new AudioPost(cue, position));
         }
     }
 }

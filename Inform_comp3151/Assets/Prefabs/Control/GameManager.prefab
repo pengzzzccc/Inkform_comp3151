@@ -169,7 +169,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   poolSize: 24
-  reverbTiers: []
 --- !u!114 &6602841937450123776
 MonoBehaviour:
   m_ObjectHideFlags: 0
