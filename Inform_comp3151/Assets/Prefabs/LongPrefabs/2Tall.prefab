@@ -44,7 +44,7 @@ PrefabInstance:
     - target: {fileID: 1548780652901880312, guid: 1c1d120b27312fd40a3d78e8761b770c, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: -494764771, guid: b2bc5b2b14174b746ad3b379e1d2c040, type: 3}
+      objectReference: {fileID: -3825385182577164072, guid: a5e22319329fd1647a81481cd4622f71, type: 3}
     - target: {fileID: 1548780652901880312, guid: 1c1d120b27312fd40a3d78e8761b770c, type: 3}
       propertyPath: m_Color.b
       value: 1
@@ -119,6 +119,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4405556934082938176}
     m_Modifications:
+    - target: {fileID: 1620247936938350023, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: -3825385182577164072, guid: a5e22319329fd1647a81481cd4622f71, type: 3}
     - target: {fileID: 2269162855126103252, guid: 3c5f23f40b2fc7e43909606bb29601b4, type: 3}
       propertyPath: m_Name
       value: BreakableWall
