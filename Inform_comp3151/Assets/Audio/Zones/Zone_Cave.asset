@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Zone_Cave
   m_EditorClassIdentifier: 
   volumeScale: 0.85
-  cutoff: 3000
-  reverbWet: 0.7
+  cutoff: 7000
+  reverbWet: 0.01001
   blendIn: 0.6
   blendOut: 1
