@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 686532617301129227}
   - component: {fileID: 2663986350927360183}
   - component: {fileID: 8420452527259773381}
-    - component: {fileID: 6287612744335083670}
-      - component: {fileID: 1689052385538600397}
+  - component: {fileID: 6287612744335083670}
+  - component: {fileID: 1689052385538600397}
   - component: {fileID: 7055706096835111339}
   - component: {fileID: 7442671295014257853}
   - component: {fileID: 2969007430487722875}
@@ -33,7 +33,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 11.557265, y: -1.2888662, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -83,6 +83,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 2121
   breakCue: {fileID: 11400000, guid: b7d92e04a1c5f8439e26d7b0a3c14f85, type: 2}
+  targetTag: Player
+  explodeOnWorldContactWhenArmed: 1
+  hazardDetonatorMask:
+    serializedVersion: 2
+    m_Bits: 8192
+  chainDelay: 0.1
   triggerFrames:
   - {fileID: -43189483694800998, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: 2626840833397699699, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
@@ -120,6 +126,7 @@ MonoBehaviour:
     lineWidth: 0.08
     sortingOrder: -1
   materialCue: {fileID: 0}
+  requireAnchors: 0
   anchorCount: 0
   anchorSpacing: {x: 0.6, y: 0}
   anchorHeight: 3
