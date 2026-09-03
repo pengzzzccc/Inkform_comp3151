@@ -60,6 +60,10 @@ namespace Inkform.Life
             ScanScene();
         }
 
+        /// <summary>How many restorable objects the current scene's snapshot covers — the
+        /// performance recorder logs it, since Capture/Restore cost scales with this.</summary>
+        public int RestorableCount => originators.Count;
+
         // sceneLoaded never fires for the startup scene, so the first scene is scanned here
         void Start() => ScanScene();
 

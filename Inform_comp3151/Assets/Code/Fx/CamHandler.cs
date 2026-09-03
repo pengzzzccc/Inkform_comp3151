@@ -20,6 +20,10 @@ namespace Inkform.Fx
     {
         public enum FollowMode { Player, PlayerCursorMidpoint }
 
+        /// <summary>Active follow mode — logged by the performance recorder so runs with different
+        /// camera modes stay comparable.</summary>
+        public FollowMode Mode => mode;
+
         [Header("Follow setting")]
         [SerializeField] private Transform target;                  // drag in the Player, same as InputHandler
         [SerializeField] private FollowMode mode = FollowMode.Player;

@@ -46,6 +46,11 @@ namespace Inkform.Level
 
         private SceneFader fader;
 
+        /// <summary>Milliseconds the last completed scene load spent in its async load (from
+        /// LoadSceneAsync start to scene activation) — feeds the performance recorder's
+        /// scene_load_ms column so transition hitches are measured, not just felt.</summary>
+        public static float LastLoadMs { get; private set; } = -1f;
+
         public bool IsTransitioning => transitionInProgress;
 
         void Awake()
@@ -273,6 +278,7 @@ namespace Inkform.Level
             yield return null;
 
             AsyncOperation operation;
+            float loadStart = Time.realtimeSinceStartup;
             try
             {
                 operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
@@ -292,8 +298,10 @@ namespace Inkform.Level
 
             // Yield the operation itself. sceneLoaded may run before this continuation, but the local
             // reference remains valid and no scene callback is allowed to unlock the transition early.
+            // (C# forbids a yield inside a try that has a catch — hence this shape.)
             yield return operation;
 
+            LastLoadMs = (Time.realtimeSinceStartup - loadStart) * 1000f;
             loadOperation = null;
             transitionInProgress = false;
             SetGameStateFromActiveScene();
