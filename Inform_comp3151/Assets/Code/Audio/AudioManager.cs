@@ -14,7 +14,7 @@ namespace Inkform.Audio
     /// Playback policy (random variants / cooldown / concurrency cap / distance falloff) is all
     /// configured in SoundCue; the audible maths lives in AudioPremix, the capacity decisions in
     /// VoiceArbiter — this class only executes them against real AudioSources.
-    /// Attach to any scene object; persists across scenes by itself.
+    /// Attach to the GameManager; PersistentGameRoot keeps that host alive across scenes.
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
@@ -121,7 +121,8 @@ namespace Inkform.Audio
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
+            // No DontDestroyOnLoad here: the GameManager host is already claimed by PersistentGameRoot
+            // (execution order -32000, its Awake runs first), so a second call would only be redundant
 
             for (int i = 0; i < poolSize; i++)
                 pool.Enqueue(CreateSource());

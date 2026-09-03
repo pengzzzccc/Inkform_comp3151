@@ -41,7 +41,7 @@ namespace Inkform.Player
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        private enum RopePhase { Idle, Flying, Pulling, Miss }
+        public enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
         [SerializeField] private float maxRange = 4f;                       // default reticle / hook travel cap
@@ -85,6 +85,10 @@ namespace Inkform.Player
         [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
 
         private RopePhase phase = RopePhase.Idle;
+
+        /// <summary>Current hook state — the performance recorder logs it so frame costs can be
+        /// correlated with the rope's Flying/Pulling phases.</summary>
+        public RopePhase Phase => phase;
         private float currentMaxRange;
         private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
 
@@ -122,6 +126,10 @@ namespace Inkform.Player
         private Transform reticle;
         private SpriteRenderer reticleSprite;
         private readonly RaycastHit2D[] previewCastHits = new RaycastHit2D[8];
+
+        // Built once in Awake from the serialized hitMask: UpdatePreview's per-segment casts reuse
+        // it instead of reconstructing a filter every segment of every idle frame
+        private ContactFilter2D previewFilter;
 
         private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
 
@@ -166,11 +174,19 @@ namespace Inkform.Player
             }
         }
 
+        /// <summary>The aim cursor's world position (player centre + aim offset) — the same point
+        /// UpdatePreview parks the reticle at. Read by the camera's midpoint follow mode; anything
+        /// else that cares where the player is pointing should read this too, not rebuild it.</summary>
+        public Vector2 CursorPosition =>
+            playerBody != null ? playerBody.position + aimOffset : (Vector2)transform.position + aimOffset;
+
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
+            previewFilter.SetLayerMask(hitMask);
+            previewFilter.useTriggers = false;
 
             mouseSensitivityBase = mouseAimSensitivity;
             stickAimSpeedBase = stickAimSpeed;
@@ -623,11 +639,8 @@ namespace Inkform.Player
                 float segLen = seg.magnitude;
                 if (segLen > 0.0001f)
                 {
-                    ContactFilter2D filter = new ContactFilter2D();
-                    filter.SetLayerMask(hitMask);
-                    filter.useTriggers = false;
                     int hitCount = Physics2D.CircleCast(
-                        last, bulletRadius, seg / segLen, filter, previewCastHits, segLen);
+                        last, bulletRadius, seg / segLen, previewFilter, previewCastHits, segLen);
                     if (hitCount > 0)
                     {
                         hit = true;

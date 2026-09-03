@@ -47,7 +47,7 @@ namespace Inkform.Settings
         public static int ResolutionWidth { get; private set; }
         public static int ResolutionHeight { get; private set; }
         public static bool Fullscreen { get; private set; } = true;
-        public static int FpsCap { get; private set; } = 60;      // 0 = uncapped
+        public static int FpsCap { get; private set; } = 120;     // 0 = uncapped
         public static bool VSync { get; private set; }
 
         /// <summary>Frame rate counter overlay visible in gameplay.</summary>
@@ -146,7 +146,7 @@ namespace Inkform.Settings
             StickSensitivity = PlayerPrefs.GetFloat(KeyStickSens, 1f);
             Device = (InputDevice)PlayerPrefs.GetInt(KeyDevice, (int)InputDevice.KeyboardMouse);
             Fullscreen = PlayerPrefs.GetInt(KeyFullscreen, 1) != 0;
-            FpsCap = PlayerPrefs.GetInt(KeyFps, 60);
+            FpsCap = PlayerPrefs.GetInt(KeyFps, 120);
             VSync = PlayerPrefs.GetInt(KeyVSync, 0) != 0;
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);

@@ -48,10 +48,10 @@ PlayerBus / LifeBus / ItemBus / HazardBus / FxBus / RopeGunBus / LevelBus / UiBu
 |---|---|---|
 | 策略模式 | 死亡处理：DeathDirector 按 DeathCause 选 DeathStrategy | `Assets/Code/Life/DeathDirector.cs:39-51` |
 | 备忘录模式 | 重生恢复：LevelMemento 捕获/恢复 IRestorable 对象快照，解决"碎墙死亡后不回来"的关卡问题 | `Assets/Code/Life/LevelMemento.cs:65-107` |
-| 数据驱动 | 关卡拓扑：LevelFlow（SO 资产 `Assets/Scenes/All_level_Con.asset`）定义场景图与出口目标 | `Assets/Code/Level/LevelFlow.cs`、`SceneDirector.cs:29` |
-| 单点门禁 | `SceneManager.LoadScene` 全项目唯一调用点，场景切换全部经由 SceneDirector | `Assets/Code/Level/SceneDirector.cs:125-128` |
+| 数据驱动 | 关卡世界：WorldDefinition（SO 资产 `Assets/Settings/World/World.asset`）定义菜单/入口/房间注册表；门与门的连接直接长在 LevelExit 上（目标 RoomDefinition 引用 + 到达出生点 id） | `Assets/Code/Level/WorldDefinition.cs`、`LevelExit.cs`、`SceneDirector.cs` |
+| 单点门禁 | `SceneManager.LoadScene` 全项目唯一调用点，场景切换全部经由 SceneDirector，转场带 fade | `Assets/Code/Level/SceneDirector.cs` |
 
-关键流程：LevelExit 触发 `LevelBus.Completed` → SceneDirector 按 LevelFlow 拓扑解析出口目标加载下一关，死胡同则回主菜单（`SceneDirector.cs:137-155`）。
+关键流程：LevelExit 触发 `LevelBus.ExitReached(目标房间, 出生点id)` → SceneDirector 校验后 fade out → 异步加载目标房间 → fade in；RespawnDirector 按出生点 id 落人。Build Settings 由 `Tools > Inkform > World > Sync Build Settings` 从 WorldDefinition 派生。
 
 ### 2.4 组件化框架
 
@@ -80,7 +80,7 @@ Interactable 节点 + 16 个 Parts 组件（HarmOnTouch、ExplodePart、ExplodeO
 |---|---|---|
 | 文档死链 | README 引用的 `Docs/ProjectStructure.md`、`Docs/RefactorPlan.md` 已被提交 4a98141 删除；`Docs/` 现仅剩一张 UI 截图 | `README.md:51-53` |
 | 文档过时 | README 称 Build Settings 首场景为 AnimationTest，实际为 MainMenu | `README.md:23-24` vs `EditorBuildSettings.asset:8-9` |
-| 测试覆盖有限 | 已有 LevelGraph 纯逻辑测试与运行时边界 EditMode 测试；完整 PlayMode/压力测试仍依赖有效 Unity 许可证会话 | `Assets/Tests/Editor/`、`Assets/Editor/InkformRuntimeEdgeTests.cs` |
+| 测试覆盖有限 | 已有 World/存档/音频等 EditMode 测试；完整 PlayMode/压力测试仍依赖有效 Unity 许可证会话 | `Assets/Editor/InkformRuntimeEdgeTests.cs`、`Assets/Editor/WorldTests.cs` |
 | 无 CI/CD | 无 `.github/`、无 pipeline 配置 | — |
 | 死数据 | DeathCause.Blast/Void 无发布者；MusicVolume 无音乐系统；PlayerState.Eat/Release/Swing 已无对应动画分支，但 PlayerAnimBuilder 仍在生成这些剪辑 | `DeathCause.cs:14-15`、`SettingsStore.cs`、`AniHandler.cs` |
 | 硬编码 | 图层号 6/11/13 分散多处；1920×1080 CanvasScaler 参数在 UIManager/GamepadCursor/FpsDisplay 手写重复（注释承认）；DiscSprite 生成逻辑两处重复 | `ContactSensor.cs:27`、`RopeGun.cs:47`、`SolidSurface.cs:23-24` |
@@ -117,7 +117,7 @@ Interactable 节点 + 16 个 Parts 组件（HarmOnTouch、ExplodePart、ExplodeO
 1. 重建 `Docs/ProjectStructure.md` / `Docs/RefactorPlan.md` 并修正 README 过时描述（低风险，恢复文档卫生）
 2. 实现真实存档系统（LevelMemento 的 IRestorable 快照体系可扩展为持久化；打通 SettingsStore 键体系）
 3. 接入音乐（MusicVolume 设置位已就绪）+ 清理死数据（DeathCause.Blast/Void、PlayerState 遗留枚举、PlayerAnimBuilder 冗余剪辑）
-4. 用 Unity Test Framework 为 Bus / Director / LevelFlow 拓扑补冒烟测试
+4. 用 Unity Test Framework 为 Bus / Director / World 关卡图补冒烟测试（WorldDefinition 查找与 SceneReference 同步已有 EditMode 用例）
 5. 重新出包使 Build 包含全部 4 场景，确认 Build Settings 首场景为 MainMenu
 
 ---

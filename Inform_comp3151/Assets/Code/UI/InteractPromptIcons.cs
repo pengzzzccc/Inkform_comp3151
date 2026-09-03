@@ -68,6 +68,18 @@ namespace Inkform.UI
         private static Sprite buttonSprite;
         private static Sprite triangleSprite;
 
+        // The generated sprites are runtime Texture2Ds, destroyed when play mode ends — the lazy
+        // getters' Unity null check rebuilds them on their own. Clearing the caches here anyway keeps
+        // this class on the same ResetStatics discipline as the buses (and releases the textures
+        // promptly between runs instead of on first use)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            keycapSprite = null;
+            buttonSprite = null;
+            triangleSprite = null;
+        }
+
         /// <summary>Rounded-square keycap for keyboard letters.</summary>
         public static Sprite KeycapSprite => keycapSprite != null ? keycapSprite : keycapSprite = BuildRoundedRect(6);
 

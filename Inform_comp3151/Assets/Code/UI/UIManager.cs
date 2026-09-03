@@ -17,14 +17,15 @@ namespace Inkform.UI
 {
     /// <summary>
     /// UI manager: the single gatekeeper for the menu layer. Lives on GameManager (which persists
-    /// across scenes via AudioManager's DontDestroyOnLoad), owns the one UI Canvas, instantiates all
+    /// across scenes via PersistentGameRoot's DontDestroyOnLoad), owns the one UI Canvas, instantiates all
     /// panel prefabs under it, and routes the pause state machine + cursor + Escape key.
     ///
     /// Panels never talk to each other or to the game: MainMenuPanel asks this class to load a scene,
     /// PausePanel asks it to resume, etc. The game never knows a menu exists.
     ///
     /// Scene policy is owned by the SceneDirector (a sibling component on this same GameManager): it
-    /// reads the level graph (LevelGraph.txt) and answers IsMenuScene / StartNewGame /
+    /// holds the WorldDefinition asset (menu, entry room, room registry) and answers IsMenuScene /
+    /// StartNewGame /
     /// ReturnToMainMenu, so no scene name is duplicated here. The main menu shows on load for the
     /// menu scene; any other scene is gameplay — all panels close on load, Escape opens pause.
     /// </summary>
@@ -85,6 +86,7 @@ namespace Inkform.UI
             CreateCanvas();
             EnsureGamepadCursor();
             EnsureInventoryHud();
+            EnsureSaveIndicator();
             InstantiatePanels();
             // No "close them all" pass here: BasePanel.Awake lands its own hidden state on instantiate.
             // A pass here could never have worked anyway — Close() early-returns while IsOpen is still
@@ -183,6 +185,14 @@ namespace Inkform.UI
         private void SetPaused(bool value)
         {
             paused = value;
+            // One of the two GameStateStore writers (the other is SceneDirector): pause/unpause is
+            // the only flow transition this class owns. Unpausing returns to whichever side of the
+            // menu/gameplay divide the player is on, and ApplySceneState always re-runs SetPaused
+            // after assigning IsInMainMenu, so a scene landing settles the state too.
+            GameStateStore.Set(value
+                ? GameStateStore.GameState.Paused
+                : IsInMainMenu ? GameStateStore.GameState.MainMenu
+                : GameStateStore.GameState.Playing);
             gameTime?.SetUserPaused(value);
             // sceneLoaded fires before SceneDirector's AsyncOperation continuation. Do not let the
             // new scene's UI state re-enable gameplay during that small but real transition window;
@@ -484,6 +494,12 @@ namespace Inkform.UI
         {
             if (GetComponent<InventoryHud>() == null)
                 gameObject.AddComponent<InventoryHud>();
+        }
+
+        private void EnsureSaveIndicator()
+        {
+            if (GetComponent<SaveIndicator>() == null)
+                gameObject.AddComponent<SaveIndicator>();
         }
     }
 }
