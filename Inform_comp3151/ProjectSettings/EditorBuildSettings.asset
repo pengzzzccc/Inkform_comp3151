@@ -5,7 +5,7 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Menu/MainMenu.unity
     guid: 37631e5845af32445b0a05c4cfa3a1a1
   - enabled: 0
@@ -74,13 +74,13 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/Generated/L3_LongFight.unity
     guid: ca6ad2446e5f4c540acf01023ee12a60
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Level1/L1_B2.unity
     guid: ebd79b34ceae0d14daf8895d7fa20e6c
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Level1/L1_B3.unity
     guid: 8e86c152b693822479aa95649eb85236
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/Test/PlayerTest.unity
     guid: 7f80c46cb978389418099080bbd56749
   - enabled: 1
