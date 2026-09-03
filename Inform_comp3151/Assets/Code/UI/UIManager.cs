@@ -24,7 +24,8 @@ namespace Inkform.UI
     /// PausePanel asks it to resume, etc. The game never knows a menu exists.
     ///
     /// Scene policy is owned by the SceneDirector (a sibling component on this same GameManager): it
-    /// reads the level graph (LevelGraph.txt) and answers IsMenuScene / StartNewGame /
+    /// holds the WorldDefinition asset (menu, entry room, room registry) and answers IsMenuScene /
+    /// StartNewGame /
     /// ReturnToMainMenu, so no scene name is duplicated here. The main menu shows on load for the
     /// menu scene; any other scene is gameplay — all panels close on load, Escape opens pause.
     /// </summary>

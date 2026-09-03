@@ -49,9 +49,8 @@ button clicks.
    repository — **not** the repository root).
 2. The first import of assets takes a few minutes.
 3. The game boots into the main menu (`Assets/Scenes/Menu/MainMenu.unity`). **New Game** loads the entry
-   level `L1_Player` through the level-flow graph (`Assets/Scenes/All_level_Con.asset`); for direct
-   testing you can also open any generated room under `Assets/Scenes/Generated/` or the legacy hand-made
-   levels under `Assets/Scenes/Level1/`.
+   room defined by the world asset (`Assets/Settings/World/World.asset`); for direct testing you can
+   open any level scene under `Assets/Scenes/Level1/` — the GameManager prefab boots in every scene.
 
 ## Project Structure
 
@@ -66,8 +65,8 @@ Assets/
 ├── Life/        Death strategy data assets
 ├── Physics/     Physics materials
 ├── Prefabs/     All prefabs (player, managers, level objects)
-├── Scenes/      Menu/ · Level1/ (legacy hand-made levels) · Generated/ (22 procedurally built rooms) · Test/ (debug scenes)
-└── Settings/    URP pipeline config and build profiles
+├── Scenes/      Menu/ · Level1/ (Mine Cave 1–3 + legacy rooms) · Test/ (debug scenes)
+└── Settings/    URP pipeline config, build profiles, World asset + room definitions
 ```
 
 Key architecture pieces in `Assets/Code/`:
@@ -75,10 +74,12 @@ Key architecture pieces in `Assets/Code/`:
 - **Event buses** — eight static event buses (`PlayerBus`, `LifeBus`, `ItemBus`, `HazardBus`,
   `FxBus`, `RopeGunBus`, `LevelBus`, `UiBus`) keep gameplay systems decoupled; "director" classes
   translate bus events into effects (FX, audio, death, rumble).
-- **SceneDirector** — the single gatekeeper for scene transitions, routing through a `LevelFlow`
-  ScriptableObject (`Assets/Scenes/All_level_Con.asset`) that defines the level graph: menu scene,
-  entry level (`L1_Player`), and per-exit targets. Designers connect levels by dragging asset
-  references — no code.
+- **SceneDirector** — the single gatekeeper for scene transitions, backed by a `WorldDefinition`
+  asset (menu scene, new-game entry room, room registry). Room-to-room topology lives on the doors:
+  each `LevelExit` references its destination `RoomDefinition` and the arrival `Checkpoint.spawnId`
+  directly — two Inspector references per door, no central graph file. Transitions fade out, load
+  async, fade in. `Tools > Inkform > World` migrates/syncs/validates the world, and Sync Build
+  Settings derives the build list from the world asset (menu first, then every room).
 - **Interactable framework** — a composable `Interactable` node with interchangeable "parts"
   (explode, break, restore, carry, patrol, spin, …) used to build every hazard and destructible.
 - **LevelMemento** — captures and restores the state of every restorable object on checkpoint/death,
@@ -89,11 +90,9 @@ Key architecture pieces in `Assets/Code/`:
 | Scene | Purpose |
 |---|---|
 | `Scenes/Menu/MainMenu.unity` | Main menu (first scene in Build Settings) |
-| `Scenes/Generated/L1_Player.unity` | Entry room — where New Game starts |
-| `Scenes/Generated/L1_B1 … L3_LongFight.unity` | 21 more procedurally generated rooms (Level 1 / Level 2 / long fight), wired through the level-flow graph |
-| `Scenes/Level1/Level1.unity` | Legacy hand-made level 1 (not part of the generated flow) |
-| `Scenes/Level1/B1.unity` | Legacy hand-made level B1 (not part of the generated flow) |
-| `Scenes/Level1/B2.unity` | Legacy hand-made level B2 (not part of the generated flow) |
+| `Scenes/Level1/Mine Cave 1.unity` | Entry room — where New Game starts |
+| `Scenes/Level1/Mine Cave 2.unity`, `Scenes/Level1/Mine Cave 3.unity` | The rest of the Mine Cave loop, linked to each other and Mine Cave 1 through doors |
+| `Scenes/Level1/L1_B1 … L1_B3.unity`, `Scenes/Level1/hIde_path.unity` | Legacy hand-made rooms (not part of the world registry) |
 | `Scenes/Test/PlayerTest.unity` | Debug scene: player sandbox |
 | `Scenes/Test/AnimationTest.unity` | Debug scene: animation state machine (not in Build Settings) |
 | `Scenes/Test/TileMapTest.unity` | Debug scene: tilemap test |
@@ -103,9 +102,9 @@ Key architecture pieces in `Assets/Code/`:
 Target platform is **Windows standalone** (1920×1080). A build profile lives at
 `Assets/Settings/Build Profiles/Windows.asset`.
 
-> Current Build Settings scene order: `MainMenu` → the 22 generated rooms → legacy `B1`/`B2`/`Level1`.
-> The debug scene `AnimationTest` was removed from the build list — keep it out unless you are testing
-> the animation state machine.
+> Build Settings are derived state: `Tools > Inkform > World > Sync Build Settings` puts the menu
+> first and every registered room after it. The debug scene `AnimationTest` stays out of the list —
+> keep it out unless you are testing the animation state machine.
 
 ## Important Notes
 

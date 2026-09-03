@@ -3277,6 +3277,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5108392746215038473, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
+      propertyPath: spawnId
+      value: Mine Cave 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3512,8 +3516,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4fe8e4c40f7244a3a8c734fd3eea4b8b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelExit
-  exitId: Mine Cave 1
-  destination: Mine Cave 1
+  destination: {fileID: 11400000, guid: f5b895ed3010c314aae669b84ec6af4b, type: 2}
+  targetSpawnId: Mine Cave 3
+  legacyExitId: 
 --- !u!61 &429476269
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -3838,11 +3843,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5108392746215038472, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 1.6
+      value: 1.71
       objectReference: {fileID: 0}
     - target: {fileID: 5108392746215038472, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.5
+      value: 0.03
       objectReference: {fileID: 0}
     - target: {fileID: 5108392746215038472, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
       propertyPath: m_LocalPosition.z
@@ -3875,6 +3880,10 @@ PrefabInstance:
     - target: {fileID: 5108392746215038472, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5108392746215038473, guid: 1d6e83af2c7b95545a90e4f6b28d7c31, type: 3}
+      propertyPath: spawnId
+      value: Mine Cave 2
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4062,8 +4071,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4fe8e4c40f7244a3a8c734fd3eea4b8b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.LevelExit
-  exitId: Mine Cave 2
-  destination: Mine Cave 2
+  destination: {fileID: 11400000, guid: 96fcb8f2192cdde4c924206587c7c8a2, type: 2}
+  targetSpawnId: Mine Cave 3
+  legacyExitId: 
 --- !u!61 &859250741
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4119,7 +4129,7 @@ Transform:
   m_GameObject: {fileID: 859250739}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 386.81, y: 112.33, z: 0}
+  m_LocalPosition: {x: 334.8, y: 119.39, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

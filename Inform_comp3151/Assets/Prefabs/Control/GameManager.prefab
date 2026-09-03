@@ -248,7 +248,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f2ded585db074b079de7258b4165ae7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.SceneDirector
-  levelGraphFile: {fileID: 4900000, guid: 92bd8891d35dcab409367f58d2994522, type: 3}
+  world: {fileID: 11400000, guid: 2d7897771e2b41845b1712f21fccd9fe, type: 2}
+  fadeOutSeconds: 0.25
+  fadeInSeconds: 0.4
 --- !u!114 &1503010808642312737
 MonoBehaviour:
   m_ObjectHideFlags: 0

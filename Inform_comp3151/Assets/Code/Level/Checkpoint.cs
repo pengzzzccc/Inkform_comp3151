@@ -32,6 +32,10 @@ namespace Inkform.Level
         [SerializeField] private bool isStartPoint = false;                     // checked = also the level spawn point; only one per level
         [SerializeField] private Vector2 spawnOffset = new Vector2(0f, 0.5f);   // raised a bit so respawn feet do not sink into the ground and get pushed out
 
+        [Header("Arrival spawn")]
+        [Tooltip("Door-arrival id: the LevelExit leading into this scene names this checkpoint in its targetSpawnId. Replaces the old Spawn_<scene> object-name convention; plain mid-level checkpoints leave it empty")]
+        [SerializeField] private string spawnId = "";
+
         [Header("Timecard machine look")]
         [Tooltip("Activation sequence: first frame = idle resident, last frame = stamped freeze-frame")]
         [SerializeField] private Sprite[] frames;
@@ -45,6 +49,7 @@ namespace Inkform.Level
 
         public bool IsStartPoint => isStartPoint;
         public Vector2 SpawnPos => (Vector2)transform.position + spawnOffset;
+        public string SpawnId => spawnId;
 
         void Awake()
         {
@@ -156,6 +161,15 @@ namespace Inkform.Level
 
             if (touched) Gizmos.DrawSphere(SpawnPos, 0.14f);        // solid = stepped on this run
             else Gizmos.DrawWireSphere(SpawnPos, 0.14f);
+
+#if UNITY_EDITOR
+            // The arrival id at a glance: it is the exact string a door's targetSpawnId must match
+            if (!string.IsNullOrEmpty(spawnId))
+            {
+                Gizmos.color = c;
+                UnityEditor.Handles.Label(SpawnPos + Vector2.up * 0.4f, spawnId);
+            }
+#endif
 
             // The spawn point gets an extra cross to distinguish it from plain checkpoints (only one per level)
             if (!isStartPoint) return;

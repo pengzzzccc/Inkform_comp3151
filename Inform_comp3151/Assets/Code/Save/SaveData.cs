@@ -24,7 +24,7 @@ namespace Inkform.Save
 
         public int version = CurrentVersion;
 
-        /// <summary>The room to load, matching a scene name in LevelGraph.txt. Empty = this slot holds
+        /// <summary>The room to load, matching a room registered in the WorldDefinition asset. Empty = this slot holds
         /// nothing; it is also the one field IsEmpty tests, so it must be written last-ish, never
         /// speculatively.</summary>
         public string sceneName;

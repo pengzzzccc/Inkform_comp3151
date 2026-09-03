@@ -99,11 +99,11 @@ namespace Inkform.Level
             // player was placed in the scene"
             Checkpoint start = FindStartPoint();
 
-            // Door-side spawn: entering from another room puts the player beside that room's door in
-            // this scene (SceneDirector records the source scene on LevelBus.Completed) rather than
-            // the level start point, so direction stays intuitive across level transitions
-            string from = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnFrom() : null;
-            Checkpoint spawn = from != null ? FindDoorSpawn(from) : null;
+            // Door-side spawn: the door the player walked through names the arrival checkpoint
+            // (Checkpoint.spawnId) rather than the level start point, so they land beside where they
+            // came in and direction stays intuitive across level transitions
+            string spawnId = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnId() : null;
+            Checkpoint spawn = !string.IsNullOrEmpty(spawnId) ? FindSpawnPoint(spawnId) : null;
             if (spawn == null) spawn = start;
 
             if (spawn == null)
@@ -218,16 +218,14 @@ namespace Inkform.Level
             return null;
         }
 
-        // The door-side spawn point maintained by Level Graph as "Spawn_<sceneName>" (a Checkpoint
-        // beside the door whose exitId is that scene); matching by name keeps it a pure editor-side
-        // convention — no new component, no scene wiring
-        private Checkpoint FindDoorSpawn(string fromScene)
+        // Arrival checkpoints are keyed by Checkpoint.spawnId — a serialized field the door's
+        // targetSpawnId must match, replacing the old Spawn_<sceneName> object-name convention
+        private Checkpoint FindSpawnPoint(string spawnId)
         {
-            string want = $"Spawn_{fromScene}";
             Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
             foreach (Checkpoint c in all)
             {
-                if (c.gameObject.name == want) return c;
+                if (c.SpawnId == spawnId) return c;
             }
             return null;
         }
