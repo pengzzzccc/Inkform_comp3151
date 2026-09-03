@@ -1,126 +1,129 @@
 using Inkform.Bus;
+using Inkform.Interactable;
 using Inkform.Item;
 using Inkform.Life;
-using Inkform.Tool;
+using Inkform.Settings;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Inkform.Player
 {
     /// <summary>
-    /// 绳索枪：替换 dash 成为主武器（dash 移到 Shift）。命中后直线拉取 —— 不悬挂不荡。
+    /// Rope gun: replaces dash as the primary weapon (dash moved to Shift). On hit, pulls in a straight
+    /// line — no hanging, no swinging.
     ///
-    /// 瞄准：准星 = 自由光标，鼠标 delta / 右摇杆（Aim 动作）驱动、以玩家为圆心在
-    /// 射程半径内上下左右任意移动；由枪口与准星点解出穿过准星的初速度（弹道解算），
-    /// 子弹发射后沿该抛物线飞行 —— 虚线 = 同一弹道的采样，命中地形则截断在命中点
-    /// （绿 = 会钩住），畅通则画到准星（红 = 会打空 → 收绳）。
+    /// Aiming: the reticle is a free cursor, driven by mouse delta / right stick (the Aim action),
+    /// moving around the player between a small safety radius and the current maximum range. Firing
+    /// and spitting always go exactly toward it, no movement-direction fallback. The muzzle and reticle
+    /// solve an initial velocity that passes through the reticle (ballistic solve); the bullet flies
+    /// along that parabola — the reticle is tinted green when terrain intercepts the trajectory within
+    /// the maximum range (will hook), red when clear (will miss → reel in).
     ///
-    /// 飞行：子弹是真实刚体（重力、初速 = 解算结果、阻尼 0 与预览一致，
-    /// excludeLayers 排除玩家/炸弹等，只碰地形）；绳索从枪口放长、末端钉在钩子上，
-    /// 解算下垂 —— 绳索加重后（ropeGravityScale）拖拽感更强。
-    /// 命中：地形 → 短 hitstop 后沿直线把玩家拉向锚点（Pulling），中途再按发射或
-    /// 跳跃即停止施力并松绳回收；到达锚点附近自动松绳。
-    /// 未命中 / 取消：收绳 —— 锚点 = 枪口，末端附子弹刚体把它拉回来
-    /// （和炸弹悬挂链同一套 Verlet 解算）。
+    /// Flight: the bullet is a real rigidbody (gravity, initial velocity = solve result, damping 0
+    /// matches the preview; excludeLayers excludes the player/bombs etc., terrain only); the rope
+    /// feeds out of the muzzle as a straight line to the hook — no Verlet simulation for the rope gun
+    /// (bomb hanging chains still use it).
+    /// Hit: terrain → short hitstop, then pulls the player along a straight line toward the anchor
+    /// (Pulling); pressing fire or jump mid-pull releases the rope outright; reaching near the anchor
+    /// releases automatically.
+    /// Miss / cancel: reel in — the hook is dragged back in a straight line to the muzzle (no rope
+    /// solve, collider off, catches nothing on the way).
     ///
-    /// 特殊命中：
-    /// ① 炸弹：短 hitstop 后把玩家拉向炸弹，到达后吞下（Bomb.TrySwallowByRope）；
-    /// ② 炸弹悬挂链：在命中点切断（Chain.CutAt，靠 Chain 静态注册表逐段检测）。
+    /// Special hits:
+    /// ① carriable objects (Interactable nodes exposing an ICarriable part):
+    ///    short hitstop, then pulls the player toward the target, swallowing on arrival
+    ///    (ICarriable.TrySwallowByRope);
+    /// ② bomb hanging chains: severs at the hit point (Chain.CutAt, probing the Chain static registry
+    ///    segment by segment).
     ///
-    /// 射程：默认 maxRange，特殊区域（RopeRangeZone）通过 RopeGunBus 覆盖/恢复。
-    /// 挂在 Player 上；没挂时游戏照常玩（PlayerHandler 用 TryGetComponent 探测）。
+    /// Range: default maxRange; special zones (RopeRangeZone) override/restore it via RopeGunBus.
+    /// Attach to the Player; without it the game still plays (PlayerHandler probes with TryGetComponent).
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        private enum RopePhase { Idle, Flying, ReelIn, Pulling, PullingBomb }
+        private enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
-        [SerializeField] private float maxRange = 4.2f;                     // 默认最大射程（也是光标半径/绳索长度上限）
+        [SerializeField] private float maxRange = 4f;                       // default reticle / hook travel cap
+        [SerializeField, Min(0f)] private float minAimDistance = 0.7f;      // keeps the target safely ahead of the muzzle
         [SerializeField] private LayerMask hitMask = (1 << 6) | (1 << 11);  // Terrain | Breakable
 
         [Header("Projectile")]
         [SerializeField] private float launchSpeed = 22f;
         [SerializeField] private float bulletGravityScale = 1f;
         [SerializeField] private float bulletRadius = 0.12f;
-        [SerializeField] private Sprite bulletSprite;                       // 可替换
-        [SerializeField] private float muzzleOffset = 0.5f;                 // 钩子出生点沿瞄准方向前移，避免与玩家重叠
-        [SerializeField] private float bombDetectRadius = 0.55f;            // 钩子飞行中探测炸弹的半径
+        [SerializeField] private Sprite bulletSprite;                       // swappable
+        [SerializeField] private float spriteAngleOffset = 0f;              // hook sprite facing offset (degrees); 0 = art points right (+X)
+        [SerializeField] private float muzzleOffset = 0.5f;                 // hook spawn point moved forward along the aim, avoids overlapping the player
+        [SerializeField] private float bombDetectRadius = 0.55f;            // bomb-probe radius while the hook flies
 
         [Header("Aim")]
         [SerializeField] private float mouseAimSensitivity = 1f;
         [SerializeField] private float stickAimSpeed = 5f;
-        [SerializeField] private float mouseShowThreshold = 0.5f;           // 鼠标 |delta|（像素）超过此值算「有瞄准输入」
-        [SerializeField] private float stickShowThreshold = 0.1f;           // 右摇杆 |delta| 超过此值算「有瞄准输入」
-        [SerializeField] private float aimShowTime = 0.15f;                 // 输入停止后延迟隐藏预览（防抖；0 = 立即隐藏）
-        [SerializeField] private float aimFallbackElevation = 30f;          // 无瞄准输入时，发射方向朝上倾的角度（度）
-        [SerializeField] private Sprite crosshairSprite;                    // 准星，可替换
+        [SerializeField] private Sprite crosshairSprite;                    // reticle, swappable
         [SerializeField] private float crosshairSize = 0.6f;
         [SerializeField] private Color hitColor = new Color(0.35f, 1f, 0.35f);
         [SerializeField] private Color missColor = new Color(1f, 0.35f, 0.35f);
 
-        [Header("Parabola preview")]
-        [SerializeField] private Material dashMaterial;                     // 虚线材质（含每单位贴图），可替换
-        [SerializeField] private float dashWidth = 0.05f;
-        [SerializeField] private float dashUnitScale = 0.5f;                // 贴图重复间距（世界单位）
-        [SerializeField] private int dashSortingOrder = 10;
-        [SerializeField] private float previewStepDt = 1f / 30f;
-
         [Header("Rope")]
-        [SerializeField] private VerletRope.Settings ropeSettings = VerletRope.Settings.Default();
-        [SerializeField] private LayerMask ropeCollisionMask = (1 << 6) | (1 << 11);  // 绳索段碰撞层（默认 Terrain|Breakable）
-        [SerializeField] private float ropeGravityScale = 2.5f;                // 绳索重量：段重力系数，越大下垂越明显
-        [SerializeField] private Material ropeMaterial;
+        [SerializeField] private Sprite ropeSegmentSprite;                  // vertical rope strip: the art runs along the sprite's +Y, tiled along the rope's length
+        [SerializeField] private Material ropeMaterial;                     // optional; null = the SpriteRenderer default (Sprites-Default)
         [SerializeField] private float ropeWidth = 0.06f;
         [SerializeField] private int ropeSortingOrder = -5;
-        [SerializeField] private float chainCutRadius = 0.35f;              // 钩子离炸弹链段多近算切断
+        [SerializeField] private float anchorClearance = 0.04f;             // hook anchor offset outward from the contact surface (keeps a bit of rope out of the wall)
+        [SerializeField] private float chainCutRadius = 0.35f;              // how close the hook must be to a bomb chain segment to sever it
 
         [Header("Pull")]
-        [SerializeField] private float pullSpeed = 16f;                     // 硬速度拉取（地形命中 / 抓炸弹共用）：必须压过玩家重力 3x，否则向上拉不动
-        [SerializeField] private float arrivalDistance = 0.7f;              // 到达接触点判定（玩家被墙挡住时中心距墙≈0.5，0.7 即已到达）
-        [SerializeField] private float stuckTime = 0.25f;                   // 拉取卡死兜底：距离不再下降持续这么久就松绳
-        [SerializeField] private float tautRopeGravity = 0.15f;             // 拉取阶段绳索重力系数：压低 = 绷紧近乎直线
-        [SerializeField] private float swallowDistance = 0.75f;             // 距炸弹多近触发吞下
-        [SerializeField] private float detachDistance = 0.5f;               // 收绳拉到多近松绳
-        [SerializeField] private float reelTimeout = 2.5f;                  // 收绳超时：钩子卡死角时强制回收
+        [SerializeField] private float pullSpeed = 16f;                     // hard-velocity pull (terrain hit / bomb grab shared): must beat the player's 3x gravity or upward pulls fail
+        [SerializeField] private float arrivalDistance = 0.7f;              // arrival-at-contact-point threshold (blocked by a wall, the center sits ≈0.5 from the wall; 0.7 = arrived)
+        [SerializeField] private float stuckTime = 0.25f;                   // pull-stuck fallback: distance stops dropping this long → release the rope
+        [SerializeField] private float swallowDistance = 0.75f;             // distance to a bomb that triggers swallowing
+        [SerializeField] private float detachDistance = 0.5f;               // miss recovery: release distance from the muzzle
 
         [Header("Reel & hit")]
-        [SerializeField] private float reelSpeed = 5f;                      // 未命中/取消：绳长缩短速度（收钩）
-        [SerializeField] private float hitStopTime = 0.06f;                 // 命中瞬间的短卡帧（走 FxBus，ScreenFx 有 0.25s 上限）
+        [SerializeField] private float reelSpeed = 5f;                      // miss recovery: straight-line hook pull-back speed
+        [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
 
         private RopePhase phase = RopePhase.Idle;
         private float currentMaxRange;
-        private float ropeLength;       // 当前绳长（绝对上限 = currentMaxRange），收绳驱动它缩短
-        private Timer reelTimer;        // 收绳超时：钩子卡死在角落时强制回收
-        private bool ropeTaut;          // 钩子已被绷在射程圆上（连续第二帧才真正转收绳，见 FixedUpdate）
+        private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
+
+        // Sensitivity bases: the serialized values are the designers' tuning. The user setting is a
+        // multiplier applied on top, captured once in Awake before SettingsStore overrides the fields.
+        private float mouseSensitivityBase;
+        private float stickAimSpeedBase;
 
         private Rigidbody2D playerBody;
         private PlayerMotor motor;
 
-        private Vector2 aimOffset;      // 瞄准游标相对玩家的偏移（世界单位），自由移动、以玩家为圆心
-        private Vector2 moveInput;      // 最近一帧的移动输入（PlayerHandler 转发）：无瞄准输入时的发射方向来源
-        private Timer aimShowTimer;     // 有瞄准输入时刷新；过期 = 隐藏预览 + 发射退回移动方向上倾
-        private bool previewVisible;    // 预览显隐去重
+        private Vector2 aimOffset;      // free cursor offset, clamped between the safe inner radius and current range
+
+        // A shot keeps the player position and range that were valid when fire was pressed. The player
+        // remains free to move while the hook flies, without invalidating an already-green prediction.
+        private Vector2 shotPlayerPosition;
+        private float shotMaxRange;
+        private Vector2 shotAimOffset;
 
         private GameObject hookGo;
         private Rigidbody2D hookBody;
         private HookHit hookHit;
 
-        private Bomb grappleBomb;       // PullingBomb 的目标
-        private Vector2 pullTarget;     // 锚点：地形命中点 / 炸弹当前位置
-        private float lastPullDist;     // 拉取卡死检测：上一物理步到锚点的距离
-        private float pullStuck;        // 距离不再下降的累计时长
+        private ICarriable grapple;        // eat-pull target; null = plain terrain pull
+        private Vector2 pullTarget;     // anchor: terrain hit point / carriable's current position
+        private Collider2D anchor;      // the collider the terrain hook is attached to; null = static anchor
+        private Vector2 anchorLocal;    // hit point in the anchor collider's local space, so the hook follows moving terrain
+        private float lastPullDist;     // pull-stuck detection: distance to the anchor last physics step
+        private float pullStuck;        // accumulated time the distance has stopped dropping
 
-        private readonly VerletRope rope = new VerletRope();
-        private LineRenderer ropeLine;
+        private Transform ropeTf;
+        private SpriteRenderer ropeRenderer;
+        private float ropeTileWidth;    // world size of one tile across the rope's width; derived from the sprite once in Awake
 
         private Transform reticle;
         private SpriteRenderer reticleSprite;
-        private LineRenderer dashLine;
+        private readonly RaycastHit2D[] previewCastHits = new RaycastHit2D[8];
 
-        // 预览抛物线采样点（最多 64 步 + 起点），避免逐帧分配 List
-        private readonly Vector2[] arcPoints = new Vector2[65];
-        private int arcCount;
-
-        private static Sprite discSprite;   // 运行时生成的白色圆盘，未配素材时的回退
+        private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
 
         private static Sprite DiscSprite
         {
@@ -146,31 +149,20 @@ namespace Inkform.Player
             }
         }
 
-        /// <summary>最近一帧的移动输入（PlayerHandler 每帧转发，含键盘摇杆合成/左摇杆）。
-        /// 无瞄准输入时，发射与吐炸弹的方向 = 它向上倾 aimFallbackElevation°。</summary>
-        public void SetMoveInput(Vector2 input) => moveInput = input;
-
         /// <summary>
-        /// 有效发射方向：有瞄准输入 → 精确朝准星；否则 → 当前移动方向（或面朝方向）朝正上
-        /// 倾 aimFallbackElevation°（不越过正上）。绳索枪发射与吐炸弹共用。
+        /// Effective fire direction: always exactly toward the reticle (the persistent aim cursor),
+        /// whether or not the player recently moved it — no movement-direction fallback. Shared by
+        /// rope-gun firing and bomb spitting.
         /// </summary>
         public Vector2 EffectiveFireDir
         {
             get
             {
-                if (aimShowTimer.IsRunning && aimOffset.sqrMagnitude > 0.0001f)
-                    return aimOffset.normalized;
+                if (aimOffset.sqrMagnitude > 0.0001f) return aimOffset.normalized;
 
-                Vector2 d = moveInput.sqrMagnitude > 0.01f
-                    ? moveInput.normalized
-                    : (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left);
-
-                float angle = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
-                float elevated = angle < 90f
-                    ? Mathf.Min(angle + aimFallbackElevation, 90f)
-                    : Mathf.Max(angle - aimFallbackElevation, 90f);
-                float rad = elevated * Mathf.Deg2Rad;
-                return new Vector2(Mathf.Cos(rad), Mathf.Sin(rad));
+                // aimOffset is initialized to a non-zero value and only ever clamped to a range ≥ 0.1,
+                // so this path is unreachable in practice — defensive fallback only
+                return PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
             }
         }
 
@@ -180,12 +172,14 @@ namespace Inkform.Player
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
 
+            mouseSensitivityBase = mouseAimSensitivity;
+            stickAimSpeedBase = stickAimSpeed;
+
             reticle = CreateFx("RopeReticle", out reticleSprite,
                 crosshairSprite != null ? crosshairSprite : DiscSprite, 20);
             reticle.localScale = Vector3.one * crosshairSize;
 
-            dashLine = CreateLine("RopeDashLine", dashMaterial, dashWidth, dashSortingOrder);
-            ropeLine = CreateLine("RopeLine", ropeMaterial, ropeWidth, ropeSortingOrder);
+            CreateRope();
 
             aimOffset = Vector2.right * currentMaxRange * 0.6f;
         }
@@ -196,6 +190,12 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored += OnRangeRestored;
             LifeBus.Died += OnDied;
             LifeBus.Respawned += OnRespawned;
+
+            // SettingsStore is static and always loaded, so subscription needs no instance guard.
+            // Re-apply here too: after a scene reload this RopeGun is fresh while the settings live on.
+            SettingsStore.Changed += OnSettingsChanged;
+            ApplySensitivity();
+            ClampAimOffsetToCurrentRange();
         }
 
         void OnDisable()
@@ -204,12 +204,24 @@ namespace Inkform.Player
             RopeGunBus.RangeRestored -= OnRangeRestored;
             LifeBus.Died -= OnDied;
             LifeBus.Respawned -= OnRespawned;
+            SettingsStore.Changed -= OnSettingsChanged;
+            rangeOverrides.Clear();
+            currentMaxRange = maxRange;
         }
 
-        // ---- 输入入口（PlayerHandler 转发）----
+        private void OnSettingsChanged() => ApplySensitivity();
 
-        /// <summary>瞄准输入。pixelDelta = 鼠标像素差（需要按屏幕高度换算世界单位），
-        /// 否则是右摇杆模拟量（速度 × dt）。输入超过设备阈值时刷新预览显示计时器。</summary>
+        private void ApplySensitivity()
+        {
+            mouseAimSensitivity = mouseSensitivityBase * SettingsStore.MouseSensitivity;
+            stickAimSpeed = stickAimSpeedBase * SettingsStore.StickSensitivity;
+        }
+
+        // ---- Input entries (forwarded by PlayerHandler) ----
+
+        /// <summary>Aiming input. pixelDelta = mouse pixel delta (needs conversion to world units by screen
+        /// height), otherwise a right-stick analog value (speed × dt). Freely moves the always-visible
+        /// reticle within its safe minimum and current maximum range.</summary>
         public void Aim(Vector2 delta, bool pixelDelta)
         {
             if (phase != RopePhase.Idle || LifeBus.IsDead) return;
@@ -221,18 +233,13 @@ namespace Inkform.Player
                     ? cam.orthographicSize * 2f / Mathf.Max(1f, Screen.height)
                     : 0.01f;
                 aimOffset += delta * worldPerPixel * mouseAimSensitivity;
-                if (Mathf.Abs(delta.x) > mouseShowThreshold || Mathf.Abs(delta.y) > mouseShowThreshold)
-                    aimShowTimer.Set(aimShowTime);
             }
             else
             {
                 aimOffset += delta * (stickAimSpeed * Time.deltaTime);
-                if (delta.sqrMagnitude > stickShowThreshold * stickShowThreshold)
-                    aimShowTimer.Set(aimShowTime);
             }
 
-            if (aimOffset.sqrMagnitude > currentMaxRange * currentMaxRange)
-                aimOffset = aimOffset.normalized * currentMaxRange;
+            ClampAimOffsetToCurrentRange();
         }
 
         public void TryFire()
@@ -240,32 +247,34 @@ namespace Inkform.Player
             if (LifeBus.IsDead) return;
             if (phase != RopePhase.Idle)
             {
-                Cancel();           // 再次按下 = 取消本次发射 / 松绳
+                Cancel();           // pressing again = cancel this shot / release the rope
                 return;
             }
-            if (ItemBus.Held != null) return;   // 嘴里叼着炸弹射不了
 
-            // 有瞄准输入 → 精确朝准星；隐藏时 → 移动方向上倾（EffectiveFireDir）
+            // Always exactly toward the reticle (EffectiveFireDir), no movement-direction fallback
             Vector2 fireDir = EffectiveFireDir;
-            Vector2 origin = playerBody.position + fireDir * muzzleOffset;
-            // 弹道目标：瞄准中 = 准星点（精确穿过）；隐藏时 = 沿有效方向到射程
-            Vector2 target = aimShowTimer.IsRunning
-                ? playerBody.position + aimOffset
-                : origin + fireDir * currentMaxRange;
+            shotPlayerPosition = playerBody.position;
+            shotMaxRange = currentMaxRange;
+            shotAimOffset = aimOffset;
+            Vector2 origin = shotPlayerPosition + fireDir * muzzleOffset;
+            // Ballistic target = the reticle point: the bullet passes through it exactly
+            Vector2 target = shotPlayerPosition + shotAimOffset;
             SolveBallistic(origin, target, launchSpeed, Physics2D.gravity * bulletGravityScale,
                 out Vector2 v0, out _);
 
             phase = RopePhase.Flying;
-            ropeTaut = false;
-            SetPreviewShown(false);
+
+            RopeGunBus.RaiseFired(fireDir);
 
             hookGo = new GameObject("GrappleHook");
             hookGo.transform.position = origin;
             hookBody = hookGo.AddComponent<Rigidbody2D>();
             hookBody.gravityScale = bulletGravityScale;
-            hookBody.linearDamping = 0f;                // 与预览解析一致，抛物线才吻合
-            // includeLayers 是「追加允许」语义，不会限制碰撞 —— 必须用 excludeLayers 排除
-            // 玩家/炸弹等除地形外的一切（层碰撞矩阵默认全开，不加排除钩子出生就会撞玩家）
+            hookBody.linearDamping = 0f;                // matches the preview solve, so the parabola lines up
+            hookBody.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+            // includeLayers has "append-allowed" semantics and does not restrict collisions — must use
+            // excludeLayers to exclude everything but terrain (player/bombs etc.; the layer collision
+            // matrix is all-on by default, without the exclusion the hook would hit the player at spawn)
             hookBody.excludeLayers = ~hitMask;
             var col = hookGo.AddComponent<CircleCollider2D>();
             col.radius = bulletRadius;
@@ -273,30 +282,21 @@ namespace Inkform.Player
             sr.sprite = bulletSprite != null ? bulletSprite : DiscSprite;
             sr.sortingOrder = 15;
             hookBody.linearVelocity = v0;
+            FaceHookRotation(v0);
             hookHit = hookGo.AddComponent<HookHit>();
             hookHit.Init(this);
 
-            rope.Init(RopeCfg(), origin, origin);
-            ropeLine.enabled = true;
+            ropeRenderer.enabled = true;
         }
 
-        /// <summary>跳跃键按下时由 PlayerHandler 调：拉取中松绳并让跳跃生效。</summary>
+        /// <summary>Called by PlayerHandler on jump press: during a pull, release the rope and let the jump happen.</summary>
         public void DetachOnJump()
         {
-            if (phase == RopePhase.Idle || phase == RopePhase.ReelIn || phase == RopePhase.Flying) return;
+            if (phase != RopePhase.Pulling) return;
             Finish();
         }
 
-        // ---- 内部流程 ----
-
-        // 把序列化的绳索碰撞层与重量合并进解算配置（绳索段要碰地形、加重下垂；炸弹链保持关闭）
-        private VerletRope.Settings RopeCfg()
-        {
-            var s = ropeSettings;
-            s.collisionMask = ropeCollisionMask;
-            s.gravityScale = ropeGravityScale;
-            return s;
-        }
+        // ---- Internal flow ----
 
         private void Cancel()
         {
@@ -304,12 +304,12 @@ namespace Inkform.Player
             {
                 case RopePhase.Idle: return;
                 case RopePhase.Flying:
-                    StartReelIn();
+                    StartMiss();
                     return;
-                case RopePhase.ReelIn:
-                    return;                         // 已经在收绳
+                case RopePhase.Miss:
+                    return;                         // already recovering
                 default:
-                    Finish();                       // 拉取中：直接松绳回收
+                    Finish();                       // pulling: release and recover the rope outright
                     return;
             }
         }
@@ -318,85 +318,117 @@ namespace Inkform.Player
         {
             if (phase != RopePhase.Flying) return;
 
+            // Terrain/Breakable layers may hold carriables (solid eatable entities like food crates):
+            // when the hook physically hits one, route to "eat-pull" instead of a plain terrain anchor
+            if (TryGetCarriable(collision.collider, out ICarriable carriable))
+            {
+                StartPullingCarriable(carriable);
+                return;
+            }
+
             ContactPoint2D contact = collision.GetContact(0);
 
-            // 锚点沿接触法线往外挪半个绳宽：接触点本身贴在地形表面上，绳段的 CircleCast
-            // 从那里起测会一出生就重叠（工程 QueriesStartInColliders 开着），顺带也让绳子
-            // 渲染时不会有一小截插进墙里。法线方向约定容易记反，用钩子的实际位置校一次符号。
+            // Move the anchor outward from the contact surface: the contact point itself sits on the
+            // terrain, and a small offset keeps a bit of rope from rendering inside the wall. The
+            // normal direction convention is easy to get backwards — check the sign with the hook's
+            // actual position.
             Vector2 outward = contact.normal;
             if (Vector2.Dot(outward, hookBody.position - contact.point) < 0f) outward = -outward;
-            Vector2 hitPoint = contact.point + outward * Mathf.Max(ropeSettings.collisionRadius, 0.01f);
+            Vector2 hitPoint = contact.point + outward * Mathf.Max(anchorClearance, 0.01f);
 
-            // 命中点在钩子表面上，比钩子中心又远出一个 bulletRadius（再加上面那点法线外移）——
-            // 贴着射程边缘打墙时不留这点余量，合法命中会被判成超程
-            float rangeSlack = bulletRadius + Mathf.Max(ropeSettings.collisionRadius, 0.01f);
-            if (Vector2.Distance(playerBody.position, hitPoint) > currentMaxRange + rangeSlack)
+            // The hit point sits on the hook's surface, another bulletRadius beyond the hook center
+            // (plus the normal offset above) — hitting a wall at the edge of the range without this
+            // slack would mark a legal hit as over-range
+            float rangeSlack = bulletRadius + Mathf.Max(anchorClearance, 0.01f);
+            if (Vector2.Distance(shotPlayerPosition, hitPoint) > shotMaxRange + rangeSlack)
             {
-                StartReelIn();      // 超出射程：当未命中处理
+                StartMiss();        // beyond range: treat as a miss
                 return;
             }
 
             pullTarget = hitPoint;
+            // Terrain may move (PatrolMover platforms, spinners, ...): keep the anchor attached to the
+            // hit collider's local point so hook + rope follow the object instead of hanging in space.
+            // Static terrain colliders never move, so this local-space bookkeeping is a no-op there
+            anchor = collision.collider;
+            anchorLocal = anchor.transform.InverseTransformPoint(hitPoint);
             AnchorHook();
             motor?.SetMoveLocked(true);
-            reelTimer.Clear();      // 挂上了就不再是收绳流程，别把到期时间漏给下一次发射
 
-            // 命中瞬间的短卡帧：impact 感。走 FxBus，ScreenFx 负责恢复 timeScale
+            // Direction from the player toward the anchor, for directional feedback (haptics, ...)
+            RopeGunBus.RaiseHit((hookBody.position - playerBody.position).normalized);
+
+            // Brief hitstop at the hit moment: impact feel. Via FxBus; ScreenFx restores timeScale
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
 
-            // 直线拉取：不悬挂不荡 —— 玩家被沿直线拉向锚点（Pulling），中途再按发射/跳跃即停止施力
+            // Straight-line pull: no hanging, no swinging — the player is pulled along a straight line
+            // toward the anchor (Pulling); pressing fire/jump mid-pull stops the force
             phase = RopePhase.Pulling;
-            lastPullDist = float.MaxValue;      // 第一帧必算推进，卡死计时从真正停住才开始
+            lastPullDist = float.MaxValue;      // first frame always advances; stuck timing only starts when truly stopped
             pullStuck = 0f;
         }
 
-        private void StartReelIn()
+        // Miss / cancel recovery: the hook is dragged straight back to the muzzle. Collider off — no
+        // wall-sliding, no bumping bombs, no contact callbacks at all, it just rides the rope end
+        // straight back (passes through geometry). The next shot creates a fresh hook with the collider on.
+        // All callers guarantee the hook is still Flying when this runs.
+        private void StartMiss()
         {
-            if (phase == RopePhase.ReelIn) return;
-            phase = RopePhase.ReelIn;
-            reelTimer.Set(reelTimeout);
+            phase = RopePhase.Miss;
 
-            // 绳长从当前钩子距离起算，之后按 reelSpeed 缓慢缩短 —— 钩子是被绳子拖回来的，
-            // 不直接写速度（写速度会瞬间满速，收绳「嗖」一下且没有绳子拉扯的感觉）
-            if (hookBody != null)
-                ropeLength = Mathf.Min(Vector2.Distance(playerBody.position, hookBody.position), currentMaxRange);
-            // 收绳阶段保留碰撞体：钩子沿墙滑回、不穿模（卡角落由 reelTimeout 兜底）
+            if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
         }
 
-        private void StartPullingBomb(Bomb bomb)
+        private void StartPullingCarriable(ICarriable target)
         {
-            bomb.MarkRopeGrappled();
-            grappleBomb = bomb;
-            phase = RopePhase.PullingBomb;
+            target.MarkRopeGrappled();
+            grapple = target;
+
+            // The anchor must be live before the phase flips: LateUpdate draws the rope (and snaps the
+            // hook) from pullTarget, but FixedUpdate only refreshes it on the NEXT physics step — and
+            // the hitstop below zeroes timeScale, which suspends FixedUpdate entirely. A stale
+            // pullTarget would therefore hang the rope off the previous shot's anchor (or the world
+            // origin on the first grab) for the whole freeze, not just one frame.
+            pullTarget = target.transform.position;
+            phase = RopePhase.Pulling;
             AnchorHook();
             motor?.SetMoveLocked(true);
 
-            // 抓炸弹同样是「命中」，给一样的短卡帧
+            // Same directional feedback as the terrain hit: from the player toward the grabbed target
+            RopeGunBus.RaiseHit(((Vector2)target.transform.position - playerBody.position).normalized);
+
+            // Same reset as the terrain path: a stuck-timeout release leaves pullStuck at the limit,
+            // and without clearing it the very first PullStep would trip the timeout and cancel the grab
+            lastPullDist = float.MaxValue;
+            pullStuck = 0f;
+
+            // Grabbing a carriable is also a "hit", same brief hitstop
             if (hitStopTime > 0f) FxBus.RaiseHitStop(hitStopTime);
         }
 
-        // 钩子变成静态锚点：关物理、关碰撞回调、关碰撞体，不再参与任何物理交互
+        // Hook becomes a static anchor: physics and collider off — no longer participates in any
+        // physical interaction (the collider being off already blocks all contact callbacks, so the
+        // hook's own collision component needs no toggle)
         private void AnchorHook()
         {
             hookBody.simulated = false;
-            hookHit.enabled = false;
             if (hookGo.TryGetComponent(out CircleCollider2D col)) col.enabled = false;
         }
 
         private void Finish()
         {
-            if (grappleBomb != null)
+            // The interface has no Unity fake-null overload: cast to MonoBehaviour first to recognize
+            // destroyed targets
+            if (grapple as MonoBehaviour != null)
             {
-                grappleBomb.ClearRopeGrappled();
-                grappleBomb = null;
+                grapple.ClearRopeGrappled();
             }
+            grapple = null;
+            anchor = null;
             motor?.SetMoveLocked(false);
             phase = RopePhase.Idle;
-            reelTimer.Clear();
-            ropeTaut = false;
             DespawnHook();
-            ropeLine.enabled = false;
-            // 预览显隐交给 Update 里的输入计时器（无输入则保持隐藏）
+            ropeRenderer.enabled = false;
         }
 
         private void DespawnHook()
@@ -407,25 +439,23 @@ namespace Inkform.Player
             hookHit = null;
         }
 
-        private void SetPreviewShown(bool shown)
+        // Rotates the hook's sprite to face a direction (+X = 0°). Written to the rigidbody, not the
+        // transform: with m_AutoSyncTransforms = 0 a direct transform write would be overwritten by
+        // the next physics sync
+        private void FaceHookRotation(Vector2 dir)
         {
-            if (shown == previewVisible) return;    // 去重：逐帧驱动也不每帧 SetActive
-            previewVisible = shown;
-            if (reticle != null) reticle.gameObject.SetActive(shown);
-            dashLine.enabled = shown;
+            if (dir.sqrMagnitude <= 0.0001f) return;
+            hookBody.rotation = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg + spriteAngleOffset;
         }
 
-        // ---- 帧循环 ----
+        // ---- Frame loop ----
 
         void Update()
         {
             if (LifeBus.IsDead) return;
-            if (phase == RopePhase.Idle)
-            {
-                // 预览只在有瞄准输入时计算并显示：隐藏态不白跑弹道解算与 Raycast
-                if (aimShowTimer.IsRunning) UpdatePreview();
-                SetPreviewShown(aimShowTimer.IsRunning);
-            }
+            // The reticle is always visible: it updates every frame while idle, so the player always
+            // knows exactly where the next shot will go
+            if (phase == RopePhase.Idle) UpdatePreview();
         }
 
         void FixedUpdate()
@@ -433,128 +463,125 @@ namespace Inkform.Player
             if (phase == RopePhase.Idle || LifeBus.IsDead) return;
 
             float dt = Time.fixedDeltaTime;
-            Vector2 origin = playerBody.position;
+            Vector2 playerPosition = playerBody.position;
 
             switch (phase)
             {
                 case RopePhase.Flying:
-                    // 绳索从枪口随钩子放长，但绝对不超过 currentMaxRange（绳长上限固定）
-                    float hookDist = Vector2.Distance(origin, hookBody.position);
-                    if (hookDist >= currentMaxRange)
+                    // Range cap: reaching the range circle is a miss — recovery starts immediately,
+                    // no grace frame for an edge-of-range hook (the hook must physically hit terrain
+                    // while still inside the range to ever pull)
+                    if (Vector2.Distance(shotPlayerPosition, hookBody.position) >= shotMaxRange)
                     {
-                        // 绳子物理限长：钩子被绷在射程圆上，只消掉向外径向速度、保留切向
-                        // （像撞到绳尾被拉住）
-                        Vector2 d = hookBody.position - origin;
-                        Vector2 dir = d.sqrMagnitude > 0.0001f ? d.normalized : Vector2.right;
-                        hookBody.position = origin + dir * currentMaxRange;
-                        float radialOut = Vector2.Dot(hookBody.linearVelocity, dir);
-                        if (radialOut > 0f) hookBody.linearVelocity -= dir * radialOut;
-                        hookBody.angularVelocity = 0f;
-                        ropeLength = currentMaxRange;
-                        rope.SetLength(ropeLength);
-                        rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
-
-                        // 绷住的第一帧不转收绳：OnCollisionEnter2D 在 FixedUpdate 之后才跑，
-                        // 当帧就切成 ReelIn 的话，紧接着到来的合法地形碰撞会被 OnHookTerrainHit
-                        // 的 phase 判断丢掉 —— 贴着射程边缘打墙会「明明碰到了却只是收绳」。
-                        // 留一整步给碰撞回调，连续第二帧还绷着才真的收。
-                        if (ropeTaut) StartReelIn();
-                        else ropeTaut = true;
+                        StartMiss();
                         break;
                     }
 
-                    ropeTaut = false;
-                    rope.SetLength(hookDist);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, null, hookBody.position);
+                    // The parabola bends under gravity: keep the sprite facing the current motion
+                    // direction every physics step
+                    FaceHookRotation(hookBody.linearVelocity);
 
                     CutChainsNearHook();
-                    if (DetectBomb()) return;
+                    if (DetectCarriable()) return;
                     break;
 
-                case RopePhase.ReelIn:
-                    // 收绳 = 绳子在收：绳长按 reelSpeed 缩短，钩子挂在绳端被拖回来（带重力下垂）
-                    if (!reelTimer.IsRunning) { Finish(); break; }      // 卡死角超时：强制回收
-
-                    ropeLength = Mathf.Max(0f, ropeLength - reelSpeed * dt);
-                    var reel = RopeCfg();
-                    rope.Configure(reel);
-                    rope.SetLength(ropeLength);
-                    rope.SolveFixed(dt, origin, rope.SegmentCount, hookBody, null);
-                    if (ropeLength <= detachDistance
-                        || Vector2.Distance(origin, hookBody.position) <= detachDistance)
+                case RopePhase.Miss:
+                    // Miss recovery = the hook is dragged back to the muzzle in a straight line at
+                    // reelSpeed (no rope solve: position written directly, velocity zeroed so gravity
+                    // never curves the path; the collider is off so nothing can block it)
+                    hookBody.position = Vector2.MoveTowards(
+                        hookBody.position, playerPosition, reelSpeed * dt);
+                    hookBody.linearVelocity = Vector2.zero;
+                    if (Vector2.Distance(playerPosition, hookBody.position) <= detachDistance)
                         Finish();
                     break;
 
-                case RopePhase.PullingBomb:
-                    if (grappleBomb == null) { Finish(); break; }   // 炸弹被炸没了
-                    pullTarget = grappleBomb.transform.position;
-
-                    float bombDist = PullStep(pullTarget, dt);
-
-                    if (bombDist <= swallowDistance)
+                case RopePhase.Pulling:
+                    if (grapple != null)
                     {
-                        if (grappleBomb.TrySwallowByRope(transform)) Finish();
-                        else Finish();      // 吞不下（嘴满等）：松绳，别卡着
+                        // Eat-pull: the anchor follows the target; swallowing ends the pull.
+                        // The interface has no Unity fake-null overload: cast to MonoBehaviour first
+                        // to recognize a blasted-away target
+                        if (grapple as MonoBehaviour == null) { Finish(); break; }
+                        pullTarget = grapple.transform.position;
+
+                        if (PullStep(pullTarget, dt) <= swallowDistance)
+                        {
+                            grapple.TrySwallowByRope(transform);   // cannot swallow (mouth full etc.): release the rope, do not stall
+                            Finish();
+                            break;
+                        }
+
+                        if (pullStuck >= stuckTime) Finish();   // target behind a wall and unreachable: timeout release
                         break;
                     }
 
-                    if (pullStuck >= stuckTime) Finish();   // 炸弹在墙后够不到就超时松绳
-                    break;
-
-                case RopePhase.Pulling:
-                    float dist = PullStep(pullTarget, dt);
-
-                    // 到达接触点（被墙挡住时中心距墙≈0.5）：松绳、保留动量
-                    if (dist <= arrivalDistance) { Finish(); break; }
-                    if (pullStuck >= stuckTime) Finish();   // 卡死兜底：贴墙滑动中距离在降，不算卡死
+                    // Terrain pull: the anchor follows the hit collider (static terrain never moves;
+                    // moving platforms/spinners carry the hook with them), release on arrival
+                    if (anchor != null) pullTarget = anchor.transform.TransformPoint(anchorLocal);
+                    if (PullStep(pullTarget, dt) <= arrivalDistance)
+                    {
+                        // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
+                        // release, keep momentum
+                        Finish();
+                        break;
+                    }
+                    if (pullStuck >= stuckTime) Finish();   // stuck fallback: sliding along a wall keeps distance dropping, not stuck
                     break;
             }
         }
 
-        // 拉取单步推进（地形 Pulling 与抓炸弹 PullingBomb 共用）：
-        // 硬速度写回（压过重力、直线）+ 绷紧绳索 + 卡死距离推进。
-        // 返回当前到目标的距离，终点判定由调用方做。
+        // Single pull step (terrain Pulling and eat Pulling share it):
+        // hard velocity write-back (beats gravity, straight line) + stuck-distance advance.
+        // Returns the current distance to the target; the endpoint decision is the caller's.
         private float PullStep(Vector2 target, float dt)
         {
             Vector2 to = target - playerBody.position;
             float dist = to.magnitude;
             if (dist < 0.0001f) return dist;
 
-            // 玩家重力 3x（≈29.4 m/s²）会把加速度式拉取彻底压住（朝上根本拉不动），
-            // 硬写才能压过重力、路径近似直线
+            // The player's 3x gravity (≈29.4 m/s²) would crush an acceleration-style pull (upward
+            // pulls would fail entirely); hard-writing beats gravity, path near-straight
             playerBody.linearVelocity = to / dist * pullSpeed;
 
-            // 绳索绷紧：拉取阶段用低重力配置解算，近乎直线；飞行/收绳仍用重绳下垂
-            var taut = RopeCfg();
-            taut.gravityScale = tautRopeGravity;
-            rope.Configure(taut);
-            rope.SetLength(dist);
-            rope.SolveFixed(dt, target, rope.SegmentCount, null, playerBody.position);
-
-            // 卡死推进：距离不再下降（贴墙滑动中距离在降，不算卡死）→ 累计超时松绳
+            // Stuck advance: distance stops dropping (sliding along a wall keeps it dropping, not
+            // stuck) → accumulated timeout releases the rope
             if (dist < lastPullDist - 0.01f) pullStuck = 0f;
             else pullStuck += dt;
             lastPullDist = dist;
             return dist;
         }
 
-        // 飞行中逐段检测炸弹：钩子物理上不碰 Default 层，靠探测找炸弹
-        private bool DetectBomb()
+        // During flight, probes for carriables segment by segment: the hook physically does not touch
+        // Default-layer objects (bombs etc.); found via the layer-agnostic probe. Every collider is
+        // resolved to its Interactable node, then the ICarriable part is requested from that node.
+        private bool DetectCarriable()
         {
             Collider2D[] hits = Physics2D.OverlapCircleAll(
                 hookBody.position, bombDetectRadius + bulletRadius);
             foreach (Collider2D h in hits)
             {
-                if (h.TryGetComponent(out Bomb bomb))
+                if (TryGetCarriable(h, out ICarriable carriable))
                 {
-                    StartPullingBomb(bomb);
+                    StartPullingCarriable(carriable);
                     return true;
                 }
             }
             return false;
         }
 
-        // 飞行中检测炸弹悬挂链：点到线段距离 < 半径即在最近段切断
+        private static bool TryGetCarriable(Collider2D collider, out ICarriable carriable)
+        {
+            carriable = null;
+            if (collider == null) return false;
+
+            Inkform.Interactable.Interactable node =
+                collider.GetComponentInParent<Inkform.Interactable.Interactable>();
+            return node != null && node.TryGetPart(out carriable);
+        }
+
+        // During flight, probes bomb hanging chains: point-to-segment distance under the radius severs
+        // at the nearest segment
         private void CutChainsNearHook()
         {
             Vector2 p = hookBody.position;
@@ -566,77 +593,99 @@ namespace Inkform.Player
             }
         }
 
-        // 瞄准预览：准星 = 自由光标（以玩家为圆心）；弹道 = 解出穿过准星的初速度的抛物线，
-        // 逐段射线检测地形 —— 地形先于准星挡住 → 虚线截断在命中点（绿 = 会钩住）；
-        // 畅通 → 虚线画到准星（红 = 会打空，收绳）
+        // Aim prediction: the reticle is a free cursor and the trajectory is the parabola solved to pass
+        // through it. Fixed-step circle casts use the real hook radius and stop exactly at the maximum
+        // range boundary. Only solid Terrain/Breakable colliders can make the reticle green.
         private void UpdatePreview()
         {
             Vector2 aim = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : Vector2.right;
+            Vector2 rangeCenter = playerBody.position;
 
-            // 与发射完全同源的枪口起点：预览和实际弹道严格一致
-            Vector2 origin = playerBody.position + aim * muzzleOffset;
-            Vector2 target = playerBody.position + aimOffset;
+            // Muzzle origin identical to firing: preview and actual trajectory strictly match
+            Vector2 origin = rangeCenter + aim * muzzleOffset;
+            Vector2 target = rangeCenter + aimOffset;
             Vector2 g = Physics2D.gravity * bulletGravityScale;
 
-            SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0, out float flightTime);
+            SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0, out _);
 
-            float maxT = Mathf.Max(flightTime, previewStepDt);
-            arcPoints[0] = origin;
-            arcCount = 1;
+            float stepDt = Time.fixedDeltaTime;
             Vector2 last = origin;
             bool hit = false;
 
-            // 采样到越过准星一小段（准星之后还有惯性飞行，可能继续命中更远的地形）
-            for (int i = 1; i < arcPoints.Length; i++)
+            // The final segment is clipped before the query, so terrain beyond the legal range can
+            // never make the reticle green.
+            for (float t = stepDt; ; t += stepDt)
             {
-                float t = i * previewStepDt;
-                if (t > maxT + 0.25f) break;
                 Vector2 p = origin + v0 * t + 0.5f * g * t * t;
-                arcPoints[arcCount++] = p;
+                p = ClipSegmentToRange(rangeCenter, last, p, currentMaxRange, out bool reachedRange);
 
                 Vector2 seg = p - last;
                 float segLen = seg.magnitude;
                 if (segLen > 0.0001f)
                 {
-                    RaycastHit2D rh = Physics2D.Raycast(last, seg / segLen, segLen, hitMask);
-                    if (rh.collider != null)
+                    ContactFilter2D filter = new ContactFilter2D();
+                    filter.SetLayerMask(hitMask);
+                    filter.useTriggers = false;
+                    int hitCount = Physics2D.CircleCast(
+                        last, bulletRadius, seg / segLen, filter, previewCastHits, segLen);
+                    if (hitCount > 0)
                     {
-                        arcPoints[arcCount - 1] = rh.point;
                         hit = true;
                         break;
                     }
                 }
 
-                if (Vector2.Distance(origin, p) >= currentMaxRange) break;
+                if (reachedRange) break;
                 last = p;
             }
 
-            // 准星 = 自由光标本身；颜色提示：绿 = 弹道会被地形截住（会钩住），红 = 会打空
+            // Reticle = the free cursor; green = solid hookable terrain, red = miss
             reticle.position = target;
             reticleSprite.color = hit ? hitColor : missColor;
             float s = crosshairSize * (hit ? 1.25f : 1f);
             reticle.localScale = new Vector3(s, s, 1f);
+        }
 
-            // 虚线：抛物线采样点；贴图按单位密度铺开
-            float totalLen = 0f;
-            for (int i = 1; i < arcCount; i++) totalLen += Vector2.Distance(arcPoints[i - 1], arcPoints[i]);
-            dashLine.positionCount = arcCount;
-            for (int i = 0; i < arcCount; i++) dashLine.SetPosition(i, arcPoints[i]);
-            dashLine.textureScale = new Vector2(
-                dashUnitScale > 0.001f ? totalLen / dashUnitScale : totalLen, 1f);
+        // Clips start→end to the first exit from a circle. Callers keep start inside the circle; an
+        // already-outside muzzle (only possible with a deliberately tiny range) collapses safely.
+        private static Vector2 ClipSegmentToRange(Vector2 center, Vector2 start, Vector2 end,
+                                                  float range, out bool clipped)
+        {
+            float rangeSq = range * range;
+            if ((end - center).sqrMagnitude <= rangeSq)
+            {
+                clipped = false;
+                return end;
+            }
+
+            clipped = true;
+            Vector2 d = end - start;
+            float a = Vector2.Dot(d, d);
+            if (a <= 0.0000001f) return start;
+
+            Vector2 m = start - center;
+            float b = 2f * Vector2.Dot(m, d);
+            float c = Vector2.Dot(m, m) - rangeSq;
+            float discriminant = b * b - 4f * a * c;
+            if (discriminant < 0f) return start;
+
+            float t = (-b + Mathf.Sqrt(discriminant)) / (2f * a);
+            return start + d * Mathf.Clamp01(t);
         }
 
         /// <summary>
-        /// 弹道解算：给定起点与目标点、初速大小与重力，求能让弹体穿过目标点的初速度。
-        /// 令 u = t²，代入抛物线方程整理成关于 u 的二次方程，取低抛根（较小的 t）。
-        /// t 钳制下限防目标过近时算出爆速。
+        /// Ballistic solve: given the start and target points, launch speed magnitude, and gravity, find
+        /// the initial velocity that sends the projectile through the target. Letting u = t² and
+        /// substituting into the parabola equation yields a quadratic in u; take the low-arc root
+        /// (smaller t). t is clamped with a lower bound to avoid explosive speeds when the target is
+        /// too close.
         /// </summary>
         private void SolveBallistic(Vector2 origin, Vector2 target, float speed,
                                     Vector2 g, out Vector2 velocity, out float flightTime)
         {
             float dx = target.x - origin.x;
             float dy = target.y - origin.y;
-            float gy = g.y;                 // 负值（向下）
+            float gy = g.y;                 // negative (downward)
 
             // 0.25·g²·u² − (dy·g + v²)·u + (dx² + dy²) = 0
             float a = 0.25f * gy * gy;
@@ -647,12 +696,12 @@ namespace Inkform.Player
             if (a > 1e-8f && b * b >= 4f * a * c)
             {
                 float disc = Mathf.Sqrt(b * b - 4f * a * c);
-                u = (-b - disc) / (2f * a);     // 低抛根
+                u = (-b - disc) / (2f * a);     // low-arc root
                 u = Mathf.Max(u, 0f);
             }
             else
             {
-                u = 0f;                          // 目标不可达（不会发生：光标被钳在射程内）
+                u = 0f;                          // target unreachable (cannot happen: the cursor is clamped inside the range)
             }
 
             flightTime = Mathf.Max(Mathf.Sqrt(u), 0.05f);
@@ -665,46 +714,97 @@ namespace Inkform.Player
         {
             if (phase == RopePhase.Idle) return;
 
-            // 挂在炸弹上的钩子跟着炸弹走（PullingBomb 时钩子物理已关，手动同步）
-            if (hookGo != null && hookBody != null && !hookBody.simulated && phase == RopePhase.PullingBomb)
+            // A hook with physics off follows the live anchor — eat-pull follows the carriable, terrain
+            // pull follows the moving collider (both synced manually; static terrain never moves)
+            if (hookGo != null && hookBody != null && !hookBody.simulated)
                 hookGo.transform.position = pullTarget;
 
-            // 绳索渲染
-            ropeLine.positionCount = rope.SegmentCount + 1;
-            for (int i = 0; i <= rope.SegmentCount; i++)
-                ropeLine.SetPosition(i, rope.GetPoint(i));
+            // Rope rendering: a straight span between the two ends — the rope gun uses no rope
+            // simulation, so the rope is always straight (no sag)
+            Vector2 a, b;
+            if (phase == RopePhase.Pulling)
+            {
+                a = pullTarget;                 // anchor: terrain hit point / carriable position
+                b = playerBody.position;
+            }
+            else
+            {
+                a = playerBody.position;        // muzzle
+                b = hookBody != null ? hookBody.position : a;
+            }
+
+            Vector2 d = b - a;
+            float len = d.magnitude;
+            if (len < 0.0001f)
+            {
+                // Hook still sitting on the muzzle: the direction is undefined, so draw nothing rather
+                // than flash a rope at an arbitrary angle
+                ropeRenderer.enabled = false;
+                return;
+            }
+
+            ropeRenderer.enabled = true;
+            ropeTf.position = (a + b) * 0.5f;                    // the sprite's pivot is Center
+            // The art runs along the sprite's own +Y, so aiming +Y down the rope is a -90° offset
+            ropeTf.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg - 90f);
+            ropeTf.localScale = new Vector3(ropeWidth / ropeTileWidth, 1f, 1f);
+            ropeRenderer.size = new Vector2(ropeTileWidth, len); // tiles along the length: fixed spacing
         }
 
-        // ---- 总线回调 ----
+        // ---- Bus callbacks ----
 
-        private void OnRangeOverride(float range)
+        private void OnRangeOverride(object source, float range)
         {
-            currentMaxRange = Mathf.Max(0.1f, range);
+            if (source == null) return;
+            rangeOverrides[source] = Mathf.Max(0.1f, range);
+            RecalculateRange();
         }
 
-        private void OnRangeRestored()
+        private void OnRangeRestored(object source)
+        {
+            if (source == null) return;
+            rangeOverrides.Remove(source);
+            RecalculateRange();
+        }
+
+        private void RecalculateRange()
         {
             currentMaxRange = maxRange;
+            foreach (float range in rangeOverrides.Values)
+                currentMaxRange = Mathf.Min(currentMaxRange, range);
+
+            ClampAimOffsetToCurrentRange();
+        }
+
+        private void ClampAimOffsetToCurrentRange()
+        {
+            float effectiveMax = Mathf.Max(0.1f, currentMaxRange);
+            float effectiveMin = Mathf.Min(Mathf.Max(0f, minAimDistance), effectiveMax);
+            Vector2 fallback = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
+            Vector2 direction = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : fallback;
+            float distance = Mathf.Clamp(aimOffset.magnitude, effectiveMin, effectiveMax);
+            aimOffset = direction * distance;
         }
 
         private void OnDied(DeathContext ctx)
         {
             if (ctx.Victim != gameObject) return;
 
-            // Finish 幂等：解抓取标记、解锁移动、清状态、销毁钩子，一次做完
+            // Finish is idempotent: clears the grapple mark, unlocks movement, resets state, destroys
+            // the hook — all in one
             Finish();
-            // 死亡期间 Update 被 IsDead 拦住，预览的显隐门控不会跑 —— 必须在这里显式藏掉
-            SetPreviewShown(false);
         }
 
         private void OnRespawned(GameObject victim, Vector2 pos)
         {
             if (victim != gameObject) return;
-            aimOffset = (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left) * currentMaxRange * 0.6f;
-            // 预览由 Update 的输入计时器决定：无输入保持隐藏
+            aimOffset = (PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left)
+                * currentMaxRange * 0.6f;
+            ClampAimOffsetToCurrentRange();
+            // The reticle repositions from the new aimOffset on the next UpdatePreview
         }
 
-        // ---- 运行时物件 ----
+        // ---- Runtime objects ----
 
         private Transform CreateFx(string name, out SpriteRenderer sprite, Sprite fallback, int sortingOrder)
         {
@@ -716,20 +816,29 @@ namespace Inkform.Player
             return go.transform;
         }
 
-        private LineRenderer CreateLine(string name, Material material, float width, int sortingOrder)
+        // Rope rendering is a tiled SpriteRenderer, not a LineRenderer: a LineRenderer maps the
+        // texture's U axis along the line's length, but the rope art is a narrow vertical strip inside
+        // a mostly-empty atlas, so the line sampled the atlas's blank columns and only a fifth of it
+        // ever showed pixels. A SpriteRenderer samples the sprite's sub-rect instead — the strip is
+        // all there is. The strip is turned along the rope by rotating the transform, and
+        // SpriteDrawMode.Tiled repeats it so the link spacing holds at any rope length.
+        private void CreateRope()
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(transform, false);
-            var line = go.AddComponent<LineRenderer>();
-            line.useWorldSpace = true;
-            line.alignment = LineAlignment.TransformZ;
-            line.loop = false;
-            line.widthMultiplier = width;
-            line.sortingOrder = sortingOrder;
-            line.material = material;   // null = 默认纯色
-            line.positionCount = 0;
-            line.enabled = false;
-            return line;
+            ropeTf = CreateFx("Rope", out ropeRenderer,
+                ropeSegmentSprite != null ? ropeSegmentSprite : DiscSprite, ropeSortingOrder);
+            ropeRenderer.drawMode = SpriteDrawMode.Tiled;
+            ropeRenderer.tileMode = SpriteTileMode.Continuous;  // trailing part-tile just clips; spacing stays exact
+            // sharedMaterial, not material: nothing here writes to the material, so there is no reason
+            // to instantiate a per-player copy of it
+            if (ropeMaterial != null) ropeRenderer.sharedMaterial = ropeMaterial;
+            ropeRenderer.enabled = false;
+
+            // Tiled mode clips any axis sized under one whole tile, so the rope's width must hold
+            // exactly one tile and the visual thickness comes from localScale instead (applied in
+            // LateUpdate, so ropeWidth stays tunable in play mode) — that keeps the sprite's
+            // pixels-per-unit (link spacing) and ropeWidth (thickness) independent of each other.
+            Sprite s = ropeRenderer.sprite;
+            ropeTileWidth = s.rect.width / s.pixelsPerUnit;
         }
 
         void OnDrawGizmosSelected()
@@ -738,7 +847,8 @@ namespace Inkform.Player
             Gizmos.DrawWireSphere(transform.position, maxRange);
         }
 
-        // 钩子自身的碰撞回调：excludeLayers 保证只碰地形（Terrain|Breakable），不碰玩家/炸弹
+        // The hook's own collision callback: excludeLayers guarantees terrain only (Terrain|Breakable),
+        // never the player/bombs
         private class HookHit : MonoBehaviour
         {
             private RopeGun owner;

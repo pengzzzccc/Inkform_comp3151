@@ -4,20 +4,22 @@ using UnityEngine;
 namespace Inkform.Life
 {
     /// <summary>
-    /// 死亡导演：收到「有人死了」，按死因选出对应的 DeathStrategy 并让它演。
-    /// 策略模式里的上下文（Context）—— 本类只负责选，怎么演一概不知道。
+    /// Death director: hears "someone died", selects the DeathStrategy for the cause, and lets it
+    /// perform. The Context of the strategy pattern — this class only selects; how to play is
+    /// completely unknown to it.
     ///
-    /// 和 FxDirector / AudioDirector 是同一个套路（订阅总线、把配置集中在一个 Inspector 里），
-    /// 区别是那两个按「关注点」分派（屏幕的归屏幕、音频的归音频），本类按「死因」分派。
-    /// 挂在 GameManager 上。
+    /// Same pattern as FxDirector / AudioDirector (subscribe to buses, centralize configuration in one
+    /// Inspector), except those dispatch by concern (screen stuff to the screen, audio to the audio)
+    /// while this one dispatches by death cause.
+    /// Attach to GameManager.
     /// </summary>
     public class DeathDirector : MonoBehaviour
     {
         [Header("Strategies")]
-        [Tooltip("按死因查表。同一死因配多份时取第一份；漏配的死因会落到 fallback")]
+        [Tooltip("Lookup by death cause. Multiple strategies for the same cause take the first; causes without one fall to the fallback")]
         [SerializeField] private DeathStrategy[] strategies;
 
-        [Tooltip("查不到对应死因时的兜底。留空 = 该死因静默不演出（复活照常）")]
+        [Tooltip("Fallback when no strategy matches the cause. Empty = that cause plays silently (respawn proceeds normally)")]
         [SerializeField] private DeathStrategy fallback;
 
         void OnEnable()
@@ -31,14 +33,15 @@ namespace Inkform.Life
         }
 
         /// <summary>
-        /// 按死因取策略。RespawnDirector 也要用它拿 RespawnDelay ——
-        /// 「多久复活」是死法的属性，所以查表逻辑只该有这一份。
+        /// Strategy for a cause. RespawnDirector also uses it for RespawnDelay — "how quickly you come
+        /// back" is a property of the death method, so the lookup logic must exist in exactly one place.
         /// </summary>
         public DeathStrategy Resolve(DeathCause cause)
         {
             if (strategies != null)
             {
-                // 线性扫：死因就三个，建字典的开销和心智负担都不划算
+                // Linear scan: there are only three causes; a dictionary's cost and mental overhead
+                // are not worth it
                 foreach (DeathStrategy s in strategies)
                 {
                     if (s != null && s.Cause == cause) return s;
@@ -50,19 +53,21 @@ namespace Inkform.Life
         private void OnDied(DeathContext ctx)
         {
             DeathStrategy strategy = Resolve(ctx.Cause);
-            if (strategy == null) return;       // 槽位没配，静默跳过（复活不受影响）
+            if (strategy == null) return;       // slot unconfigured, skip silently (respawn unaffected)
 
             if (ctx.Victim == null) return;
 
-            // 用 GetComponent 而不是 TryGetComponent：后者对接口类型的支持不可靠。
-            // 接口不是 UnityEngine.Object，取不到时是真 null（没有 fake-null 那套），可以直接判
+            // GetComponent rather than TryGetComponent: the latter is unreliable for interface types.
+            // Interfaces are not UnityEngine.Object; when absent it is a true null (no fake-null), so
+            // it can be compared directly
             IDeathBody body = ctx.Victim.GetComponent<IDeathBody>();
 
-            // 死者身上没挂 IDeathBody 是装配错误而不是合法降级 —— 静默跳过的话
-            // 表现全无、却又照常复活，排查起来毫无线索，所以要吭一声
+            // A deceased without IDeathBody is a misconfiguration, not a legal degradation — silently
+            // skipping would mean no presentation at all yet a normal respawn, with zero clue for
+            // debugging, so complain
             if (body == null)
             {
-                Debug.LogWarning($"{ctx.Victim.name} 身上没有 IDeathBody，本次死亡不演出", ctx.Victim);
+                Debug.LogWarning($"{ctx.Victim.name} has no IDeathBody; this death will not play out", ctx.Victim);
                 return;
             }
 

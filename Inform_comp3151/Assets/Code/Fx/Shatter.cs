@@ -1,22 +1,25 @@
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Fx
 {
     /// <summary>
-    /// 网格碎裂：把一个包围盒按 cellsX × cellsY 切成小块，每块沿「爆心 → 块中心」的 8 向弹开。
-    /// 可破坏墙和炸弹共用同一套碎裂表现，自己不持有任何状态 ——
-    /// 切几块、弹多快、长什么样全写在调用方给的 FragmentCue 里。
+    /// Grid shatter: slices a bounds into cellsX × cellsY pieces, each flung along the 8-way
+    /// "blast center → cell center" direction. Breakable walls and bombs share this one shatter
+    /// presentation; holds no state itself — how many slices, how fast, what it looks like are all
+    /// written in the FragmentCue passed in by the caller.
     /// </summary>
     public static class Shatter
     {
         /// <summary>
-        /// 沿网格生成碎块。bounds 必须由调用方在关掉碰撞体之前取好 ——
-        /// Collider2D 一 disabled，物理形状就被移除，bounds 会退化成原点上的零尺寸。
+        /// Spawns shards along the grid. bounds must be captured by the caller before disabling the
+        /// collider — once a Collider2D is disabled its physics shape is removed and bounds degenerate
+        /// to zero size at the origin.
         /// </summary>
         public static void Burst(FragmentCue cue, Bounds bounds, Vector2 center, float force)
         {
-            if (cue == null || cue.prefab == null) return;      // 槽位没配，静默跳过
+            if (cue == null || cue.prefab == null) return;      // slot unconfigured, skip silently
             if (cue.cellsX < 1 || cue.cellsY < 1) return;
 
             Vector2 cell = new Vector2(bounds.size.x / cue.cellsX, bounds.size.y / cue.cellsY);
@@ -25,7 +28,7 @@ namespace Inkform.Fx
             {
                 for (int iy = 0; iy < cue.cellsY; iy++)
                 {
-                    // 格中心 = 包围盒左下角 + (格号 + 0.5) × 格尺寸
+                    // cell center = bounds bottom-left + (cell index + 0.5) × cell size
                     Vector2 pos = new Vector2(
                         bounds.min.x + (ix + 0.5f) * cell.x,
                         bounds.min.y + (iy + 0.5f) * cell.y);
@@ -40,19 +43,22 @@ namespace Inkform.Fx
         {
             GameObject frag = Object.Instantiate(cue.prefab, pos, Quaternion.identity);
 
-            // 外观和缩放交给 Fragment 自己按 Cue 定：只有它知道最终随机取到的是哪张图、原始尺寸多大
+            // Look and scale are left to Fragment itself per the Cue: only it knows the final randomly
+            // picked sprite and its original size
             if (frag.TryGetComponent(out Fragment fragment)) fragment.Apply(cue, cell);
-            else frag.transform.localScale = cell;      // 预制体上没挂 Fragment 时，退回「格尺寸即缩放」
+            else frag.transform.localScale = cell;      // prefab without Fragment: fall back to "cell size = scale"
 
             if (!frag.TryGetComponent(out Rigidbody2D body)) return;
 
-            // 工程里 m_AutoSyncTransforms = 0，改完 transform 顺手同步刚体，和 Bomb.OnItemReleased 一个理由
+            // The project sets m_AutoSyncTransforms = 0, so sync the rigidbody after touching the
+            // transform — same reason as ItemBus.RaiseItemReleased
             body.position = pos;
-            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier);
+            // FX intensity scales the launch speed (0 = shards drop in place); spin stays natural
+            body.linearVelocity = Dir8.Snap(pos - center) * (force * cue.forceMultiplier * SettingsStore.FxIntensity);
             body.angularVelocity = Random.Range(-cue.spinSpeed, cue.spinSpeed);
         }
 
-        /// <summary>在 Scene 视图里画出切分网格，方便调块数。调用方负责先设好 Gizmos.color。</summary>
+        /// <summary>Draws the slicing grid in the Scene view for tuning block counts. The caller sets Gizmos.color first.</summary>
         public static void DrawGrid(Bounds bounds, int cellsX, int cellsY)
         {
             if (cellsX < 1 || cellsY < 1) return;

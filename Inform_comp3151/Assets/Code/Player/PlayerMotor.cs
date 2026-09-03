@@ -4,12 +4,13 @@ using UnityEngine;
 namespace Inkform.Player
 {
     /// <summary>
-    /// 玩家的运动学：速度、跳跃、非线性重力、冲刺与击退的移动锁定。
-    /// 从 PlayerHandler 拆出来的第二层 —— 只碰刚体，不碰动画也不碰道具。
+    /// The player's kinematics: velocity, jump, non-linear gravity, dash and knockback move lockout.
+    /// The second layer split from PlayerHandler — touches only the rigidbody, neither animation nor items.
     ///
-    /// 所有 [SerializeField] 的默认值都写成了 Player.prefab 上的实配值而非原先的代码默认值：
-    /// 拆组件时 Unity 不会迁移序列化数据，默认值写错的话手感会静默改变（比如移速 10 变回 7）。
-    /// 不自带 Update，由 PlayerHandler 按顺序调 Tick()。
+    /// All [SerializeField] defaults are written as Player.prefab's actual values rather than the old
+    /// code defaults: Unity does not migrate serialized data when splitting components, and a wrong
+    /// default silently changes the feel (e.g. speed 10 back to 7).
+    /// No own Update; PlayerHandler calls Tick() in order.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
     [RequireComponent(typeof(ContactSensor))]
@@ -32,11 +33,11 @@ namespace Inkform.Player
         [SerializeField][Range(0, 1)] private float wallKickMultiplier = 0.3f;
 
         [Header("Attack dash")]
-        [SerializeField][Range(1, 2)] private float attackMultiplier = 1f;
-        [SerializeField] private float attackTime = 0.22f;      // 冲刺 / 移动锁定时长
+        [SerializeField][Range(1, 5)] private float attackMultiplier = 1f;
+        [SerializeField] private float attackTime = 0.22f;      // dash / move-lockout duration
 
         [Header("Knockback")]
-        [SerializeField] private float knockbackTime = 0.35f;   // 被炸飞后锁住移动输入的时长
+        [SerializeField] private float knockbackTime = 0.35f;   // move-input lockout after being blasted
 
         private Rigidbody2D body;
         private ContactSensor contact;
@@ -44,14 +45,21 @@ namespace Inkform.Player
         private Timer wallJumpBuffer;
         private Timer attackTimer;
         private Timer knockbackTimer;
-        private Timer updateBuffer;     // 刚从地面起跳的短暂窗口，期间不补跳跃次数
+        private Timer updateBuffer;     // brief window after leaving the ground, during which jump count is not refilled
 
         private int jumpLeft;
         private float requestTime = -999f;
         private bool jumpCutQueued;
 
-        // 起跳发生在本帧 —— 由 PlayerHandler 取走后转交给动画层。
-        // 用「取一次即清」的标志而不是事件：同物体内的一次性通知，架个事件不划算
+        // Platform follow state: standing on a moving platform carries the player along. Zero
+        // "platform awareness" on the player side — it only reads physical facts (how far the contacted
+        // rigidbody moved this frame); static platforms move zero, naturally unaffected
+        private Collider2D groundPlatform;     // the ground collider from the previous frame
+        private Vector2 groundPrevPos;         // the platform's previous-frame position
+
+        // The jump happened this frame — handed to the animation layer by PlayerHandler.
+        // A take-once-then-clear flag rather than an event: a one-shot notice within the same object,
+        // an event would not pay for itself
         private bool jumpStarted;
 
         void Awake()
@@ -63,7 +71,7 @@ namespace Inkform.Player
             jumpLeft = jumpTimes;
         }
 
-        /// <summary>本帧是否刚起跳。取走即清 —— 只该被消费一次。</summary>
+        /// <summary>Whether a jump just started this frame. Cleared on take — consumed exactly once.</summary>
         public bool ConsumeJumpStarted()
         {
             bool v = jumpStarted;
@@ -71,28 +79,69 @@ namespace Inkform.Player
             return v;
         }
 
-        // 移动被锁住（墙跳后摇 / 冲刺 / 击退 / 绳索枪附绳期间）。动画层不受此影响，仍跟着输入走
+        // Move is locked (wall-jump recovery / dash / knockback / rope-gun attached). The animation
+        // layer is unaffected and still follows input
         private bool MoveLocked =>
             wallJumpBuffer.IsRunning || attackTimer.IsRunning || knockbackTimer.IsRunning || grappleLocked;
 
-        private bool grappleLocked;     // 绳索枪悬挂/拉取期间的输入锁定，绳子主导运动
+        private bool grappleLocked;     // input lockout while the rope gun hangs/pulls; the rope dominates motion
 
-        /// <summary>绳索枪附绳时锁住移动输入，脱离后解锁。锁的是输入，不碰刚体。</summary>
+        /// <summary>Locks move input while the rope gun is attached; unlocks on release. Locks input,
+        /// never touches the rigidbody.</summary>
         public void SetMoveLocked(bool locked) => grappleLocked = locked;
 
         public float VelocityX => body.linearVelocityX;
         public float VelocityY => body.linearVelocityY;
 
-        /// <summary>每帧推进重力与跳跃。由 PlayerHandler 在 ContactSensor.Tick() 之后调。</summary>
+        /// <summary>Advances gravity and jump each frame. Called by PlayerHandler after ContactSensor.Tick().</summary>
         public void Tick()
         {
             ApplyNonLinearGravity();
             StepJump();
+            StepPlatform();
+        }
+
+        // Platform follow: adds the contacted rigidbody's movement this frame to the player, carrying
+        // the player on a moving platform. Switching platforms resets the baseline (never applies the
+        // cross-platform jump delta); jumping / walking off the edge stops the follow automatically
+        // when Ground disappears
+        private void StepPlatform()
+        {
+            if (contact.Ground == null)
+            {
+                groundPlatform = null;
+                return;
+            }
+
+            if (contact.Ground != groundPlatform)
+            {
+                groundPlatform = contact.Ground;
+                groundPrevPos = PlatformPos();
+                return;
+            }
+
+            Vector2 now = PlatformPos();
+            Vector2 delta = now - groundPrevPos;
+            groundPrevPos = now;
+            if (delta.sqrMagnitude < 1e-8f) return;
+
+            // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
+            // write both
+            transform.position += (Vector3)delta;
+            body.position += delta;
+        }
+
+        // Platform position reads the rigidbody (true physical position, synced by PatrolMover's
+        // double-write); without a rigidbody, falls back to the transform
+        private Vector2 PlatformPos()
+        {
+            Rigidbody2D rb = groundPlatform.attachedRigidbody;
+            return rb != null ? rb.position : (Vector2)groundPlatform.transform.position;
         }
 
         public void Move(Vector2 input)
         {
-            // 被炸飞/冲刺期间也不接受移动输入，否则下一帧就把击退速度抹掉了
+            // Also rejects move input while blasted/dashing, or the next frame would wipe the knockback velocity
             if (MoveLocked) return;
 
             body.linearVelocityX = input.x * movingSpeed;
@@ -102,7 +151,8 @@ namespace Inkform.Player
         {
             requestTime = Time.time;
 
-            // 贴着墙且跳跃次数已用尽时补一次，让墙跳不吃二段跳的额度
+            // On a wall with the jump count spent, grant one extra so wall jumps never eat the
+            // double-jump budget
             if (contact.OnWall && jumpLeft == 0 && !wallJumpBuffer.IsRunning)
             {
                 jumpLeft++;
@@ -110,42 +160,44 @@ namespace Inkform.Player
             }
         }
 
-        /// <summary>松开跳键：上升中就把纵向速度砍掉一截，实现按住越久跳越高。</summary>
+        /// <summary>Jump released: cuts a chunk of the upward velocity, holding longer jumps higher.</summary>
         public void CutJump() => jumpCutQueued = true;
 
-        /// <summary>攻击冲刺：朝 dir 方向给一段横向速度并锁住移动输入。</summary>
+        /// <summary>Attack dash: gives a horizontal velocity in dir and locks move input.</summary>
         public void Dash(float dir)
         {
             body.linearVelocity = new Vector2(dir * movingSpeed * attackMultiplier, body.linearVelocityY);
             attackTimer.Set(attackTime);
         }
 
-        /// <summary>被爆炸推开：直接改速度并锁一小段移动输入。</summary>
+        /// <summary>Blasted away: rewrites velocity directly and locks a short move input.</summary>
         public void Knockback(Vector2 velocity)
         {
             body.linearVelocity = velocity;
             knockbackTimer.Set(knockbackTime);
         }
 
-        /// <summary>死亡：停速度并停物理。
-        /// 停物理即停掉一切碰撞回调，尸体不会再被刺反复判定。
-        /// 不能 SetActive(false) —— OnDisable 会退订总线，就再也收不到「复活」了。</summary>
+        /// <summary>Death: stops velocity and physics.
+        /// Disabling physics stops all collision callbacks, so the corpse is not repeatedly judged by
+        /// spikes. Must NOT SetActive(false) — OnDisable would unsubscribe the buses and "respawn"
+        /// would never arrive.</summary>
         public void StopForDeath()
         {
             body.linearVelocity = Vector2.zero;
             body.simulated = false;
         }
 
-        /// <summary>复活：放回检查点并把所有瞬时状态归零。</summary>
+        /// <summary>Respawn: teleports to the checkpoint and zeros all transient state.</summary>
         public void RespawnAt(Vector2 pos)
         {
-            // 工程里 m_AutoSyncTransforms = 0：transform 和刚体位置互不同步，两个都要写
+            // The project sets m_AutoSyncTransforms = 0: transform and rigidbody positions do not sync,
+            // write both
             transform.position = pos;
             body.position = pos;
             body.simulated = true;
             body.linearVelocity = Vector2.zero;
 
-            // 死前攒下的锁定和跳跃次数不能带到下一条命里
+            // Lockouts and jump count accumulated before death must not carry into the next life
             jumpLeft = jumpTimes;
             jumpCutQueued = false;
             jumpStarted = false;
@@ -153,25 +205,25 @@ namespace Inkform.Player
             wallJumpBuffer.Clear();
             attackTimer.Clear();
             knockbackTimer.Clear();
+            updateBuffer.Clear();
+            grappleLocked = false;
+            groundPlatform = null;
+            groundPrevPos = Vector2.zero;
         }
 
-        // 分支顺序有讲究，依赖 ContactSensor 那条反相语义：离开天花板期间 CeilingStickActive 恒为真，
-        // 所以第二个分支（贴顶时间用完）只有真的贴着顶时才可能命中，贴墙下滑和下落加速才轮得到执行。
-        // 调整顺序前先回去读 ContactSensor.ceilingStickTimer 上的注释
+        // The branch order matters, relying on ContactSensor's inverted semantics: CeilingStickActive
+        // is always true while away from the ceiling, so the second branch (stick time exhausted) can
+        // only hit while actually stuck — wall sliding and fall acceleration only run otherwise.
+        // Read the comment on ContactSensor.ceilingStickTimer before reordering
         private void ApplyNonLinearGravity()
         {
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
-            if (contact.OnCeiling && contact.CeilingStickActive)
-                body.gravityScale = -5f;                            // 吸在天花板上，重力朝上
-            else if (!contact.CeilingStickActive)
-                body.gravityScale = gravity;                        // 贴顶时间用完，掉下来
-            else if (wallSliding)
-                body.gravityScale = gravity * onWallGravityMultiplier; // 贴墙下滑减速
-            else if (body.linearVelocityY < 0f)
-                body.gravityScale = gravity * fallGravityMultiplier;   // 下落加速，手感更利落
-            else
-                body.gravityScale = gravity;
+            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
+            else if (!contact.CeilingStickActive)                   {body.gravityScale = gravity;}                              // stick time exhausted, fall off
+            else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
+            else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
+            else                                                    {body.gravityScale = gravity;}
         }
 
         private void StepJump()
@@ -203,13 +255,14 @@ namespace Inkform.Player
                 body.linearVelocityY = jumpSpeed;
                 requestTime = -999f;
                 jumpLeft--;
-                jumpStarted = true;     // 地面跳 / 二段跳 / 墙跳都算，动画层据此播 JumpUp
+                jumpStarted = true;     // ground/double/wall jumps all count; the animation layer plays JumpUp
 
-                // 起跳当帧脚还没离开地面，不挡一下的话下面那句会立刻把次数补满
+                // On the jump frame the feet have not left the ground; without a guard the line below
+                // would immediately refill the count
                 if (contact.OnGround) updateBuffer.Set(0.1f);
             }
 
-            if (contact.OnGround && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+            if ((contact.OnGround || contact.OnCeiling) && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
         }
     }
 }

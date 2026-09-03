@@ -1,25 +1,31 @@
 using Inkform.Bus;
 using Inkform.Life;
+using System.Collections;
 using UnityEngine;
 
 namespace Inkform.Player
 {
     /// <summary>
-    /// 玩家死亡的表现侧：把「本体」这件事暴露给死亡策略去摆布。
-    /// 本类只回答三个问题 —— 本体看起来多大、怎么藏、怎么显；至于藏了之后是碎成一堆块
-    /// 还是慢慢淡出，那是 DeathStrategy 的算法，本类一概不知道。
+    /// The player death's presentation side: exposes "the body" for the death strategy to manipulate.
+    /// This class only answers three questions — how big the body looks, how to hide it, how to show
+    /// it; whether hiding is followed by bursting into shards or a slow fade is the DeathStrategy's
+    /// algorithm, unknown to this class.
     ///
-    /// 和 PlayerHandler 分开是刻意的 —— 那边只管玩法（停物理、锁输入、瞬移），这边只管本体的可见性。
-    /// 挂在 Player 上（要拿本物体的 SpriteRenderer）。
+    /// Being separate from PlayerHandler is deliberate — that side handles gameplay only (stop physics,
+    /// lock input, teleport), this side handles the body's visibility only. Attach to the Player (needs
+    /// its SpriteRenderer).
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public class PlayerDeathFx : MonoBehaviour, IDeathBody
     {
         private SpriteRenderer sprite;
+        private Vector3 baseScale;      // captured at Awake; Flatten animates away from it, respawn restores it
+        private Coroutine flatten;
 
         void Awake()
         {
             sprite = GetComponent<SpriteRenderer>();
+            baseScale = sprite.transform.localScale;
         }
 
         void OnEnable()
@@ -32,24 +38,63 @@ namespace Inkform.Player
             LifeBus.Respawned -= OnRespawned;
         }
 
-        // 用 SpriteRenderer.bounds 而不是碰撞体的，两个理由：
-        // ① 碎块该照着「看得见的轮廓」切，而玩家碰撞体是 0.5×0.5 的胶囊、比图小一圈；
-        // ② 碰撞体的 bounds 会随 PlayerHandler 那边关物理而失效，而两个组件谁先收到
-        //    同一个事件是不保证的 —— 用渲染器的包围盒就绕开了这个先后顺序坑
+        // SpriteRenderer.bounds rather than the collider's, for two reasons:
+        // ① shards should be sliced along the "visible silhouette", and the player collider is a
+        //    0.5×0.5 capsule, a size smaller than the art;
+        // ② the collider's bounds die once PlayerHandler disables physics, and which of the two
+        //    components receives the same event first is not guaranteed — the renderer's bounds avoid
+        //    that ordering pitfall entirely
         public Bounds VisualBounds => sprite.bounds;
 
-        // 本体和碎块不能重叠显示，关渲染而不是 SetActive(false)：
-        // 后者会触发 OnDisable 退订总线，就再也收不到「复活」了
+        // The body and the shards must not overlap visually; disable rendering rather than
+        // SetActive(false): the latter triggers OnDisable unsubscribing the buses, and "respawn"
+        // would never arrive
         public void Hide() => sprite.enabled = false;
 
         public void Show() => sprite.enabled = true;
 
-        // 死亡由 DeathDirector 驱动（它拿得到策略），复活则不需要策略参与 ——
-        // 无论怎么死的，显回本体都是同一件事，所以这一半仍然直接听总线
+        // Scale only, never position: the sprite transform may be the player root itself, and writing
+        // position here would fight PlayerHandler's respawn teleport (which runs on the same bus
+        // event). A flattened pancake at body-center height reads fine; a corrupted respawn does not.
+        public void Flatten(Vector2 scaleMultiplier, float duration)
+        {
+            if (flatten != null) StopCoroutine(flatten);
+            flatten = StartCoroutine(FlattenRoutine(scaleMultiplier, duration));
+        }
+
+        private IEnumerator FlattenRoutine(Vector2 scaleMultiplier, float duration)
+        {
+            Vector3 target = new Vector3(
+                baseScale.x * scaleMultiplier.x,
+                baseScale.y * scaleMultiplier.y,
+                baseScale.z);
+
+            // Unscaled time: the crush hitStop pins timeScale to 0 — the squash itself must still
+            // play through, that punch is the whole point of the death
+            for (float t = 0f; t < duration; t += Time.unscaledDeltaTime)
+            {
+                sprite.transform.localScale = Vector3.Lerp(baseScale, target, Mathf.Clamp01(t / duration));
+                yield return null;
+            }
+            sprite.transform.localScale = target;
+            flatten = null;
+        }
+
+        // Death is driven by DeathDirector (which has the strategy); respawn needs no strategy — no
+        // matter how the player died, showing the body back is the same thing, so this half still
+        // listens to the bus directly
         private void OnRespawned(GameObject victim, Vector2 pos)
         {
             if (victim != gameObject) return;
 
+            // Undo however the last life ended the body: a Flatten left mid-run or finished must
+            // never leak into the next life's silhouette
+            if (flatten != null)
+            {
+                StopCoroutine(flatten);
+                flatten = null;
+            }
+            sprite.transform.localScale = baseScale;
             Show();
         }
     }

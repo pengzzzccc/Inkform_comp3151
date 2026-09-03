@@ -1,23 +1,24 @@
 namespace Inkform.Life
 {
     /// <summary>
-    /// 快照（备忘录）：一个关卡物件在某一刻的状态。内容对持有者不透明 ——
-    /// LevelMemento 只知道「有这么一份快照，可以让它还原」，不知道里面存的是墙碎没碎还是别的什么。
-    /// 于是加一种可还原物件不需要改 LevelMemento 一个字。
+    /// Snapshot (memento): a level object's state at one moment. Its content is opaque to the holder —
+    /// LevelMemento only knows "there is a snapshot that can restore", not whether it stores a broken
+    /// wall or something else. Adding a new restorable object type thus changes LevelMemento not at all.
     /// </summary>
     public interface IMemento
     {
-        /// <summary>把originator 恢复到本快照拍下时的状态。</summary>
+        /// <summary>Restores the originator to the state captured in this snapshot.</summary>
         void Restore();
     }
 
     /// <summary>
-    /// 可还原物件（原发者）：能给自己拍一张快照。
-    /// 由 LevelMemento 在踩到检查点时统一拍照，死亡复活时统一还原 ——
-    /// 否则炸碎的墙不会回来，反复重试同一段关卡会越来越空。
+    /// Restorable object (originator): can capture a snapshot of itself.
+    /// LevelMemento captures all of them on checkpoint touch and restores them all on death respawn —
+    /// otherwise shattered walls would not return and retrying the same section would leave it emptier
+    /// and emptier.
     ///
-    /// 实现方注意：还原的前提是物件一直活着。**不要在被破坏时 Destroy 自己**，
-    /// 改成关碰撞体 + 关渲染（BreakableWall 就是这么做的）。
+    /// Implementors note: restoration presupposes the object stays alive. **Never Destroy yourself on
+    /// destruction** — disable the collider + rendering instead (RestorablePart does exactly this).
     /// </summary>
     public interface IRestorable
     {

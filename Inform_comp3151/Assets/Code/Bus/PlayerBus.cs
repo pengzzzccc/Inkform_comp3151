@@ -5,21 +5,43 @@ using Inkform.Player;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// 玩家状态总线：发布方只有 PlayerHandler，订阅方无需持有任何 PlayerHandler 引用。
-    /// 总线负责去重（只在值真的变化时广播），并保存当前快照供订阅者做首次同步。
+    /// Player state/action bus: the only publisher is PlayerHandler — except InteractPressed, which
+    /// InputHandler raises because "confirm" targets whatever the player stands near (world parts),
+    /// not the player itself. Subscribers need no serialized player reference. State changes are
+    /// deduped and snapshotted; DashAttempted is transient.
     /// </summary>
     public static class PlayerBus
     {
         public static event Action<PlayerState> StateChanged;
         public static event Action<FaceDirection> FaceChanged;
+        public static event Action<Vector2, bool> DashAttempted;
 
-        // 当前快照：订阅者可在 OnEnable 里读取以完成首次同步
+        /// <summary>One confirm press (E / gamepad north) — consumed by world parts that are currently
+        /// in range (e.g. AbilityPickupPart), not by PlayerHandler.</summary>
+        public static event Action InteractPressed;
+
+        // Current snapshot: subscribers can read it in OnEnable to complete initial sync
         public static PlayerState State { get; private set; }
         public static FaceDirection Face { get; private set; }
 
+        // The current scene's live player, registered by PlayerHandler on Awake and cleared on
+        // destroy. Persistent managers must read the player from here instead of a serialized
+        // reference: the GameManager survives scene switches (AudioManager's DontDestroyOnLoad), so a
+        // reference to the spawning scene's player goes stale the moment the scene changes.
+        public static PlayerHandler Player { get; private set; }
+
+        public static void RegisterPlayer(PlayerHandler player) => Player = player;
+
+        // The new scene's player registers (Awake) before the old one is destroyed, so the guard
+        // keeps the live player in place during a scene switch
+        public static void UnregisterPlayer(PlayerHandler player)
+        {
+            if (Player == player) Player = null;
+        }
+
         public static void RaiseState(PlayerState state)
         {
-            if (state == State) return;      // 去重：只在变化时广播
+            if (state == State) return;      // dedup: broadcast only on change
             State = state;
             StateChanged?.Invoke(state);
         }
@@ -31,15 +53,25 @@ namespace Inkform.Bus
             FaceChanged?.Invoke(face);
         }
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        /// <summary>One live-player dash input. succeeded means a DashFuel was consumed and motion began.</summary>
+        public static void RaiseDashAttempted(Vector2 position, bool succeeded) =>
+            DashAttempted?.Invoke(position, succeeded);
+
+        public static void RaiseInteractPressed() => InteractPressed?.Invoke();
+
+        // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
+        // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             StateChanged = null;
             FaceChanged = null;
-            // 与 PlayerHandler 的字段默认值保持一致（Idle / R），避免启动时多广播一次
+            DashAttempted = null;
+            InteractPressed = null;
+            // Match PlayerHandler's field defaults (Idle / R) to avoid an extra broadcast at startup
             State = PlayerState.Idle;
             Face = FaceDirection.R;
+            Player = null;
         }
     }
 }

@@ -5,15 +5,18 @@ using UnityEngine;
 namespace Inkform.Player
 {
     /// <summary>
-    /// 动画状态推导：每帧按优先级从接触状态和运动状态里算出「现在该播哪个动画」，并广播到 PlayerBus。
-    /// 从 PlayerHandler 拆出来的第三层 —— 它只决定播什么，具体怎么播（选 clip、翻转）归 AniHandler。
+    /// Animation state derivation: every frame, computes "which animation should play now" by priority
+    /// from contact and motion state, broadcasting to PlayerBus. The third layer split from
+    /// PlayerHandler — it only decides WHAT plays; how to play it (clip selection, flipping) belongs
+    /// to AniHandler.
     ///
-    /// 注意这不是转移式状态机而是**推导式**的：每帧从头重算一遍，没有「从 A 只能到 B」的边。
-    /// 所以这里适合的是优先级链而不是 State 模式 —— 13 个状态各拆一个类，
-    /// 换来的只是把同一条链拆散到 13 个文件里，读起来反而更难看出优先级。
+    /// Note this is not a transition state machine but a **derivative** one: everything recomputed
+    /// from scratch each frame, no "from A only to B" edges. So a priority chain fits here rather
+    /// than the State pattern — splitting the 13 states into 13 classes would only scatter one chain
+    /// across 13 files, making the priority harder to read.
     ///
-    /// [SerializeField] 默认值同样取自 Player.prefab 的实配值（landAnimTime 等）。
-    /// 不自带 Update，由 PlayerHandler 最后调 Tick()。
+    /// [SerializeField] defaults likewise come from Player.prefab's actual values (landAnimTime etc.).
+    /// No own Update; PlayerHandler calls Tick() last.
     /// </summary>
     [RequireComponent(typeof(ContactSensor))]
     [RequireComponent(typeof(PlayerMotor))]
@@ -41,34 +44,44 @@ namespace Inkform.Player
             motor = GetComponent<PlayerMotor>();
         }
 
-        /// <summary>朝向。去重由 PlayerBus 负责，这里直接 Raise 即可。</summary>
+        /// <summary>Facing. Dedup is PlayerBus's job; raise directly here.</summary>
         public void SetFace(FaceDirection face) => PlayerBus.RaiseFace(face);
 
-        /// <summary>移动输入只驱动动画不参与物理 —— 锁定期间也要跟着输入走，
-        /// 否则落地会错放 Move。</summary>
+        /// <summary>Move input drives animation only, not physics — it must follow the input during
+        /// lockout too, or landing would play the wrong Move.</summary>
         public void SetMoveInput(Vector2 input) => moveInput = input;
 
-        /// <summary>起跳一次性动画。由 PlayerHandler 从 PlayerMotor 取到起跳信号后转交。</summary>
+        /// <summary>One-shot jump animation. Handed over by PlayerHandler after taking the jump signal
+        /// from PlayerMotor.</summary>
         public void OnJumpStarted() => jumpUpTimer.Set(jumpUpAnimTime);
 
-        /// <summary>复活时清掉死前攒下的一次性动画。
-        /// 冲刺不再播动画后只剩落地/贴顶一次性，这里保留调用点以防将来再加。</summary>
-        public void ResetForRespawn() { }
+        /// <summary>Clears one-shot animations accumulated before death on respawn.
+        /// With dash no longer playing an animation, only land/ceiling-stick one-shots remain; the call
+        /// site stays in case more are added later.</summary>
+        public void ResetForRespawn()
+        {
+            landAnimTimer.Clear();
+            jumpUpTimer.Clear();
+            ceilingAttachTimer.Clear();
+            moveInput = Vector2.zero;
+            prevOnGround = false;
+            prevOnCeiling = false;
+        }
 
-        /// <summary>把落地/贴顶的「上一帧」基准对齐到当前接触状态。
-        /// 复活时必须在 ContactSensor.Tick() 之后调一次 —— 不然复活在地上会被判成
-        /// 「刚落地」，白播一次 Land 动画和落地音。</summary>
+        /// <summary>Aligns the "previous frame" baselines for land/ceiling to the current contact state.
+        /// Must be called once after ContactSensor.Tick() on respawn — otherwise respawning on the
+        /// ground counts as "just landed" and plays a Land animation and landing sound for nothing.</summary>
         public void SyncContactBaseline()
         {
             prevOnGround = contact.OnGround;
             prevOnCeiling = contact.OnCeiling;
         }
 
-        // 优先级：落地/贴顶一次性检测 > 吃/吐 > 天花板(动/静) > 墙侧下滑
-        //         > 空中(JumpUp 一次性 → Rise/Fall) > 地面(Move/Idle)
+        // Priority: land/ceiling-stick one-shots > ceiling (moving/static) > wall slide
+        //           > airborne (JumpUp one-shot → Rise/Fall) > ground (Move/Idle)
         public void Tick()
         {
-            // 落地/贴顶瞬间的一次性动画（起跳一次性由 OnJumpStarted 触发）
+            // One-shot animations at the land/ceiling moments (the jump one-shot is triggered by OnJumpStarted)
             if (!prevOnGround && contact.OnGround) landAnimTimer.Set(landAnimTime);
             prevOnGround = contact.OnGround;
             if (!prevOnCeiling && contact.OnCeiling) ceilingAttachTimer.Set(ceilingAttachTime);
@@ -77,11 +90,11 @@ namespace Inkform.Player
             if (contact.OnCeiling)
             {
                 if (ceilingAttachTimer.IsRunning)
-                    SetState(PlayerState.CeilingStick);              // 刚贴上：附着一次性
+                    SetState(PlayerState.CeilingStick);              // just stuck: attach one-shot
                 else if (Mathf.Abs(moveInput.x) > 0.01f)
-                    SetState(PlayerState.CeilingMove);               // 天花板移动
+                    SetState(PlayerState.CeilingMove);               // ceiling moving
                 else
-                    SetState(PlayerState.CeilingIdle);               // 静止 = 上下翻转的 Idle
+                    SetState(PlayerState.CeilingIdle);               // still = Idle flipped upside down
                 return;
             }
 
@@ -94,24 +107,25 @@ namespace Inkform.Player
 
             if (!contact.OnGround)
             {
-                // 起跳瞬间且有横向速度才播 JumpUp，纯垂直起跳直接进 Rise
+                // JumpUp only plays on the jump moment with horizontal velocity; a pure vertical jump
+                // goes straight to Rise
                 if (jumpUpTimer.IsRunning && (motor.VelocityX > 0.3f || motor.VelocityX < -0.3f))
                     SetState(PlayerState.JumpUp);
                 else
                     SetState(motor.VelocityY > 0.1f
-                        ? PlayerState.Rise               // 上升
-                        : PlayerState.Fall);             // 下落
+                        ? PlayerState.Rise               // rising
+                        : PlayerState.Fall);             // falling
                 return;
             }
 
-            if (landAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // 落地瞬间
+            if (landAnimTimer.IsRunning) { SetState(PlayerState.Land); return; }  // landing moment
 
             SetState(Mathf.Abs(moveInput.x) > 0.2f
                 ? PlayerState.Move
                 : PlayerState.Idle);
         }
 
-        // 去重（只在变化时广播）由 PlayerBus 负责，这里直接 Raise 即可
+        // Dedup (only broadcast on change) is PlayerBus's job; raise directly here
         private void SetState(PlayerState state) => PlayerBus.RaiseState(state);
     }
 }

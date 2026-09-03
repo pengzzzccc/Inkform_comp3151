@@ -1,40 +1,57 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using Inkform.Bus;
 using Inkform.Player;
+using Inkform.Settings;
 
 namespace Inkform.Input
 {
     /// <summary>
-    /// 输入层：把 InputSystem_Actions 资产里的动作转发给 PlayerHandler。
+    /// Input layer: forwards the actions from the shared InputActions asset to PlayerHandler.
     ///
-    /// 键位只有一个来源 —— InputSystem_Actions.inputactions 资产（改键去那儿改，
-    /// Unity 会重新生成 InputSystem_Actions.cs）。这里不再运行时补动作、也不改绑定。
+    /// Key bindings have a single source — the InputSystem_Actions.inputactions asset (rebind there;
+    /// Unity regenerates InputSystem_Actions.cs). User remaps live as the official runtime binding
+    /// override layer on top of it, loaded into the shared asset at startup and edited in the
+    /// Controls tab — this class never patches bindings, it only reads the resulting actions.
+    ///
+    /// Device filtering lives here as the single choke point: the Controls tab picks one input family
+    /// (KeyboardMouse or Gamepad), and every forwarded action on the other family is ignored.
     /// </summary>
+    [DefaultExecutionOrder(-8000)]
     public class InputHandler : MonoBehaviour
     {
+        // Shared wrapper (InputActions) — not `new`ed here anymore, see InputActions.
         private InputSystem_Actions playerInput;
 
-        // Player map 里本作实际用到的六个动作，全部直接取自生成的 wrapper
+        // The seven actions actually used in this game from the Player map, all taken straight from
+        // the generated wrapper
         private InputAction move;
         private InputAction aim;
         private InputAction jump;
         private InputAction dash;
         private InputAction ropeFire;
         private InputAction spitBomb;
+        private InputAction interact;
+        private bool actionsInitialized;
+
+        // Held-button actions feeding the device auto-detection (a held button = deliberate input)
+        private InputAction[] pressButtons;
 
         // Get player
         [SerializeField] private PlayerHandler player;
 
-        // 键盘是离散的 0/±1，这里把它按按压时长合成出模拟摇杆的力度：
-        // 按住越久越接近满力（rampUpTime），松开后回中（rampDownTime），
-        // 输出前再过一条力度曲线（起步轻柔、末端干脆，像推手柄摇杆）。
-        // 手柄等已带模拟量的设备（摇杆）原样透传，不做合成。
+        // A keyboard is discrete 0/±1; here we synthesize analog stick strength from press duration:
+        // the longer a key is held the closer to full strength (rampUpTime), recentering on release
+        // (rampDownTime), then run through a strength curve (gentle start, crisp end — like pushing a
+        // stick). Devices that already carry analog input (sticks) pass through untouched.
         [Header("Keyboard -> stick")]
-        [SerializeField] private float rampUpTime = 0.15f;                 // 按多久到满力
-        [SerializeField] private float rampDownTime = 0.1f;                // 松开后回中时长
+        [SerializeField] private float rampUpTime = 0.15f;                 // how long to full strength
+        [SerializeField] private float rampDownTime = 0.1f;                // recenter time after release
         [SerializeField] private AnimationCurve stickCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-        // 虚拟摇杆位置（-1..1）。反向拨动时 MoveTowards 天然经过 0，甩过中位的过渡不用特判
+        // Virtual stick position (-1..1). Reversing direction passes through 0 via MoveTowards naturally;
+        // the flip across center needs no special-casing
         private Vector2 stick;
 
         /// <summary>
@@ -42,64 +59,141 @@ namespace Inkform.Input
         /// </summary>
         void Awake()
         {
-            playerInput = new InputSystem_Actions();
+            EnsureActionsInitialized();
 
-            // 游戏开始隐藏系统光标：瞄准靠绳索枪准星（Aim 动作在锁定状态下照常工作）
-            Cursor.visible = false;
-            Cursor.lockState = CursorLockMode.Locked;
+            // The serialized reference (scene instance override on the GameManager prefab) only points
+            // at the scene the GameManager was spawned in. The GameManager itself survives scene
+            // switches via AudioManager's DontDestroyOnLoad, so after a change the old player becomes a
+            // Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
+            ResolvePlayer();
+            if (player == null)
+                Debug.LogWarning($"InputHandler's player is not wired (scene instance override on the GameManager prefab)", this);
+        }
 
-            // player input setup
+        /// <summary>
+        /// UIManager shares this GameObject and may call SetPlaying from its Awake before Unity has
+        /// invoked ours. Keep action lookup lazy as well as doing it in Awake so component ordering
+        /// can never leave the public input gate dereferencing null actions.
+        /// </summary>
+        private void EnsureActionsInitialized()
+        {
+            if (actionsInitialized) return;
+
+            playerInput = InputActions.Wrapper;
             move = playerInput.Player.Move;
             aim = playerInput.Player.Aim;
             jump = playerInput.Player.Jump;
             dash = playerInput.Player.Dash;
             ropeFire = playerInput.Player.RopeFire;
             spitBomb = playerInput.Player.SpitBomb;
+            interact = playerInput.Player.Interact;
+            pressButtons = new[] { jump, dash, ropeFire, spitBomb, interact };
 
-            // 场景实例覆盖里的引用在 Awake 之前就已接线；此时还是 null 就永远不会有了，
-            // 与其等 Update 里每帧 NRE，不如现在就吭一声
-            if (player == null)
-                Debug.LogWarning($"InputHandler 的 player 未接线（GameManager 预制体的场景实例覆盖）", this);
+            actionsInitialized = true;
         }
 
         void OnDestroy()
         {
-            // 生成的 wrapper 持有一份 InputActionAsset，实现了 IDisposable —— 不释放会漏
-            playerInput?.Dispose();
+            // No Dispose here: the wrapper is the shared InputActions instance, releasing it would
+            // kill the asset under UIManager's UI module too. It is static and ends with play mode.
+        }
+
+        // The persistent GameManager survives scene switches (AudioManager calls DontDestroyOnLoad on
+        // its own host), so the serialized player reference goes stale the moment the scene changes —
+        // a destroyed UnityEngine.Object reads non-null to C# `?.`, letting the call chain run all the
+        // way into a dead PlayerHandler/RopeGun (MissingReferenceException). sceneLoaded fires after the
+        // new scene's objects are all instantiated, so re-binding here always finds the live player.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => ResolvePlayer();
+
+        private void ResolvePlayer()
+        {
+            // The bus holds the current scene's live player (registered by PlayerHandler on Awake);
+            // a scene without a player (menu) leaves it null and the next sceneLoaded re-resolves
+            player = PlayerBus.Player;
         }
 
         void Update()
         {
-            if (player == null) return;
+            AutoSwitchDevice();   // before filtering: the active family follows whichever device produced input
 
-            Vector2 raw = move.ReadValue<Vector2>();
+            // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
+            // charge, and ReadValue on a disabled action returns default which would push a stale
+            // "no input" into PlayerHandler every frame.
+            if (!actionsEnabled || player == null) return;
 
-            // 非键盘设备（手柄摇杆）输入本身就是模拟量，直接透传，不经过键盘合成
-            InputControl control = move.activeControl;
-            if (control != null && !(control.device is Keyboard))
+            // Device filter: the Controls tab picks one input family; the other family's controls are
+            // ignored so a gamepad left in the drawer cannot drive the player (and vice versa). The
+            // move and aim axes are filtered independently — a stick drifting on a disabled family
+            // must not bleed into an enabled keyboard, and vice versa.
+            if (DeviceMatches(move.activeControl))
             {
-                player.Move(raw);
+                Vector2 raw = move.ReadValue<Vector2>();
+
+                // Non-keyboard devices (gamepad sticks) already output analog values; pass through raw,
+                // bypassing the keyboard synthesis
+                InputControl control = move.activeControl;
+                if (control != null && !(control.device is Keyboard))
+                {
+                    player.Move(raw);
+                }
+                else
+                {
+                    // Keyboard: each axis ramps up by press duration / recenters on release
+                    stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
+                    stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
+
+                    player.Move(new Vector2(
+                        Mathf.Sign(stick.x) * stickCurve.Evaluate(Mathf.Abs(stick.x)),
+                        Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
+                }
             }
-            else
+
+            if (DeviceMatches(aim.activeControl))
             {
-                // 键盘：两轴各自按按压时长爬升 / 松开回中
-                stick.x = RampAxis(stick.x, raw.x, Time.deltaTime);
-                stick.y = RampAxis(stick.y, raw.y, Time.deltaTime);
-
-                player.Move(new Vector2(
-                    Mathf.Sign(stick.x) * stickCurve.Evaluate(Mathf.Abs(stick.x)),
-                    Mathf.Sign(stick.y) * stickCurve.Evaluate(Mathf.Abs(stick.y))));
+                // Aiming: the Aim action (mouse delta / right stick). Mouse deltas are in pixels, sticks
+                // are analog — the pixelDelta flag distinguishes them, conversion happens in RopeGun
+                InputControl aimControl = aim.activeControl;
+                Vector2 aimValue = aim.ReadValue<Vector2>();
+                player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
             }
-
-            // 瞄准：Aim 动作（鼠标 delta / 右摇杆）。鼠标 delta 单位是像素，摇杆是模拟量，
-            // 用 pixelDelta 标志区分，换算在 RopeGun 里做
-            InputControl aimControl = aim.activeControl;
-            Vector2 aimValue = aim.ReadValue<Vector2>();
-            player.Aim(aimValue, aimControl != null && aimControl.device is Mouse);
         }
 
-        // 单轴摇杆合成：朝目标（0 或 ±1）以对应速率匀速移动。
-        // MoveTowards 一步到位得设大速率 —— 这里速率 = 1/时长，满力恰好 rampUpTime 秒到达
+        /// <summary>
+        /// Auto device switching: whichever family actually produced gameplay input becomes the active
+        /// one, so a connected pad "just works" without visiting the Controls tab. Drift is ignored —
+        /// only input past the noise threshold counts; a manual pick in settings still wins until the
+        /// other family acts.
+        /// </summary>
+        private void AutoSwitchDevice()
+        {
+            if (move.activeControl != null && move.ReadValue<Vector2>().sqrMagnitude > 0.01f)
+            { SwitchTo(move.activeControl.device); return; }
+            if (aim.activeControl != null && aim.ReadValue<Vector2>().sqrMagnitude > 0.01f)
+            { SwitchTo(aim.activeControl.device); return; }
+            foreach (InputAction action in pressButtons)
+                if (action.activeControl != null) { SwitchTo(action.activeControl.device); return; }
+        }
+
+        private static void SwitchTo(InputDevice device)
+        {
+            SettingsStore.InputDevice expected = device is Gamepad
+                ? SettingsStore.InputDevice.Gamepad
+                : SettingsStore.InputDevice.KeyboardMouse;
+            if (SettingsStore.Device != expected) SettingsStore.SetDevice(expected);
+        }
+
+        /// <summary>True when the control's device family matches the selected input device; a null
+        /// control (no active input) is always allowed through so nothing stalls.</summary>
+        private static bool DeviceMatches(InputControl control)
+        {
+            if (control == null) return true;
+            bool isGamepad = control.device is Gamepad;
+            return SettingsStore.Device == SettingsStore.InputDevice.KeyboardMouse ? !isGamepad : isGamepad;
+        }
+
+        // Single-axis stick synthesis: moves toward the target (0 or ±1) at a constant rate.
+        // MoveTowards needs a large rate for one-step arrival — here rate = 1/duration, full strength
+        // reached in exactly rampUpTime seconds
         private float RampAxis(float current, float target, float dt)
         {
             float rate = Mathf.Approximately(target, 0f)
@@ -110,61 +204,131 @@ namespace Inkform.Input
 
         private void OnJumpPressed(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.JumpPressed();
         }
 
         private void OnJumpReleased(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.JumpReleased();
         }
 
         private void OnDash(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.Dash();
         }
 
         private void OnRopeFire(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.RopeFire();
         }
 
         private void OnSpitBomb(InputAction.CallbackContext ctx)
         {
+            if (!DeviceMatches(ctx.control)) return;
             player?.SpitBomb();
+        }
+
+        // Confirm is not a player verb: it addresses whatever world part the player stands near
+        // (AbilityPickupPart...), so it goes out on the bus instead of into PlayerHandler
+        private void OnInteract(InputAction.CallbackContext ctx)
+        {
+            if (!DeviceMatches(ctx.control)) return;
+            PlayerBus.RaiseInteractPressed();
         }
 
         void OnEnable()
         {
-            // 逐个启用而不是 playerInput.Player.Enable()：map 里还留着 Interact / Crouch /
-            // Previous / Next 四个本作没用上的动作，整 map 启用会把它们一起点亮
+            // Re-resolve the player after every scene change: the persistent GameManager (kept alive by
+            // AudioManager's DontDestroyOnLoad) must keep routing input to the current scene's player,
+            // not the destroyed one from the scene it spawned in
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            SettingsStore.Changed += OnSettingsChanged;
+
+            if (wantsActionsEnabled) EnableActions();
+        }
+
+        void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SettingsStore.Changed -= OnSettingsChanged;
+
+            DisableActions();
+        }
+
+        // Any settings change clears the synthesized stick. Overkill for most edits, but the one case
+        // that matters — switching input device mid-run — must not leave a stale keyboard ramp that
+        // fires the first time the new device is touched; zeroing is cheap and harmless otherwise.
+        private void OnSettingsChanged()
+        {
+            stick = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Toggles gameplay input. Called by UIManager on pause/resume: the pause menu must not let
+        /// move/jump/aim leak into the frozen game. Both EnableActions/DisableActions are idempotent
+        /// (guarded by actionsEnabled) and own the event subscriptions, so pause→resume round-trips
+        /// cannot double-subscribe the performed callbacks.
+        /// </summary>
+        public void SetPlaying(bool playing)
+        {
+            wantsActionsEnabled = playing;
+            if (!isActiveAndEnabled) return;
+
+            if (playing) EnableActions();
+            else DisableActions();
+        }
+
+        private void EnableActions()
+        {
+            EnsureActionsInitialized();
+            if (actionsEnabled) return;
+            actionsEnabled = true;
+
+            // Enable one by one rather than playerInput.Player.Enable(): the map still holds
+            // Crouch / Previous / Next — three actions this game does not use; enabling the whole
+            // map would light them up too
             move.Enable();
             aim.Enable();
             jump.Enable();
             dash.Enable();
             ropeFire.Enable();
             spitBomb.Enable();
+            interact.Enable();
 
             jump.performed += OnJumpPressed;
             jump.canceled += OnJumpReleased;
             dash.performed += OnDash;
             ropeFire.performed += OnRopeFire;
             spitBomb.performed += OnSpitBomb;
+            interact.performed += OnInteract;
         }
 
-        void OnDisable()
+        private void DisableActions()
         {
-            move.Disable();
-            aim.Disable();
-            jump.Disable();
-            dash.Disable();
-            ropeFire.Disable();
-            spitBomb.Disable();
+            if (!actionsEnabled) return;
+            actionsEnabled = false;
 
             jump.performed -= OnJumpPressed;
             jump.canceled -= OnJumpReleased;
             dash.performed -= OnDash;
             ropeFire.performed -= OnRopeFire;
             spitBomb.performed -= OnSpitBomb;
+            interact.performed -= OnInteract;
+
+            move.Disable();
+            aim.Disable();
+            jump.Disable();
+            dash.Disable();
+            ropeFire.Disable();
+            spitBomb.Disable();
+            interact.Disable();
         }
+
+        private bool actionsEnabled;
+        private bool wantsActionsEnabled = true;
     }
 }

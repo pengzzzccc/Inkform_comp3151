@@ -1,52 +1,38 @@
-using Inkform.Item;
 using System;
+using Inkform.Item;
 using UnityEngine;
 
 namespace Inkform.Bus
 {
-    /// <summary>
-    /// 物品总线：物品被吃下时由物品自己发布，PlayerHandler 订阅。
-    /// 物品预制体因此不再需要序列化任何场景引用，可以在运行时自由 Instantiate。
-    /// </summary>
+    /// <summary>Announcements for inventory storage and world release.</summary>
     public static class ItemBus
     {
-        /// <summary>玩家吃下某个物品。参数是被吃掉的物品本身，听众可按具体子类型区分种类。</summary>
-        public static event Action<ItemSuper> ItemEaten;
+        public static event Action<InventoryItemDefinition> ItemStored;
+        public static event Action<InventoryItemDefinition, Vector2, Vector2> ItemReleased;
+        public static event Action<Vector2, int> InventoryCapacityUpgraded;
 
-        /// <summary>玩家吐出叼着的物品。pos = 出生点（嘴边），velocity = 初速度。</summary>
-        public static event Action<ItemSuper, Vector2, Vector2> ItemReleased;
+        /// <summary>A save-level ability was just granted (position = the world pickup that did it).
+        /// Like InventoryCapacityUpgraded: world state on the wire, presentation decides what to do.</summary>
+        public static event Action<Vector2, string> AbilityUnlocked;
 
-        /// <summary>当前叼在嘴里的物品（null = 没叼东西）。
-        /// 快照必须在 Invoke 之前更新：同一物理步里多个物品依次回调，
-        /// 后面那个要能立刻看到前面那个已经被吃下。</summary>
-        public static ItemSuper Held { get; private set; }
+        public static void RaiseItemStored(InventoryItemDefinition item) => ItemStored?.Invoke(item);
 
-        public static void RaiseItemEaten(ItemSuper item)
-        {
-            Held = item;
-            ItemEaten?.Invoke(item);
-        }
-
-        public static void RaiseItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity)
-        {
-            if (Held == item) Held = null;      // 只有吐的确实是叼着的那个才清快照
+        public static void RaiseItemReleased(InventoryItemDefinition item, Vector2 pos, Vector2 velocity) =>
             ItemReleased?.Invoke(item, pos, velocity);
-        }
 
-        /// <summary>清空快照。玩家死亡把叼着的物品放回世界时用 ——
-        /// 那条路径不走 ItemReleased（放了会点引信），所以快照得单独清。</summary>
-        public static void ClearHeld()
-        {
-            Held = null;
-        }
+        public static void RaiseInventoryCapacityUpgraded(Vector2 pos, int capacityIncrease) =>
+            InventoryCapacityUpgraded?.Invoke(pos, capacityIncrease);
 
-        // 静态字段不随场景重载清空；关闭 Domain Reload 时会残留上一次运行的死订阅者
+        public static void RaiseAbilityUnlocked(Vector2 pos, string abilityId) =>
+            AbilityUnlocked?.Invoke(pos, abilityId);
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            ItemEaten = null;
+            ItemStored = null;
             ItemReleased = null;
-            Held = null;
+            InventoryCapacityUpgraded = null;
+            AbilityUnlocked = null;
         }
     }
 }

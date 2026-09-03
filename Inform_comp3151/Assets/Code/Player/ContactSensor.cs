@@ -1,15 +1,17 @@
+using Inkform.Bus;
 using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Player
 {
     /// <summary>
-    /// 四向接触检测：玩家现在贴着地面 / 左墙 / 右墙 / 天花板没有。
-    /// 从 PlayerHandler 拆出来的第一层 —— 运动和动画都要读这几个标志，但谁都不该重复探一遍。
+    /// Four-way contact detection: whether the player currently touches ground / left wall / right wall
+    /// / ceiling. The first layer split from PlayerHandler — motion and animation both read these
+    /// flags, and neither should probe again on its own.
     ///
-    /// 不自带 Update：探测必须严格排在运动和动画之前，而同一物体上各组件的 Update 顺序
-    /// Unity 不保证。统一由 PlayerHandler 按「感知 → 运动 → 动画」的顺序调 Tick()。
-    /// 挂在 Player 上。
+    /// No own Update: probing must strictly precede motion and animation, and Unity does not guarantee
+    /// Update order among components on one object. PlayerHandler calls Tick() in the
+    /// "sense → move → animate" order. Attach to the Player.
     /// </summary>
     public class ContactSensor : MonoBehaviour
     {
@@ -19,17 +21,19 @@ namespace Inkform.Player
         [SerializeField] private Transform rightWallCheck;
         [SerializeField] private Transform ceilingCheck;
 
-        // 四向检测统一用这一层：Terrain(6) | Breakable(11)。
-        // 默认值写死成预制体上的原配置，免得新加组件时忘了勾、玩家直接掉出世界
+        // All four directions share this one layer mask: Terrain(6) | Breakable(11).
+        // The default is hardcoded to the prefab's original config, so a newly added component cannot
+        // silently drop the player out of the world
         [SerializeField] private LayerMask terrainMask = (1 << 6) | (1 << 11);
         [SerializeField] private float checkRadius = 0.1f;
 
         [Header("Ceiling")]
         [SerializeField] private float ceilingStickTime = 0.5f;
 
-        // 贴顶允许时长。注意它的驱动方式是反的：**没贴顶时每帧刷新**，
-        // 于是「IsRunning」在离开天花板期间恒为真，贴上之后才开始真正倒计时。
-        // 重力那边正是靠这个反相语义区分「还能吸住」和「该掉下来了」
+        // Allowed ceiling-stick duration. Note its driving is inverted: **refreshed every frame while
+        // NOT stuck**, so "IsRunning" is always true while away from the ceiling, and the real
+        // countdown starts only after sticking. Gravity relies on this inverted semantics to
+        // distinguish "can still stick" from "time to fall"
         private Timer ceilingStickTimer;
 
         public bool OnGround { get; private set; }
@@ -39,22 +43,38 @@ namespace Inkform.Player
 
         public bool OnWall => OnLeftWall || OnRightWall;
 
-        /// <summary>贴顶时间还没用完 —— 见 ceilingStickTimer 上那段反相语义的说明。</summary>
+        /// <summary>The collider hit underfoot (layers 6/11). Platform following reads the contacted
+        /// object's movement through it.</summary>
+        public Collider2D Ground { get; private set; }
+
+        /// <summary>Ceiling-stick time not yet used up — see the inverted semantics on ceilingStickTimer above.</summary>
         public bool CeilingStickActive => ceilingStickTimer.IsRunning;
 
-        /// <summary>探一次四向接触。由 PlayerHandler 在每帧最前面调。</summary>
+        /// <summary>Probes four-way contact. Called by PlayerHandler at the front of every frame.</summary>
         public void Tick()
         {
-            OnGround = Physics2D.OverlapCircle(groundCheck.position, checkRadius, terrainMask);
+            Ground = Physics2D.OverlapCircle(groundCheck.position, checkRadius, terrainMask);
+            OnGround = Ground != null;
             OnLeftWall = Physics2D.OverlapCircle(leftWallCheck.position, checkRadius, terrainMask);
             OnRightWall = Physics2D.OverlapCircle(rightWallCheck.position, checkRadius, terrainMask);
             OnCeiling = Physics2D.OverlapCircle(ceilingCheck.position, checkRadius, terrainMask);
 
-            // 贴着墙时不算贴顶：墙角处两边会同时判定到，不排掉的话会在贴墙下滑和天花板吸附之间抖
+            // Touching a wall does not count as ceiling-stuck: both would trigger in a corner, and
+            // without this exclusion the state would jitter between wall-sliding and ceiling-stick
             if (OnCeiling && OnLeftWall) OnCeiling = false;
             if (OnCeiling && OnRightWall) OnCeiling = false;
 
             if (!OnCeiling) ceilingStickTimer.Set(ceilingStickTime);
+        }
+
+        public void ResetForRespawn()
+        {
+            Ground = null;
+            OnGround = false;
+            OnLeftWall = false;
+            OnRightWall = false;
+            OnCeiling = false;
+            ceilingStickTimer.Clear();
         }
 
         void OnDrawGizmosSelected()

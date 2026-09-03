@@ -4,9 +4,11 @@ using UnityEngine;
 namespace Inkform.Level
 {
     /// <summary>
-    /// 定点刷新物：在自己的位置上生成一个实例，实例被销毁后冷却若干秒再补一个。
-    /// 归属靠持有实例引用判断 —— HazardBus.Exploded 是逐受害者发的、不带炸弹自身身份，
-    /// 用它判断「我的那颗炸了没」必然误判（别人炸也会触发，一个没炸到则永远不触发）。
+    /// Spawn point: spawns one instance at its own position; after the instance is destroyed, waits a
+    /// cooldown and respawns another. Ownership is judged by holding the instance reference —
+    /// HazardBus.Exploded fires per victim without the bomb's own identity; using it to tell "did MY
+    /// bomb blow up" would misjudge (others' blasts also trigger it, and a zero-victim blast never
+    /// triggers it at all).
     /// </summary>
     public class Spawner : MonoBehaviour
     {
@@ -14,8 +16,8 @@ namespace Inkform.Level
         [SerializeField] private GameObject spawnObject;
 
         private Timer timer;
-        private GameObject current;     // 本 spawner 当前持有的实例
-        private bool cooling;           // 已经发现实例没了、正在等冷却
+        private GameObject current;     // the instance this spawner currently holds
+        private bool cooling;           // detected the instance is gone, waiting out the cooldown
 
         void Start()
         {
@@ -24,9 +26,9 @@ namespace Inkform.Level
 
         void Update()
         {
-            if (current != null) return;        // Unity 重载了 ==，实例被 Destroy 后这里为 null
+            if (current != null) return;        // Unity overloads ==, so a destroyed instance reads as null here
 
-            if (!cooling)                       // 刚发现实例没了，从这一刻才开始计冷却
+            if (!cooling)                       // just noticed the instance is gone; cooldown starts from this moment
             {
                 cooling = true;
                 timer.Set(spawnTimer);
@@ -39,8 +41,8 @@ namespace Inkform.Level
 
         private void Spawn()
         {
-            // 必须用带 position 的重载：Instantiate(prefab, transform) 会沿用预制体存档里的
-            // localPosition（Bomb.prefab 存的是 -4.07, 0.45），而不是挪到本节点位置上
+            // Must use the overload with position: Instantiate(prefab, transform) keeps the prefab's
+            // saved localPosition (the legacy bomb prefab stored -4.07, 0.45) instead of moving to this node
             current = Instantiate(spawnObject, transform.position, Quaternion.identity);
             cooling = false;
         }

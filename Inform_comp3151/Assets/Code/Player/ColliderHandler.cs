@@ -4,8 +4,9 @@ using UnityEngine;
 namespace Inkform.Player
 {
     /// <summary>
-    /// 事件驱动的身体碰撞体切换：按 PlayerState 设置 BoxCollider2D 的 size/offset。
-    /// 按「状态」而非逐帧切换，稳定无抖动；默认用标准体，只有 overrides 里配置的状态换体型。
+    /// Event-driven body collider switching: sets the BoxCollider2D's size/offset by PlayerState.
+    /// Switches by "state" rather than per frame — stable, no jitter; the standard body is the default,
+    /// only states configured in overrides change the body.
     /// </summary>
     public class ColliderHandler : MonoBehaviour
     {
@@ -25,7 +26,7 @@ namespace Inkform.Player
         void OnEnable()
         {
             PlayerBus.StateChanged += HandleState;
-            HandleState(PlayerBus.State);    // 用快照做首次同步
+            HandleState(PlayerBus.State);    // initial sync from the snapshot
         }
 
         void OnDisable()

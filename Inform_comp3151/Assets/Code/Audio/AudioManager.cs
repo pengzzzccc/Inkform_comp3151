@@ -1,52 +1,101 @@
 using System.Collections.Generic;
-using UnityEngine.Audio;
+using Inkform.Settings;
+using UnityEngine.SceneManagement;
 using UnityEngine;
 
 namespace Inkform.Audio
 {
     /// <summary>
-    /// 音频池：开局建好一批 AudioSource 循环复用，避免每次播音都 new GameObject。
-    /// 播放策略（随机变体 / 冷却 / 并发上限 / 距离衰减）全在 SoundCue 里配，这里只管取源和还源。
-    /// 挂在场景里任意物体上即可，自身跨场景保留。
+    /// Audio voice host: keeps a pool of AudioSources (each with its own low-pass filter for
+    /// distance/zone muffling), grows it up to a hard cap under pressure, steals the least
+    /// important live voice when the cap is hit, and refreshes persistent loops (ambience) every
+    /// frame. Zone reverb is NOT on these voices: it lives on the AudioListener's own filter (see
+    /// DriveListenerReverb), so tails keep ringing after the pool recycles a source.
+    /// Playback policy (random variants / cooldown / concurrency cap / distance falloff) is all
+    /// configured in SoundCue; the audible maths lives in AudioPremix, the capacity decisions in
+    /// VoiceArbiter — this class only executes them against real AudioSources.
+    /// Attach to any scene object; persists across scenes by itself.
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
         public static AudioManager Instance { get; private set; }
 
-        // 低通滤波器的「不滤波」档。人耳上限约 20kHz，设在这之上等于整条通带全放行
-        private const float FullBandwidth = 22000f;
-
+        [Tooltip("Sources created at startup. The existing GameManager prefab serializes 24")]
         [SerializeField] private int poolSize = 24;
 
-        [Tooltip("混响档位，由近到远。留空 = 不做混响，音量和低通照常生效")]
-        [SerializeField] private AudioMixerGroup[] reverbTiers;
+        [Tooltip("Ceiling for pool + live voices combined. Above this the pool stops growing and " +
+            "steals instead. Must stay within the project's Real Voice count (Project Settings > " +
+            "Audio) — sources beyond it are virtualized by Unity, silently inaudible")]
+        [SerializeField] private int hardCap = 48;
+
+        [Tooltip("How many sources one growth step adds. Coarse chunks, not one per post")]
+        [SerializeField] private int growthStep = 4;
+
+        [Header("Debug")]
+        [Tooltip("Log every strategically dropped post (pool at hard cap, nothing stealable). " +
+            "Dev switch — leave off in builds")]
+        [SerializeField] private bool logDrops;
+
+        [Tooltip("Play-mode counters: voices stolen to make room, posts dropped at the cap")]
+        [SerializeField] private int stolenVoices;
+        [SerializeField] private int droppedPosts;
+
+        public int ActiveVoiceCount => active.Count;
+        public int PooledSourceCount => pool.Count;
 
         private readonly Queue<Source> pool = new Queue<Source>();
         private readonly List<Voice> active = new List<Voice>();
 
-        // SoundCue 的运行时计数存在资产上，不随退出播放模式清零；上一次运行若泄漏了
-        // activeCount，下次运行该 Cue 会永久静音。首次用到时归零即可绕开。
-        private readonly HashSet<SoundCue> seen = new HashSet<SoundCue>();
+        // Scratch list for arbitration, refilled per post — arbitration happens under pressure,
+        // one allocation per post there beats a permanent second bookkeeping list
+        private readonly List<VoiceFact> facts = new List<VoiceFact>();
 
-        // 源和它的低通滤波器必须成对存：每次播放都要按距离重设 cutoff，
-        // 逐次 GetComponent 太浪费，建池时取一次存下来
+        // SoundCue's runtime count lives on the asset and does not clear when exiting play mode; if the
+        // previous run leaked activeCount, the Cue would be permanently muted next run. Zeroing it on
+        // first use sidesteps that.
+        private readonly HashSet<SoundCue> seen = new HashSet<SoundCue>();
+        private int nextSourceId;
+
+        // A source and its low-pass filter must be stored as a pair: every play resets the cutoff
+        // by distance/zone; GetComponent per play is wasteful, fetch once at pool build
         private struct Source
         {
             public AudioSource src;
             public AudioLowPassFilter lpf;
         }
 
-        // 回收时要知道该给哪个 Cue 减计数，所以源和 Cue 必须成对存
+        // On recycle we must know which Cue to decrement, so the source, the Cue and the voice's
+        // arbitration facts travel as one record. baseGain is everything except the settings
+        // tracks (cue volume, falloff, zone scale) so a settings change can re-scale it live.
         private struct Voice
         {
             public Source source;
             public SoundCue cue;
+            public float baseGain;
+            public CuePriority priority;
+            public float startedAt;     // Time.unscaledTime
+            public bool persistent;     // loops refreshed per frame; never auto-recycled
+            public Vector3 position;    // emitter position for the per-frame refresh
         }
 
-        // 听者位置。本组件挂在 DontDestroyOnLoad 物体上、不跟着相机走，所以不能像
-        // FxDirector 那样直接用 transform.position（那个挂在相机上）。
-        // 换场景后旧 listener 会变成 Unity 的 fake-null，下次取用时自动重找
+        // Listener position. This component lives on a DontDestroyOnLoad object and does not follow the
+        // camera, so it cannot use transform.position like FxDirector (which sits on the camera).
+        // After a scene change the old listener becomes a Unity fake-null; it is re-looked-up on next use
         private Transform listenerCache;
+
+        // Zone reverb rides the listener's own filter, not the voices: the listener's DSP processes
+        // the whole mix and keeps running after any single clip ends, so reverb tails ring out
+        // naturally instead of being cut the moment the pool recycles a one-shot's source
+        private AudioReverbFilter listenerReverb;
+        private Transform listenerReverbOwner;
+
+        // Music runs on its own two dedicated sources, never the voice pool (see MusicPlayer)
+        private MusicPlayer music;
+
+        // Zone state: the listener's blended mix, plus the registry every live zone registers
+        // into so a spatial post can ask "which zones contain this sound's origin"
+        private readonly ZoneMixer zones = new ZoneMixer();
+        private readonly List<AudioZone> zoneRegistry = new List<AudioZone>();
 
         private Transform Listener
         {
@@ -54,7 +103,8 @@ namespace Inkform.Audio
             {
                 if (listenerCache == null)
                 {
-                    // 用 Any 而不是 First：场景里本来就只该有一个启用的 AudioListener，没有「第几个」可言
+                    // Use Any rather than First: the scene should only ever have one enabled
+                    // AudioListener, there is no "which one" to speak of
                     AudioListener l = FindAnyObjectByType<AudioListener>();
                     listenerCache = l != null ? l.transform : null;
                 }
@@ -62,29 +112,45 @@ namespace Inkform.Audio
             }
         }
 
+        // Static fields do not clear on scene reload; with Domain Reload off, a stale Instance from
+        // the previous run would make every later duplicate manager destroy itself on sight
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => Instance = null;
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            if (Application.isPlaying) DontDestroyOnLoad(gameObject);
 
             for (int i = 0; i < poolSize; i++)
-            {
-                GameObject go = new GameObject($"AudioSource_{i}");
-                go.transform.SetParent(transform);
-                AudioSource src = go.AddComponent<AudioSource>();
-                src.playOnAwake = false;
+                pool.Enqueue(CreateSource());
 
-                // 一律 2D，传了位置也不切 3D。Unity 的 3D 衰减会叠在我们自己算的距离系数
-                // 之上，而相机恒在 z = -10、它算出来的距离永远 ≥10，爆炸会被压到几乎听不见。
-                // 距离感完全由 Falloff() 按 XY 平面算，z 轴不参与。
-                src.spatialBlend = 0f;
+            music = MusicPlayer.Create(transform);
+        }
 
-                AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
-                lpf.cutoffFrequency = FullBandwidth;
+        // One subscription, one refresh path: Play reads the volumes when a sound starts, and this
+        // handler re-scales every already-playing voice when they change — both matter (a slider
+        // drag must retune running loops, not just future sounds)
+        void OnEnable()
+        {
+            SettingsStore.Changed += RefreshActiveVolumes;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
 
-                pool.Enqueue(new Source { src = src, lpf = lpf });
-            }
+        void OnDisable()
+        {
+            SettingsStore.Changed -= RefreshActiveVolumes;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
+
+        // The manager outlives scenes, its zone state must not: zones from the unloaded scene pop
+        // themselves via OnDisable, and whatever slipped through (destroyed colliders, mid-blend
+        // transitions) resets to open air for the new scene's spawn
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            zoneRegistry.RemoveAll(z => z == null);
+            zones.Clear();
         }
 
         void OnDestroy()
@@ -92,97 +158,265 @@ namespace Inkform.Audio
             if (Instance == this) Instance = null;
         }
 
-        // 播完自动回池。不用「按 clip 时长起协程」是因为：手动停掉一个源之后它会立刻
-        // 回池、可能被别的 Cue 取走，那条旧协程到期就会停掉新声音、还把错的 Cue 计数减一。
-        // isPlaying 没有这个问题；loop 声音 isPlaying 恒为真，会自然留到显式 Stop 为止。
+        // Auto-recycle when finished. Not "coroutine per clip duration" because: once a source is
+        // manually stopped it returns to the pool and may be taken by another Cue, and the stale
+        // coroutine would then stop the new sound and decrement the wrong Cue's count. isPlaying has
+        // no such issue; loop sounds keep isPlaying true forever and stay until explicit Stop —
+        // persistent voices are additionally re-premixed here every frame, so walking towards a
+        // campfire swells it and stepping into a cave dulls it mid-loop.
         void Update()
         {
+            // Unscaled: a hitstop must not freeze a cave fade halfway
+            zones.Tick(Time.unscaledDeltaTime);
+            DriveListenerReverb();
+            // Zone components destroyed by teardown leave fake-null entries behind; prune lazily
+            zoneRegistry.RemoveAll(z => z == null);
+
             for (int i = active.Count - 1; i >= 0; i--)
             {
-                if (active[i].source.src == null) { active.RemoveAt(i); continue; }   // 源被意外销毁
-                if (!active[i].source.src.isPlaying) ReleaseAt(i);
+                Voice voice = active[i];
+                if (voice.source.src == null)
+                {
+                    // The source object died (scene teardown edge cases). Persistent voices get a
+                    // replacement source and keep looping; one-shots are simply done
+                    if (voice.persistent)
+                    {
+                        voice.source = RestartPersistent(voice);
+                        active[i] = voice;
+                        continue;
+                    }
+                    active.RemoveAt(i);
+                    if (voice.cue != null) voice.cue.activeCount = Mathf.Max(0, voice.cue.activeCount - 1);
+                    pool.Enqueue(CreateSource());
+                    continue;
+                }
+                if (voice.persistent)
+                {
+                    RefreshPersistent(ref voice);
+                    active[i] = voice;
+                    continue;
+                }
+                if (!voice.source.src.isPlaying) ReleaseAt(i);
             }
         }
 
-        /// <summary>播一条 Cue。position 为 null（或 Cue 没勾 spatial）时不做距离衰减，
-        /// 否则按离听者多远来压音量、加混响、削高频。
-        /// 被冷却/并发上限挡下、或池子已空时返回 null（直接丢弃，不扩容）。</summary>
-        public AudioSource Play(SoundCue cue, Vector3? position = null)
+        /// <summary>Plays a Cue. With position null (or the Cue's spatial off) no distance falloff applies;
+        /// otherwise volume is scaled and high frequencies cut by distance from the listener.
+        /// Returns null when blocked by cooldown/concurrency cap, or when the pool is at its hard
+        /// cap with nothing stealable left (never silently below the cap — grows there first).</summary>
+        public AudioSource Play(SoundCue cue, Vector3? position = null) =>
+            Post(new AudioPost(cue, position));
+
+        /// <summary>Full-fat entry point: priority, zone bypass and position in one value. Play is
+        /// the compatibility alias the existing callers keep using.</summary>
+        public AudioSource Post(AudioPost post)
         {
+            SoundCue cue = post.cue;
             if (cue == null) return null;
 
-            if (seen.Add(cue))          // 本次运行第一次见到它，清掉上次运行残留的计数
+            if (seen.Add(cue))          // first time seeing this Cue this run: clear counts left over from the last run
             {
                 cue.activeCount = 0;
                 cue.lastPlayTime = -999f;
             }
 
-            // 冷却必须走非缩放时间：爆炸会触发 hitstop 把 timeScale 压到 0，
-            // 用 Time.time 的话卡帧期间冷却根本不推进
-            if (Time.unscaledTime - cue.lastPlayTime < cue.cooldown) return null;
-            if (cue.activeCount >= cue.maxConcurrent) return null;
-            if (pool.Count == 0) return null;   // 池空了直接丢弃，别扩容
+            // Cooldown must use unscaled time: explosions trigger hitstop which crushes timeScale to 0;
+            // with Time.time the cooldown would not advance during hitstop. Critical feedback
+            // (death stinger) must fire no matter how recently the Cue played — that is the point
+            // of the lane, so it skips both gates
+            bool critical = post.priority == CuePriority.Critical;
+            if (!critical)
+            {
+                if (Time.unscaledTime - cue.lastPlayTime < cue.cooldown) return null;
+                if (cue.activeCount >= cue.maxConcurrent) return null;
+            }
 
             AudioClip clip = cue.PickClip();
-            if (clip == null) return null;      // Cue 没配片段，或者槽位全是空的
+            if (clip == null) return null;      // Cue has no clip, or every slot is empty
 
-            Source s = pool.Dequeue();
+            Source s = AcquireSource(post.priority);
+            if (s.src == null) return null;     // at cap and nothing stealable: already counted + logged
+            return StartVoice(s, cue, clip, post.priority, post.position,
+                persistent: false, cue.loop, zoned: !post.ignoreZone && !cue.ignoreListenerPause);
+        }
+
+        /// <summary>
+        /// Takes a persistent voice for a looping world sound (AmbientSource). No cooldown or
+        /// concurrency gates — a loop is one voice by construction — and the voice is refreshed
+        /// every frame in Update until ReleaseAmbient, so its falloff and zone treatment track the
+        /// listener live. The position is snapshotted here: emitters are expected to be static
+        /// (a campfire does not walk); moving emitters would need their own per-frame push.
+        /// Returns null when the Cue is unconfigured or the pool is at its cap with nothing this
+        /// priority may steal.
+        /// </summary>
+        public AudioSource RegisterAmbient(SoundCue cue, Vector3 position)
+        {
+            if (cue == null) return null;
+
+            if (seen.Add(cue)) { cue.activeCount = 0; cue.lastPlayTime = -999f; }
+
+            AudioClip clip = cue.PickClip();
+            if (clip == null) return null;
+
+            Source s = AcquireSource(cue.priority);
+            if (s.src == null) return null;
+            return StartVoice(s, cue, clip, cue.priority, position,
+                persistent: true, loop: true, zoned: !cue.ignoreListenerPause);
+        }
+
+        /// <summary>Returns an ambient loop's voice to the pool (AmbientSource.OnDisable).</summary>
+        public void ReleaseAmbient(AudioSource src) => Stop(src);
+
+        // Everything after source acquisition is shared by one-shots and ambient loops: configure
+        // the source, premix the audible parameters, start playback, record the voice
+        private AudioSource StartVoice(Source s, SoundCue cue, AudioClip clip,
+            CuePriority priority, Vector3? position, bool persistent, bool loop, bool zoned)
+        {
             AudioSource src = s.src;
-
             src.clip = clip;
             src.pitch = cue.PickPitch();
-            src.loop = cue.loop;
+            src.loop = loop;
+            src.ignoreListenerPause = cue.ignoreListenerPause;
+            // Same ranking the arbiter uses, mirrored onto the engine's own virtualization: when
+            // Unity runs out of real voices it keeps the sources it considers important, and its
+            // definition of important must match ours
+            src.priority = (int)priority;
 
-            // 距离系数：0 = 贴在听者脸上，1 = 远到该衰减到底。三种表现共用这一个值
+            // Zone states come from the mixer; Neutral outside zones / for zone-bypassing posts.
+            // A Cue that ignores listener pause also ignores zones — both flags mean "system
+            // feedback, not part of the world" (menu clicks must not go dull inside a cave)
+            ZoneMix listenerZone = zoned ? ListenerZoneMix() : ZoneMix.Neutral;
+            ZoneMix emitterZone = zoned && cue.spatial && position.HasValue
+                ? EmitterZoneMix(position.Value)
+                : ZoneMix.Neutral;
+
             float t = Falloff(cue, position);
-
-            src.volume = cue.volume * Mathf.Lerp(1f, cue.minVolume, t);
-            s.lpf.cutoffFrequency = Mathf.Lerp(FullBandwidth, cue.minCutoff, t);
-            src.outputAudioMixerGroup = PickGroup(cue, t);
+            Voice voice = new Voice
+            {
+                source = s,
+                cue = cue,
+                priority = priority,
+                startedAt = Time.unscaledTime,
+                persistent = persistent,
+                position = position.GetValueOrDefault(Vector3.zero),
+                baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
+                    * Mathf.Min(listenerZone.volumeScale, emitterZone.volumeScale),
+            };
+            src.volume = Mathf.Clamp01(voice.baseGain
+                * SettingsStore.MasterVolume
+                * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
+            s.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
+            src.outputAudioMixerGroup = cue.output;
 
             src.Play();
             cue.lastPlayTime = Time.unscaledTime;
             cue.activeCount++;
-            active.Add(new Voice { source = s, cue = cue });
+            active.Add(voice);
 
             return src;
         }
 
-        /// <summary>离听者有多远，归一化到 [0,1]。没勾 spatial / 没传位置 / 场景里还没有
-        /// AudioListener 时一律返回 0，也就是「就在耳边」——退化成加距离感之前的行为。</summary>
+        /// <summary>Where the next source comes from: pooled, grown, or stolen — VoiceArbiter decides,
+        /// this executes and keeps the debug counters honest.</summary>
+        private Source AcquireSource(CuePriority incoming)
+        {
+            switch (VoiceArbiter.DecideAcquire(pool.Count, active.Count, hardCap))
+            {
+                case VoiceArbiter.Acquire.UsePooled:
+                    return TakeLiveSource();
+
+                case VoiceArbiter.Acquire.Grow:
+                {
+                    int living = pool.Count + active.Count;
+                    int grow = Mathf.Min(growthStep, hardCap - living);
+                    for (int i = 0; i < grow; i++) pool.Enqueue(CreateSource());
+                    return TakeLiveSource();
+                }
+
+                default:
+                {
+                    facts.Clear();
+                    for (int i = 0; i < active.Count; i++)
+                        facts.Add(new VoiceFact
+                        {
+                            priority = active[i].priority,
+                            startedAt = active[i].startedAt,
+                            persistent = active[i].persistent,
+                        });
+                    int victim = VoiceArbiter.PickVictim(facts, incoming, Time.unscaledTime);
+                    if (victim < 0)
+                    {
+                        droppedPosts++;
+                        if (logDrops)
+                            Debug.LogWarning($"[Audio] dropped {incoming} post: {active.Count} voices at hard cap {hardCap}, nothing stealable", this);
+                        return default;
+                    }
+                    stolenVoices++;
+                    ReleaseAt(victim);      // stops the victim and returns its source to the pool
+                    return TakeLiveSource();
+                }
+            }
+        }
+
+        /// <summary>How far from the listener, normalized to [0,1]. Without spatial / no position /
+        /// no AudioListener in the scene, returns 0 — "right at the ear" — degrading to pre-distance behavior.</summary>
         private float Falloff(SoundCue cue, Vector3? position)
         {
             if (!cue.spatial || !position.HasValue || cue.falloffRange <= 0f) return 0f;
-
             Transform ear = Listener;
             if (ear == null) return 0f;
-
-            // 只量 XY 平面（Vector2 转换会丢掉 z）：相机在 z = -10，把 z 算进去的话
-            // 哪怕声音就在玩家脚下，距离也有 10 个单位起步
-            return Mathf.Clamp01(Vector2.Distance(position.Value, ear.position) / cue.falloffRange);
+            return AudioPremix.DistanceT(true, cue.falloffRange, ear.position, position.Value);
         }
 
-        /// <summary>按距离挑混响档位。混响强度只能做成离散档 —— AudioMixer 的效果参数是
-        /// group 级别的，同一个 group 里所有声音共享一份设置，没法每个声音各算各的。</summary>
-        private AudioMixerGroup PickGroup(SoundCue cue, float t)
+        // ---- Zone access points: the listener's blended mix, and the strictest mix of every
+        // registered zone containing an emitter position ----
+
+        private ZoneMix ListenerZoneMix() => zones.ListenerState;
+
+        private ZoneMix EmitterZoneMix(Vector3 position)
         {
-            // 留空是合法的：降级成只有音量和低通，距离感照样在。这样没建 mixer 也能先跑，
-            // 建好之后拖进来就自动生效，和本项目「槽位留空静默跳过」的一贯做法一致
-            if (!cue.spatial || cue.reverbAmount <= 0f) return cue.output;
-            if (reverbTiers == null || reverbTiers.Length == 0) return cue.output;
-
-            int tier = Mathf.Min((int)(t * cue.reverbAmount * reverbTiers.Length), reverbTiers.Length - 1);
-            return reverbTiers[tier] != null ? reverbTiers[tier] : cue.output;
+            ZoneMix mix = ZoneMix.Neutral;
+            for (int i = 0; i < zoneRegistry.Count; i++)
+            {
+                AudioZone zone = zoneRegistry[i];
+                if (zone == null || !zone.Contains(position)) continue;
+                mix = ZoneMixer.Combine(mix, zone.Mix);
+            }
+            return mix;
         }
 
-        /// <summary>提前停掉一个还在播的源。loop 声音只能靠这个收场（它永远不会自然播完）。
-        /// 不需要调用方传 Cue —— 传错就会减错计数，这里从 Voice 里自己取。</summary>
+        // ---- Zone lifecycle, driven by AudioZone triggers ----
+
+        public void RegisterZone(AudioZone zone)
+        {
+            if (zone != null && !zoneRegistry.Contains(zone)) zoneRegistry.Add(zone);
+        }
+
+        public void UnregisterZone(AudioZone zone) => zoneRegistry.Remove(zone);
+
+        public void PushListenerZone(object zone, ZoneMix mix, float blendIn) =>
+            zones.Push(zone, mix, blendIn);
+
+        public void PopListenerZone(object zone, float blendOut) =>
+            zones.Pop(zone, blendOut);
+
+        /// <summary>Crossfades the background music to a Cue (category Music, loop on). Same-track
+        /// requests are absorbed as no-ops; music never occupies or gets stolen from the voice
+        /// pool. SceneMusic is the usual caller.</summary>
+        public void PlayMusic(SoundCue cue, float fadeSeconds = 1.5f) => music?.Play(cue, fadeSeconds);
+
+        /// <summary>Fades the music out over fadeSeconds.</summary>
+        public void StopMusic(float fadeSeconds = 1.5f) => music?.Stop(fadeSeconds);
+
+        /// <summary>Stops a still-playing source early. Loop sounds can only end this way (they never
+        /// finish naturally). The caller need not pass the Cue — passing the wrong one would decrement
+        /// the wrong count; it is taken from the Voice itself.</summary>
         public void Stop(AudioSource src)
         {
             if (src == null) return;
 
             int i = active.FindIndex(v => v.source.src == src);
-            if (i < 0) return;              // 不是本池发出去的，或者已经回收过了
+            if (i < 0) return;              // not issued from this pool, or already recycled
             ReleaseAt(i);
         }
 
@@ -191,16 +425,146 @@ namespace Inkform.Audio
             Voice v = active[i];
             active.RemoveAt(i);
 
+            if (v.source.src == null)
+            {
+                if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
+                pool.Enqueue(CreateSource());
+                return;
+            }
+
             v.source.src.Stop();
             v.source.src.clip = null;
 
-            // 必须还原：源是循环复用的，一次远处爆炸把 cutoff 压到几百 Hz 之后不还原，
-            // 下一个借到这个源的近处音效（比如玩家跳跃声）会莫名其妙变闷。
-            // outputAudioMixerGroup 不用还原 —— 每次 Play 都会显式重设
-            v.source.lpf.cutoffFrequency = FullBandwidth;
+            // Must restore: the source is recycled, and after a distant explosion crushed the cutoff to
+            // a few hundred Hz, the next nearby sound borrowing this source (e.g. the player's jump)
+            // would mysteriously go dull. outputAudioMixerGroup needs no restore — every
+            // Play sets it explicitly
+            v.source.lpf.cutoffFrequency = AudioPremix.FullBandwidth;
 
-            if (v.cue != null) v.cue.activeCount--;
+            if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
             pool.Enqueue(v.source);
+        }
+
+        private Source CreateSource()
+        {
+            GameObject go = new GameObject($"AudioSource_{nextSourceId++}");
+            go.transform.SetParent(transform);
+            AudioSource src = go.AddComponent<AudioSource>();
+            src.playOnAwake = false;
+            src.spatialBlend = 0f;
+            AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
+            lpf.cutoffFrequency = AudioPremix.FullBandwidth;
+            return new Source { src = src, lpf = lpf };
+        }
+
+        // Zone reverb driver: one AudioReverbFilter on whatever carries the AudioListener. The
+        // listener's filter is the master bus — everything the player hears inside a wet zone gets
+        // the tail, and because the bus never stops when a pooled voice recycles, tails ring out
+        // to their natural end. Reverb deliberately ignores zones' emitter side: a global filter
+        // cannot wet one sound and dry another, and "the cave I am in colors what I hear" is the
+        // audible half of the strictest-wins rule anyway (the emitter side still muffs and scales)
+        private void DriveListenerReverb()
+        {
+            // Re-attach when the listener is (re)found: scene changes swap the camera, and the
+            // filter belongs to whatever carries the AudioListener now
+            Transform ear = Listener;
+            if (listenerReverbOwner != ear || listenerReverb == null)
+            {
+                listenerReverbOwner = ear;
+                listenerReverb = ear != null ? ear.GetComponent<AudioReverbFilter>() : null;
+                if (listenerReverb == null && ear != null)
+                {
+                    listenerReverb = ear.gameObject.AddComponent<AudioReverbFilter>();
+                    listenerReverb.reverbPreset = AudioReverbPreset.Cave;   // decay/diffusion flavor; levels driven below
+                }
+            }
+            if (listenerReverb == null) return;
+
+            float wet = zones.ListenerState.reverbWet;
+            bool audible = wet > 0.01f;
+            listenerReverb.enabled = audible;
+            if (!audible) return;
+
+            float hundredths = AudioPremix.WetToHundredthsDb(wet);
+            listenerReverb.room = hundredths;           // early reflections level
+            listenerReverb.roomHF = hundredths;         // ...at high frequency
+            listenerReverb.reverbLevel = hundredths;    // late reverberation level — the audible tail
+        }
+
+        // Dequeue skips dead slots (Unity fake-null after partial teardown) and compensates the
+        // pool with fresh sources, so a destroyed source never shrinks the working capacity
+        private Source TakeLiveSource()
+        {
+            int missing = 0;
+            while (pool.Count > 0)
+            {
+                Source source = pool.Dequeue();
+                if (source.src == null) { missing++; continue; }
+                if (source.lpf == null) source.lpf = source.src.gameObject.AddComponent<AudioLowPassFilter>();
+                for (int i = 0; i < missing; i++) pool.Enqueue(CreateSource());
+                return source;
+            }
+            if (missing > 0)
+            {
+                Source replacement = CreateSource();
+                for (int i = 1; i < missing; i++) pool.Enqueue(CreateSource());
+                return replacement;
+            }
+            return default;
+        }
+
+        // A destroyed persistent voice is rebuilt, not dropped: its AmbientSource still expects a
+        // live loop, so the fresh source restarts the Cue from its own facts
+        private Source RestartPersistent(Voice voice)
+        {
+            Source s = CreateSource();
+            if (voice.cue != null)
+            {
+                s.src.clip = voice.cue.PickClip();
+                s.src.pitch = voice.cue.PickPitch();
+                s.src.loop = true;
+                s.src.ignoreListenerPause = voice.cue.ignoreListenerPause;
+                s.src.priority = (int)voice.priority;
+                s.src.volume = 0f;      // silent until the next refresh pass sets the real gain
+                s.src.Play();
+            }
+            return s;
+        }
+
+        // Per-frame re-premix of a persistent loop: distance is re-measured, so walking towards a
+        // campfire swells it, and zone changes re-cut it, so stepping into a cave dulls mid-loop
+        private void RefreshPersistent(ref Voice voice)
+        {
+            SoundCue cue = voice.cue;
+            if (cue == null || voice.source.src == null) return;
+
+            Vector3? pos = cue.spatial ? (Vector3?)voice.position : null;
+            float t = Falloff(cue, pos);
+
+            bool zoned = !cue.ignoreListenerPause;
+            ZoneMix listenerZone = zoned ? ListenerZoneMix() : ZoneMix.Neutral;
+            ZoneMix emitterZone = zoned && cue.spatial ? EmitterZoneMix(voice.position) : ZoneMix.Neutral;
+
+            voice.baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
+                * Mathf.Min(listenerZone.volumeScale, emitterZone.volumeScale);
+            voice.source.src.volume = Mathf.Clamp01(voice.baseGain
+                * SettingsStore.MasterVolume
+                * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
+            voice.source.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
+        }
+
+        // Settings changed: re-scale every live voice through its stored baseGain. Persistent
+        // voices get the full treatment again next Update anyway; doing the volume here too keeps
+        // slider drags instant for them as well
+        private void RefreshActiveVolumes()
+        {
+            for (int i = 0; i < active.Count; i++)
+            {
+                Voice voice = active[i];
+                if (voice.source.src == null || voice.cue == null) continue;
+                float track = AudioPremix.TrackVolume(voice.cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume);
+                voice.source.src.volume = Mathf.Clamp01(voice.baseGain * SettingsStore.MasterVolume * track);
+            }
         }
     }
 }

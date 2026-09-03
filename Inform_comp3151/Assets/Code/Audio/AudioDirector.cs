@@ -6,40 +6,44 @@ using UnityEngine;
 namespace Inkform.Audio
 {
     /// <summary>
-    /// 音频导演：把「游戏里发生了什么」翻译成「该放哪条音效」。
-    /// 和 FxDirector 同一个套路 —— 订阅总线，把每个事件对应哪条 SoundCue 集中配在这一个
-    /// Inspector 里，Bomb / PlayerHandler / BreakableWall 都不需要知道音频系统存在。
-    /// 槽位留空是合法的：AudioManager 会静默跳过，之后往槽里丢条 Cue 就响，不用改代码。
+    /// Audio director: translates "what happened in the game" into "which sound to play".
+    /// Same pattern as FxDirector — subscribes to buses, centralizes which SoundCue each event maps to
+    /// in this one Inspector; PlayerHandler / BreakablePart never need to know the audio system exists.
+    /// Leaving a slot empty is legal: AudioManager skips it silently; drop a Cue into the slot later and
+    /// it sounds without touching code.
     /// </summary>
     public class AudioDirector : MonoBehaviour
     {
         [Header("Hazard")]
-        [SerializeField] private SoundCue blast;        // 爆炸（每次爆炸恰好一次）
-        [SerializeField] private SoundCue wallBreak;    // 可破坏墙碎裂
-        [SerializeField] private SoundCue bombTick;     // 炸弹警戒帧推进一格（逼近预警 + 引信倒计时共用）
+        [SerializeField] private SoundCue blast;        // explosion / successful bomb-powered dash
+        [SerializeField] private SoundCue wallBreak;    // breakable wall shatter
+        [SerializeField] private SoundCue bombTick;     // bomb warning frame advance / dash trigger
 
         [Header("Item")]
-        [SerializeField] private SoundCue itemEaten;    // 吞下
-        [SerializeField] private SoundCue itemSpit;     // 吐出
+        [SerializeField] private SoundCue itemEaten;    // swallow
+        [SerializeField] private SoundCue itemSpit;     // spit out
+        [SerializeField] private SoundCue inventoryCapacityUpgrade; // permanent backpack expansion pickup
 
         [Header("Player")]
         [SerializeField] private SoundCue jump;
         [SerializeField] private SoundCue land;
 
-        // 死亡音不在这里：它按死因而不是按关注点分派（刺死和摔死该有不同的声音），
-        // 所以那条 Cue 挂在 DeathStrategy 资产上，由策略自己播
+        // Death sounds are not here: they dispatch by cause rather than by concern (spiked vs fallen
+        // should sound different), so the Cue lives on the DeathStrategy asset and is played by the strategy.
         [Header("Life")]
-        [SerializeField] private SoundCue respawn;      // 在检查点复活
-        [SerializeField] private SoundCue checkpoint;   // 踩到检查点
+        [SerializeField] private SoundCue respawn;      // respawn at checkpoint
+        [SerializeField] private SoundCue checkpoint;   // stepped on checkpoint
 
         void OnEnable()
         {
             HazardBus.Blast += OnBlast;
             HazardBus.Broken += OnBroken;
             HazardBus.Ticked += OnTicked;
-            ItemBus.ItemEaten += OnItemEaten;
+            ItemBus.ItemStored += OnItemEaten;
             ItemBus.ItemReleased += OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded += OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged += OnPlayerState;
+            PlayerBus.DashAttempted += OnDashAttempted;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -49,36 +53,49 @@ namespace Inkform.Audio
             HazardBus.Blast -= OnBlast;
             HazardBus.Broken -= OnBroken;
             HazardBus.Ticked -= OnTicked;
-            ItemBus.ItemEaten -= OnItemEaten;
+            ItemBus.ItemStored -= OnItemEaten;
             ItemBus.ItemReleased -= OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded -= OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged -= OnPlayerState;
+            PlayerBus.DashAttempted -= OnDashAttempted;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
         }
 
-        // 爆炸只能听 Blast —— Exploded 是在 foreach 里逐受害者发的，炸到 N 个就响 N 声
+        // Explosions must only listen to Blast — Exploded fires per victim in a foreach, N victims = N sounds
         private void OnBlast(Vector2 center, float radius, float force) => Play(blast, center);
 
         private void OnBroken(Vector2 center) => Play(wallBreak, center);
 
-        // 玩家逼近和引信倒计时共用这一声。step / total 暂时用不上，
-        // 留着是为了以后想「越接近音调越高」时不用再改总线签名
+        // Proximity warning and fuse countdown share this one sound. step / total are unused for now,
+        // kept so "higher pitch as it gets closer" needs no bus signature change later
         private void OnTicked(Vector2 pos, int step, int total) => Play(bombTick, pos);
 
-        private void OnItemEaten(ItemSuper item) => Play(itemEaten);
+        private void OnDashAttempted(Vector2 pos, bool succeeded)
+        {
+            Play(bombTick, pos);
+            if (succeeded) Play(blast, pos);
+        }
 
-        // 这两条都是「玩家自己的声音」，恒在镜头中心，所以和 attack/jump/land 一样不传位置。
-        // 对应的 Cue 资产里 spatial 应保持关闭 —— 见 SoundCue.cs 里那条 Tooltip
+        private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
+
+        private void OnInventoryCapacityUpgraded(Vector2 pos, int capacityIncrease) =>
+            Play(inventoryCapacityUpgrade, pos);
+
+        // Both of these are "the player's own sounds", always at the camera center, so like
+        // attack/jump/land they pass no position. The matching Cue assets should keep spatial off —
+        // see the Tooltip in SoundCue.cs
         private void OnRespawned(GameObject victim, Vector2 pos) => Play(respawn);
 
         private void OnCheckpointSet(Vector2 pos) => Play(checkpoint);
 
-        // 吐出点恒在玩家身上 ≈ 镜头中心，衰减系数必然接近 1，传位置纯粹是为了
-        // 「有位置就传下去」的一致性，实际听感和不传一样
-        private void OnItemReleased(ItemSuper item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
+        // The spit origin is always on the player ≈ camera center, so the attenuation factor is
+        // necessarily near 1 — passing the position is only for "pass position when we have one"
+        // consistency; audibly identical to passing nothing
+        private void OnItemReleased(InventoryItemDefinition item, Vector2 pos, Vector2 velocity) => Play(itemSpit, pos);
 
-        // PlayerBus 自己已经去重（只在状态真的变化时广播），所以这里不会每帧连发。
-        // Eat/Release 动画已清理（冲刺是纯冲刺），这里只剩跳跃与落地
+        // PlayerBus already dedups (broadcasts only when a state actually changes), so no per-frame spam.
+        // Eat/Release animations were removed (dash is pure dash), leaving only jump and land
         private void OnPlayerState(PlayerState state)
         {
             switch (state)
@@ -88,16 +105,17 @@ namespace Inkform.Audio
             }
         }
 
-        // 位置只是「声音发生在哪」，衰减算不算、怎么算由 SoundCue 的 spatial 决定，
-        // 没勾的 Cue 传了也不受影响。
-        // 注意底层始终按 2D 播：这是 2D 游戏，一旦切成 Unity 的 3D 音就会走它默认的对数
-        // 衰减（minDistance 1），而相机在 z = -10、它算出来的距离恒 ≥10，爆炸会被衰减到
-        // 几乎听不见。AudioManager 自己按 XY 平面算距离，绕开了这个问题。
+        // Position only says "where the sound happens"; whether and how attenuation applies is decided
+        // by SoundCue.spatial — Cues without it are unaffected by passing one.
+        // Note the underlying playback is always 2D: this is a 2D game — switching to Unity's 3D audio
+        // would use its default logarithmic falloff (minDistance 1), and since the camera sits at z = -10,
+        // its computed distance is always ≥10, crushing explosions to near inaudible. AudioManager
+        // computes distance on the XY plane itself, bypassing the issue.
         private void Play(SoundCue cue, Vector3? position = null)
         {
-            if (cue == null) return;                        // 槽位没配，静默跳过
-            if (AudioManager.Instance == null) return;      // 场景里还没有 AudioManager
-            AudioManager.Instance.Play(cue, position);
+            if (cue == null) return;                        // slot unconfigured, skip silently
+            if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
+            AudioManager.Instance.Post(new AudioPost(cue, position));
         }
     }
 }
