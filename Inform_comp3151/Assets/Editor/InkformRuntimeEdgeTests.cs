@@ -203,6 +203,19 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void MainCameraPrefab_FollowsThePlayerCursorMidpoint()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Control/MainCamera.prefab");
+            Assert.IsNotNull(prefab);
+            CamHandler handler = prefab.GetComponent<CamHandler>();
+            Assert.IsNotNull(handler);
+
+            Assert.AreEqual(CamHandler.FollowMode.PlayerCursorMidpoint, GetField<CamHandler.FollowMode>(handler, "mode"),
+                "the shipped camera must follow the player/cursor midpoint — switch it back if this was deliberate, " +
+                "but not silently");
+        }
+
+        [Test]
         public void PauseAndHitStop_AreIndependentFreezeReasons()
         {
             GameObject go = new GameObject("GameTimeController test");

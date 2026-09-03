@@ -166,6 +166,12 @@ namespace Inkform.Player
             }
         }
 
+        /// <summary>The aim cursor's world position (player centre + aim offset) — the same point
+        /// UpdatePreview parks the reticle at. Read by the camera's midpoint follow mode; anything
+        /// else that cares where the player is pointing should read this too, not rebuild it.</summary>
+        public Vector2 CursorPosition =>
+            playerBody != null ? playerBody.position + aimOffset : (Vector2)transform.position + aimOffset;
+
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();

@@ -11,12 +11,18 @@ namespace Inkform.Fx
     /// Shake and zoom punches are amounts layered on top of the follow result, never written back to the
     /// base position — otherwise they fight the follow and never settle back.
     /// Shake runs on unscaled time, follow on scaled time — so during hitstop the screen "freezes but still shakes".
+    /// The follow mode picks the anchor: Player centres on the player, PlayerCursorMidpoint centres on
+    /// the middle of the line between player and aim cursor — pointing the reticle somewhere pans the
+    /// view halfway toward it while the player never leaves the frame.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CamHandler : MonoBehaviour
     {
+        public enum FollowMode { Player, PlayerCursorMidpoint }
+
         [Header("Follow setting")]
         [SerializeField] private Transform target;                  // drag in the Player, same as InputHandler
+        [SerializeField] private FollowMode mode = FollowMode.Player;
         [SerializeField] private Vector2 followOffset = Vector2.zero;
         [SerializeField] private float followSmooth = 0.18f;        // SmoothDamp time for normal follow
         [SerializeField] private float lookAhead = 1.2f;            // look-ahead distance toward facing, 0 = off
@@ -46,6 +52,32 @@ namespace Inkform.Fx
         // follow/snap survive scene switches; the serialized field only serves as a fallback for
         // scenes without a player (menus) and for older scene data
         private Transform Target => PlayerBus.Player != null ? PlayerBus.Player.transform : target;
+
+        // Same lazy fake-null re-lookup pattern as RespawnDirector.deathCache: after a scene switch
+        // the destroyed gun reads null here and the next use re-resolves against the new player
+        private RopeGun cursorGunCache;
+
+        private RopeGun CursorGun
+        {
+            get
+            {
+                if (cursorGunCache == null)
+                {
+                    Transform current = Target;
+                    cursorGunCache = current != null ? current.GetComponent<RopeGun>() : null;
+                }
+                return cursorGunCache;
+            }
+        }
+
+        // The point the camera centres on before offsets and look-ahead are applied
+        private Vector2 AnchorOf(Transform followTarget)
+        {
+            Vector2 anchor = (Vector2)followTarget.position;
+            if (mode == FollowMode.PlayerCursorMidpoint && CursorGun != null)
+                anchor = (anchor + CursorGun.CursorPosition) * 0.5f;
+            return anchor;
+        }
 
         void Awake()
         {
@@ -91,7 +123,7 @@ namespace Inkform.Fx
             lookAheadVel = 0f;
             lookAheadNow = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
 
-            Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
+            Vector2 want = AnchorOf(target) + followOffset + new Vector2(lookAheadNow, 0f);
             followBasePosition = want;
             transform.position = new Vector3(want.x, want.y, baseZ);
         }
@@ -116,7 +148,7 @@ namespace Inkform.Fx
             float wantAhead = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
             lookAheadNow = Mathf.SmoothDamp(lookAheadNow, wantAhead, ref lookAheadVel, lookAheadSmooth);
 
-            Vector2 want = (Vector2)target.position + followOffset + new Vector2(lookAheadNow, 0f);
+            Vector2 want = AnchorOf(target) + followOffset + new Vector2(lookAheadNow, 0f);
             followBasePosition = Vector2.SmoothDamp(followBasePosition, want, ref followVel, followSmooth);
             return followBasePosition;
         }
