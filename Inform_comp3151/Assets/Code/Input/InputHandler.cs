@@ -63,8 +63,8 @@ namespace Inkform.Input
 
             // The serialized reference (scene instance override on the GameManager prefab) only points
             // at the scene the GameManager was spawned in. The GameManager itself survives scene
-            // switches via AudioManager's DontDestroyOnLoad, so after a change the old player becomes a
-            // Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
+            // switches via PersistentGameRoot's DontDestroyOnLoad, so after a change the old player
+            // becomes a Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
             ResolvePlayer();
             if (player == null)
                 Debug.LogWarning($"InputHandler's player is not wired (scene instance override on the GameManager prefab)", this);
@@ -98,8 +98,8 @@ namespace Inkform.Input
             // kill the asset under UIManager's UI module too. It is static and ends with play mode.
         }
 
-        // The persistent GameManager survives scene switches (AudioManager calls DontDestroyOnLoad on
-        // its own host), so the serialized player reference goes stale the moment the scene changes —
+        // The persistent GameManager survives scene switches (PersistentGameRoot calls DontDestroyOnLoad
+        // on its host), so the serialized player reference goes stale the moment the scene changes —
         // a destroyed UnityEngine.Object reads non-null to C# `?.`, letting the call chain run all the
         // way into a dead PlayerHandler/RopeGun (MissingReferenceException). sceneLoaded fires after the
         // new scene's objects are all instantiated, so re-binding here always finds the live player.
@@ -243,8 +243,8 @@ namespace Inkform.Input
         void OnEnable()
         {
             // Re-resolve the player after every scene change: the persistent GameManager (kept alive by
-            // AudioManager's DontDestroyOnLoad) must keep routing input to the current scene's player,
-            // not the destroyed one from the scene it spawned in
+            // PersistentGameRoot's DontDestroyOnLoad) must keep routing input to the current scene's
+            // player, not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
             SettingsStore.Changed += OnSettingsChanged;
 

@@ -210,6 +210,7 @@ namespace Inkform.Level
             }
 
             transitionInProgress = true;
+            GameStateStore.Set(GameStateStore.GameState.Transition);
             GetComponent<InputHandler>()?.SetPlaying(false);
             StartCoroutine(LoadSceneRoutine(sceneName));
             return true;
@@ -244,18 +245,28 @@ namespace Inkform.Level
 
             loadOperation = null;
             transitionInProgress = false;
+            SetGameStateFromActiveScene();
             GetComponent<InputHandler>()?.SetPlaying(UIManager.Instance == null || !UIManager.Instance.IsPaused);
         }
 
         private void HandleLoadFailure()
         {
             transitionInProgress = false;
+            SetGameStateFromActiveScene();
             loadOperation = null;
             pendingSpawnFrom = null;
             pendingSpawnPos = null;
             if (!SaveStore.AbortNewRun()) SaveStore.EndRun();
             GetComponent<InputHandler>()?.SetPlaying(UIManager.Instance == null || !UIManager.Instance.IsPaused);
         }
+
+        // GameState's final word on a finished switch: the Transition state set in RequestScene
+        // clears here, settling on whatever scene is now active. UIManager's scene-landing write may
+        // run a few frames earlier (sceneLoaded fires before this coroutine resumes); this one wins.
+        private void SetGameStateFromActiveScene() =>
+            GameStateStore.Set(graph != null && graph.IsMenuScene(SceneManager.GetActiveScene().name)
+                ? GameStateStore.GameState.MainMenu
+                : GameStateStore.GameState.Playing);
 
         private void OnCompleted(string exitId)
         {

@@ -130,6 +130,79 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void SavedEvent_FiresOnDiskWritesButNotOnInMemoryUpdates()
+        {
+            string directory = Path.Combine(Application.temporaryCachePath, $"inkform-saved-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(directory);
+            int saved = 0;
+            int changed = 0;
+            try
+            {
+                // Redirect first: UseTestSaveDirectory itself calls ResetStatics, which would wipe
+                // subscriptions attached before it
+                SaveStore.UseTestSaveDirectory(directory);
+                SaveStore.Saved += OnSaved;
+                SaveStore.Changed += OnChanged;
+
+                SaveStore.BeginNewRun(0);   // in-memory only: clears the slot, writes nothing
+                Assert.AreEqual(0, saved, "a pending new run must not claim a disk write");
+                Assert.GreaterOrEqual(changed, 1, "BeginNewRun still publishes the in-memory Changed");
+
+                SaveStore.RecordProgress("B2", new Vector2(1f, 2f));   // first valid position -> written
+                Assert.AreEqual(1, saved, "recording progress must fire Saved exactly once");
+                Assert.IsTrue(File.Exists(Path.Combine(directory, "slot0.json")));
+
+                SaveStore.EndRun();        // SaveNow writes the run's final numbers
+                Assert.AreEqual(2, saved);
+
+                Assert.AreEqual("B2", JsonUtility.FromJson<SaveData>(
+                    File.ReadAllText(Path.Combine(directory, "slot0.json"))).sceneName);
+            }
+            finally
+            {
+                SaveStore.Saved -= OnSaved;
+                SaveStore.Changed -= OnChanged;
+                InvokeStatic(typeof(SaveStore), "ResetStatics");
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+
+            void OnSaved() => saved++;
+            void OnChanged() => changed++;
+        }
+
+        [Test]
+        public void GameStateStore_SetFiresOnChangeOnlyAndResetsToBoot()
+        {
+            int changed = 0;
+            GameStateStore.Changed += OnChanged;
+            try
+            {
+                Assert.AreEqual(GameStateStore.GameState.Boot, GameStateStore.Current);
+
+                GameStateStore.Set(GameStateStore.GameState.MainMenu);
+                Assert.AreEqual(GameStateStore.GameState.MainMenu, GameStateStore.Current);
+                Assert.AreEqual(1, changed);
+
+                GameStateStore.Set(GameStateStore.GameState.MainMenu);
+                Assert.AreEqual(1, changed, "re-asserting the state it already holds must stay silent");
+
+                GameStateStore.Set(GameStateStore.GameState.Playing);
+                Assert.AreEqual(GameStateStore.GameState.Playing, GameStateStore.Current);
+                Assert.AreEqual(2, changed);
+            }
+            finally
+            {
+                GameStateStore.Changed -= OnChanged;
+                InvokeStatic(typeof(GameStateStore), "ResetStatics");
+            }
+
+            Assert.AreEqual(GameStateStore.GameState.Boot, GameStateStore.Current,
+                "ResetStatics must return the store to Boot with no subscribers");
+
+            void OnChanged() => changed++;
+        }
+
+        [Test]
         public void PauseAndHitStop_AreIndependentFreezeReasons()
         {
             GameObject go = new GameObject("GameTimeController test");

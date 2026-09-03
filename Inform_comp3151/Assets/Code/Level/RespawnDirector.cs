@@ -63,11 +63,11 @@ namespace Inkform.Level
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        // The GameManager hosting this survives scene switches (AudioManager calls DontDestroyOnLoad on
-        // its own host), so Start() only ever ran against the *first* scene. Booting straight into a
-        // level hid that, but the menu flow made MainMenu the first scene: no player was found there,
-        // Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying in a level before
-        // touching any checkpoint teleported the player to the world origin.
+        // The GameManager hosting this survives scene switches (PersistentGameRoot calls
+        // DontDestroyOnLoad on its host), so Start() only ever ran against the *first* scene. Booting
+        // straight into a level hid that, but the menu flow made MainMenu the first scene: no player
+        // was found there, Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying
+        // in a level before touching any checkpoint teleported the player to the world origin.
         //
         // Deferred by a frame rather than run here: sceneLoaded fires before the new scene's Start()
         // methods, and the init below actually teleports the player and snaps the camera — doing that

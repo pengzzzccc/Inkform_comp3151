@@ -41,10 +41,11 @@ namespace Inkform.Life
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        // The GameManager hosting this survives scene switches (AudioManager calls DontDestroyOnLoad on
-        // its own host), so Start() only ever scanned the *first* scene. That was invisible while the
-        // game booted straight into a level, but the menu flow made MainMenu the first scene: the scan
-        // then found nothing and never ran again, so no wall in any level ever came back on respawn.
+        // The GameManager hosting this survives scene switches (PersistentGameRoot calls
+        // DontDestroyOnLoad on its host), so Start() only ever scanned the *first* scene. That was
+        // invisible while the game booted straight into a level, but the menu flow made MainMenu the
+        // first scene: the scan then found nothing and never ran again, so no wall in any level ever
+        // came back on respawn.
         //
         // Deferred by a frame rather than scanned here: sceneLoaded fires before the new scene's
         // Start() methods, and Capture() records positions — scanning immediately could snapshot an
