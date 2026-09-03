@@ -8215,7 +8215,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1140000000000000002, guid: b1a9447deea345caa91c37b117a1b33a, type: 3}
       propertyPath: pickupId
-      value: 2ndstorage
+      value: MineCave12ndstorage
       objectReference: {fileID: 0}
     - target: {fileID: 4000000000000000000, guid: b1a9447deea345caa91c37b117a1b33a, type: 3}
       propertyPath: m_LocalPosition.x
@@ -9681,11 +9681,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4000000000000000000, guid: b1a9447deea345caa91c37b117a1b33a, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 370.89005
+      value: 519.74
       objectReference: {fileID: 0}
     - target: {fileID: 4000000000000000000, guid: b1a9447deea345caa91c37b117a1b33a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 114.6223
+      value: 196.51
       objectReference: {fileID: 0}
     - target: {fileID: 4000000000000000000, guid: b1a9447deea345caa91c37b117a1b33a, type: 3}
       propertyPath: m_LocalPosition.z
