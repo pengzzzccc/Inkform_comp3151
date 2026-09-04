@@ -12,9 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6a24bf2b91cd40740b08c77e7fe8159e, type: 3}
   m_Name: SFX_CrasherUp
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.SoundCue
-  clips: []
+  clips:
+  - {fileID: 8300000, guid: 45c8c15a8c0990f4a82ea26aa5236c16, type: 3}
   output: {fileID: 0}
-  volume: 1
+  volume: 0.322
   category: 0
   pitchRange: {x: 0.95, y: 1.05}
   loop: 0
@@ -22,8 +23,8 @@ MonoBehaviour:
   cooldown: 0.05
   maxConcurrent: 3
   priority: 128
-  spatial: 0
-  falloffRange: 20
-  minVolume: 0.15
-  reverbAmount: 1
-  minCutoff: 900
+  spatial: 1
+  falloffRange: 10
+  minVolume: 0.308
+  reverbAmount: 0
+  minCutoff: 2000

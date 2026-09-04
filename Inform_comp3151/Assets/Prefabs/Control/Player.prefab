@@ -191,6 +191,7 @@ MonoBehaviour:
   detachDistance: 0.5
   reelSpeed: 22
   hitStopTime: 0.06
+  deniedCue: {fileID: 11400000, guid: f0bc49645f4da13ef9922fe7dbef111b, type: 2}
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5

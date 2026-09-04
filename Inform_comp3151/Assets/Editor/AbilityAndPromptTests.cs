@@ -7,6 +7,7 @@ using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
 using Inkform.Level;
+using Inkform.Player;
 using Inkform.Save;
 using Inkform.Settings;
 using Inkform.Tool;
@@ -19,7 +20,8 @@ namespace Inkform.Tests
 {
     /// <summary>
     /// Ability-granting timecard: AbilityStore lifecycle, save round-trip and v3 migration, the
-    /// device-scheme mapping behind the interaction prompt, and the reworked TimeCard prefab wiring.
+    /// device-scheme mapping behind the interaction prompt, and the TimeCard / RopeGunCard prefab
+    /// wiring.
     /// </summary>
     public sealed class AbilityAndPromptTests
     {
@@ -158,6 +160,57 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void RopeGunCard_IsAnAbilityPickupWithPrompt()
+        {
+            GameObject instance = UnityEngine.Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Item/RopeGunCard.prefab"));
+            try
+            {
+                Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
+                Assert.IsNotNull(node);
+                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart pickup));
+                Assert.AreEqual(AbilityIds.RopeGun, pickup.AbilityId);
+                Assert.IsTrue(node.TryGetPart(out InteractionPromptPart _));
+
+                Collider2D collider = instance.GetComponent<Collider2D>();
+                Assert.IsNotNull(collider);
+                Assert.IsTrue(collider.isTrigger, "the pickup range is a walk-in trigger");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
+        [Test]
+        public void RopeGun_FireIsDeniedWithoutTheAbility()
+        {
+            AbilityStore.ClearWithoutSaving();
+            GameObject player = new GameObject("RopeGun gate test");
+            player.SetActive(false);
+            player.AddComponent<Rigidbody2D>();
+            RopeGun ropeGun = player.AddComponent<RopeGun>();
+            // Manual Awake mirrors the Checkpoint tests: edit mode never runs Unity's magic methods
+            InvokeInstance(ropeGun, "Awake");
+            try
+            {
+                InvokeInstance(ropeGun, "TryFire");
+                Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
+                    "without the ability the shot must be refused before anything spawns");
+
+                Assert.IsTrue(AbilityStore.Unlock(AbilityIds.RopeGun));
+                InvokeInstance(ropeGun, "TryFire");
+                Assert.AreEqual(RopeGun.RopePhase.Flying, PhaseOf(ropeGun),
+                    "with the ability earned the same press fires normally");
+            }
+            finally
+            {
+                InvokeInstance(ropeGun, "Finish");      // despawns the hook the earned shot created
+                UnityEngine.Object.DestroyImmediate(player);
+            }
+        }
+
+        [Test]
         public void AbilityPickup_ConfirmGrantsOnlyWhilePlayerIsInRange()
         {
             AbilityStore.ClearWithoutSaving();
@@ -269,6 +322,10 @@ namespace Inkform.Tests
         private static bool IsStamped(Checkpoint checkpoint) =>
             (bool)checkpoint.GetType().GetField("active", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(checkpoint);
+
+        private static RopeGun.RopePhase PhaseOf(RopeGun ropeGun) =>
+            (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(ropeGun);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);
