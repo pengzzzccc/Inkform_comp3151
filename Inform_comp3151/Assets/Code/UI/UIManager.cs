@@ -4,6 +4,7 @@ using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Input;
+using Inkform.Life;
 using Inkform.Save;
 using Inkform.Settings;
 using UnityEngine;
@@ -38,6 +39,7 @@ namespace Inkform.UI
         [SerializeField] private BasePanel pauseMenuPrefab;
         [SerializeField] private BasePanel saveMenuPrefab;
         [SerializeField] private BasePanel settingsPrefab;
+        [SerializeField] private BasePanel tutorialPrefab;
 
         // Menu sounds. Same "event -> cue" mapping AudioDirector does for gameplay, kept here rather
         // than there because these are the menu layer's own feedback and this class already is the
@@ -103,6 +105,15 @@ namespace Inkform.UI
             UiBus.Hovered += OnUiHovered;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
+
+            // A pickup grants an ability and the menu layer answers with its tutorial. Raised here
+            // (not on the panel) because panels never touch the game bus — same stance as every
+            // other panel; this class is the one place gameplay meets menus.
+            ItemBus.AbilityUnlocked += OnAbilityUnlocked;
+
+            // The tutorial is a non-blocking overlay, so the player can take a hit while it is up:
+            // a death under the sheet just closes it, and respawn owns the screen from there.
+            LifeBus.Died += OnPlayerDied;
         }
 
         void OnDestroy()
@@ -113,6 +124,8 @@ namespace Inkform.UI
             UiBus.Hovered -= OnUiHovered;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
+            ItemBus.AbilityUnlocked -= OnAbilityUnlocked;
+            LifeBus.Died -= OnPlayerDied;
             // No uiActions Dispose: it is the shared InputActions.Wrapper, released by play mode end.
         }
 
@@ -156,6 +169,7 @@ namespace Inkform.UI
             if (!pausePressed) return;
 
             // Innermost sheet first, then outwards — Escape always backs out one level
+            if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { Close<SaveMenuPanel>(); return; }
 
@@ -180,6 +194,45 @@ namespace Inkform.UI
             SetPaused(false);
             Close<PausePanel>();
             SetCursor(false);
+        }
+
+        // ---- Tutorial ----
+
+        private void OnAbilityUnlocked(Vector2 position, string abilityId) => OpenTutorial(abilityId);
+
+        /// <summary>
+        /// A pickup just granted an ability: show that ability's tutorial as a NON-BLOCKING overlay.
+        /// The game keeps running — no pause, no input change; the only thing released is the cursor,
+        /// so the sheet's buttons are clickable (it is re-locked on close). Fires only when the
+        /// Tutorial panel is wired, its Show On Pickup checkbox is on, and it carries pages for this
+        /// ability — any of those missing, the unlock simply happens silently.
+        ///
+        /// Known trade-off of leaving gameplay input untouched: the click on a tutorial button is
+        /// also a gameplay press (left mouse fires the rope gun, gamepad A jumps). One stray shot or
+        /// hop per click is the price of the game never stopping.
+        /// </summary>
+        public void OpenTutorial(string abilityId)
+        {
+            TutorialPanel panel = GetPanel<TutorialPanel>();
+            if (panel == null || !panel.ShowOnPickup || !panel.HasPages(abilityId)) return;
+
+            panel.OpenWith(abilityId);
+            panel.transform.SetAsLastSibling();
+            SelectFirstControl(panel);
+            SetCursor(true);
+        }
+
+        /// <summary>Tutorial's Close button / Escape: hide the sheet and lock the cursor back for
+        /// gameplay. Idempotent — both the button and the sheet chain can land here in one frame.</summary>
+        public void CloseTutorial()
+        {
+            Close<TutorialPanel>();
+            SetCursor(false);
+        }
+
+        private void OnPlayerDied(DeathContext ctx)
+        {
+            if (IsOpen<TutorialPanel>()) CloseTutorial();
         }
 
         private void SetPaused(bool value)
@@ -219,6 +272,7 @@ namespace Inkform.UI
             Close<PausePanel>();
             Close<SettingsPanel>();
             Close<SaveMenuPanel>();
+            Close<TutorialPanel>();
 
             if (IsInMainMenu)
             {
@@ -356,6 +410,7 @@ namespace Inkform.UI
             AddPanel(pauseMenuPrefab);
             AddPanel(saveMenuPrefab);
             AddPanel(settingsPrefab);
+            AddPanel(tutorialPrefab);
         }
 
         private void AddPanel(BasePanel prefab)

@@ -15,6 +15,7 @@ using Inkform.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Inkform.Tests
 {
@@ -211,6 +212,71 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void TutorialPanel_PagesSwitchByAbilityAndRespectThePickupSwitch()
+        {
+            Texture2D texture = new Texture2D(4, 4);
+            Sprite first = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
+            Sprite second = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
+            Sprite ropeGunOnly = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
+
+            GameObject root = new GameObject("Tutorial test");
+            root.SetActive(false);
+            TutorialPanel panel = root.AddComponent<TutorialPanel>();   // CanvasGroup comes via RequireComponent
+            Button prev = AddTutorialButton(root, "Btn_Prev");
+            Button next = AddTutorialButton(root, "Btn_Next");
+            AddTutorialButton(root, "Btn_Close");
+            GameObject page = new GameObject("Page", typeof(RectTransform), typeof(Image));
+            page.transform.SetParent(root.transform, false);
+            GameObject labelGo = new GameObject("Lbl_Page", typeof(RectTransform), typeof(Text));
+            labelGo.transform.SetParent(root.transform, false);
+            Text label = labelGo.GetComponent<Text>();
+
+            SetPages(panel, "checkpointPages", first, second);
+            SetPages(panel, "ropeGunPages", ropeGunOnly);
+            InvokeInstance(panel, "Awake");     // edit mode never runs Unity's magic methods
+            try
+            {
+                Assert.IsTrue(panel.ShowOnPickup, "the toggle defaults to on");
+                Assert.IsTrue(panel.HasPages(AbilityIds.Checkpoint));
+                Assert.IsTrue(panel.HasPages(AbilityIds.RopeGun));
+                Assert.IsFalse(panel.HasPages("other"), "an unknown ability has no page set");
+
+                panel.OpenWith(AbilityIds.Checkpoint);
+                Image pageImage = page.GetComponent<Image>();
+                Assert.AreEqual(first, pageImage.sprite);
+                Assert.AreEqual("1 / 2", label.text);
+                Assert.IsFalse(prev.interactable, "no page before the first");
+                Assert.IsTrue(next.interactable);
+
+                next.onClick.Invoke();
+                Assert.AreEqual(second, pageImage.sprite);
+                Assert.AreEqual("2 / 2", label.text);
+                Assert.IsFalse(next.interactable, "no page after the last");
+                Assert.IsTrue(prev.interactable);
+
+                prev.onClick.Invoke();
+                Assert.AreEqual(first, pageImage.sprite, "Prev steps back to the first page");
+
+                panel.OpenWith(AbilityIds.RopeGun);
+                Assert.AreEqual(ropeGunOnly, pageImage.sprite, "each ability opens its own page set");
+                Assert.AreEqual("1 / 1", label.text);
+                Assert.IsFalse(prev.interactable);
+                Assert.IsFalse(next.interactable, "a single page has nothing to step to");
+
+                SetPickupSwitch(panel, false);
+                Assert.IsFalse(panel.ShowOnPickup, "the Inspector switch is the off gate OpenTutorial reads");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(first);
+                UnityEngine.Object.DestroyImmediate(second);
+                UnityEngine.Object.DestroyImmediate(ropeGunOnly);
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        [Test]
         public void AbilityPickup_ConfirmGrantsOnlyWhilePlayerIsInRange()
         {
             AbilityStore.ClearWithoutSaving();
@@ -326,6 +392,21 @@ namespace Inkform.Tests
         private static RopeGun.RopePhase PhaseOf(RopeGun ropeGun) =>
             (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(ropeGun);
+
+        private static Button AddTutorialButton(GameObject parent, string name)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
+            go.transform.SetParent(parent.transform, false);
+            return go.GetComponent<Button>();
+        }
+
+        private static void SetPages(TutorialPanel panel, string field, params Sprite[] pages) =>
+            panel.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(panel, pages);
+
+        private static void SetPickupSwitch(TutorialPanel panel, bool value) =>
+            panel.GetType().GetField("showOnPickup", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .SetValue(panel, value);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);

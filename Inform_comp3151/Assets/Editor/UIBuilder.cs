@@ -10,9 +10,10 @@ using UnityEngine.UI;
 namespace Inkform.EditorTools
 {
     /// <summary>
-    /// One-shot UI builder: creates the four panel prefabs (main menu / pause / save / settings) under
-    /// Assets/Prefabs/UI, wires them into GameManager.prefab's UIManager component, builds the main
-    /// menu scene under Assets/Scenes/Menu, and puts that scene at index 0 of Build Settings.
+    /// One-shot UI builder: creates the five panel prefabs (main menu / pause / save / settings /
+    /// tutorial) under Assets/Prefabs/UI, wires them into GameManager.prefab's UIManager component,
+    /// builds the main menu scene under Assets/Scenes/Menu, and puts that scene at index 0 of Build
+    /// Settings.
     ///
     /// The layout follows Docs/Bomb Slime UI.png. Every coordinate below is in the UI Canvas's
     /// 1920x1080 reference space (UIManager.CreateCanvas) with the origin at the screen centre.
@@ -34,7 +35,10 @@ namespace Inkform.EditorTools
         private const string PanelsDir = "Assets/Prefabs/UI";
         private const string MenuDir = "Assets/Scenes/Menu";
         private const string MenuScenePath = MenuDir + "/MainMenu.unity";
-        private const string GameManagerPrefabPath = "Assets/Prefabs/GameManager.prefab";
+
+        // The GameManager prefab lives in the Control folder (alongside Player/MainCamera), not
+        // directly under Assets/Prefabs where this builder originally assumed it.
+        private const string GameManagerPrefabPath = "Assets/Prefabs/Control/GameManager.prefab";
 
         // ---- Settings sheet geometry ----
 
@@ -156,11 +160,113 @@ namespace Inkform.EditorTools
                 AddButton(panel, "Btn_Back", "Back", new Vector2(700f, -435f), new Vector2(200f, 64f), FontSize.Button);
             });
 
-            WireGameManager(mainMenu, pause, saveMenu, settings);
+            GameObject tutorial = BuildTutorialPanel();
+
+            WireGameManager(mainMenu, pause, saveMenu, settings, tutorial);
             BuildMenuScene();
             SetBuildSettings();
 
             Debug.Log("Inkform UI built: prefabs, GameManager wiring, MainMenu scene, build settings.");
+        }
+
+        // ---- Tutorial sheet ----
+
+        private const string TimeCardArtPath = "Assets/Art/Item/Sources/TimeCard.png";
+        private const string RopeGunArtPath = "Assets/Art/Item/Sources/ropeGun.png";
+
+        /// <summary>
+        /// The tutorial sheet shown when a pickup grants an ability: one image per page, stepped
+        /// through with &lt; / &gt; and closed with Close (or Escape). The Page image starts as a plain
+        /// white rect — AssignTutorialPages wires one card sprite per ability as the placeholder page,
+        /// and real tutorials are authored by dragging more sprites into the panel's arrays (they are
+        /// content, not layout, so the builder does not own them beyond the placeholder).
+        /// </summary>
+        private static GameObject BuildTutorialPanel()
+        {
+            GameObject tutorial = BuildPanelPrefab("Tutorial", typeof(TutorialPanel), panel =>
+            {
+                // Same shape as the pause sheet: transparent backdrop over the frozen game frame,
+                // everything on a centered card. Draw order: card first, then page, then controls.
+                AddImage(panel.transform, "Card", Palette.Card,
+                    rt => StretchCenter(rt, Vector2.zero, new Vector2(1000f, 780f)));
+                Image page = AddImage(panel.transform, "Page", Color.white,
+                    rt => StretchCenter(rt, new Vector2(0f, 40f), new Vector2(880f, 560f)));
+                // Tutorial art rarely matches this rect's exact ratio: preserveAspect letterboxes it
+                // inside the page instead of stretching it out of shape.
+                page.preserveAspect = true;
+                AddLabel(panel, "Lbl_Page", "1 / 1", new Vector2(0f, -345f), new Vector2(200f, 36f),
+                    FontSize.Body, TextAnchor.MiddleCenter, Palette.Hint);
+                AddButton(panel, "Btn_Prev", "<", new Vector2(-220f, -300f), new Vector2(160f, 64f));
+                AddButton(panel, "Btn_Next", ">", new Vector2(0f, -300f), new Vector2(160f, 64f));
+                AddButton(panel, "Btn_Close", "Close", new Vector2(220f, -300f), new Vector2(160f, 64f));
+            }, Palette.None);
+
+            AssignTutorialPages(tutorial);
+            return tutorial;
+        }
+
+        /// <summary>Placeholder pages: the card art itself, one page per pickup. Both pngs import as
+        /// Multiple (same as aim_cursor), so the sprite is a sub-asset found by name.</summary>
+        private static void AssignTutorialPages(GameObject tutorial)
+        {
+            TutorialPanel panel = tutorial.GetComponent<TutorialPanel>();
+            SerializedObject so = new SerializedObject(panel);
+            FillPages(so, "checkpointPages", LoadNamedSprite(TimeCardArtPath, "TimeCard_0"));
+            FillPages(so, "ropeGunPages", LoadNamedSprite(RopeGunArtPath, "ropeGun_0"));
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void FillPages(SerializedObject so, string property, Sprite page)
+        {
+            SerializedProperty pages = so.FindProperty(property);
+            if (pages == null || page == null) return;
+            pages.arraySize = 1;
+            pages.GetArrayElementAtIndex(0).objectReferenceValue = page;
+        }
+
+        private static Sprite LoadNamedSprite(string path, string spriteName)
+        {
+            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(path))
+            {
+                if (asset is Sprite sprite && sprite.name == spriteName)
+                    return sprite;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Builds only the tutorial sheet and wires its UIManager slot — the targeted counterpart to
+        /// BuildAll for adding the tutorial without regenerating the other four prefabs, whose hand
+        /// edits a full run would discard.
+        /// </summary>
+        [MenuItem("Tools/Inkform/Build Tutorial UI")]
+        public static void BuildTutorial()
+        {
+            if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
+            {
+                Debug.LogError($"UIBuilder: no GameManager prefab at {GameManagerPrefabPath} — cannot wire the tutorial slot.");
+                return;
+            }
+
+            EnsureFolders();
+            GameObject tutorial = BuildTutorialPanel();
+
+            GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefabPath);
+            UIManager ui = root.GetComponent<UIManager>();
+            if (ui != null)
+            {
+                SerializedObject so = new SerializedObject(ui);
+                so.FindProperty("tutorialPrefab").objectReferenceValue = tutorial.GetComponent<TutorialPanel>();
+                so.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefabPath);
+            }
+            else
+            {
+                Debug.LogWarning("UIBuilder: no UIManager on GameManager.prefab — tutorial slot not wired.");
+            }
+            PrefabUtility.UnloadPrefabContents(root);
+
+            Debug.Log("Inkform tutorial UI built: Tutorial.prefab + GameManager wiring.");
         }
 
         // ---- Prefab generation ----
@@ -903,8 +1009,15 @@ namespace Inkform.EditorTools
 
         // ---- GameManager wiring ----
 
-        private static void WireGameManager(GameObject mainMenu, GameObject pause, GameObject saveMenu, GameObject settings)
+        private static void WireGameManager(GameObject mainMenu, GameObject pause, GameObject saveMenu,
+            GameObject settings, GameObject tutorial)
         {
+            if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
+            {
+                Debug.LogError($"UIBuilder: no GameManager prefab at {GameManagerPrefabPath} — panel slots not wired.");
+                return;
+            }
+
             GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefabPath);
             UIManager ui = root.GetComponent<UIManager>();
             if (ui == null) ui = root.AddComponent<UIManager>();
@@ -920,6 +1033,7 @@ namespace Inkform.EditorTools
             so.FindProperty("pauseMenuPrefab").objectReferenceValue = pause.GetComponent<PausePanel>();
             so.FindProperty("saveMenuPrefab").objectReferenceValue = saveMenu.GetComponent<SaveMenuPanel>();
             so.FindProperty("settingsPrefab").objectReferenceValue = settings.GetComponent<SettingsPanel>();
+            so.FindProperty("tutorialPrefab").objectReferenceValue = tutorial.GetComponent<TutorialPanel>();
 
             // Menu sound slots. Filled only when empty, unlike the panel slots just above: those point
             // at prefabs this builder just regenerated, while a Cue slot may have been repointed by
