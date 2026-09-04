@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 6d8e5eea93616854e9724192aa430e23
+guid: 795332c5c04d9594f956cf10cd6e7344
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 1577045370188290486
-    second: foreground5_0
+      213: 1774275545237836644
+    second: ropeGun_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -48,10 +48,10 @@ TextureImporter:
   compressionQuality: 50
   spriteMode: 2
   spriteExtrude: 1
-  spriteMeshType: 0
+  spriteMeshType: 1
   alignment: 0
   spritePivot: {x: 0.5, y: 0.5}
-  spritePixelsToUnits: 128
+  spritePixelsToUnits: 64
   spriteBorder: {x: 0, y: 0, z: 0, w: 0}
   spriteGenerateFallbackPhysicsShape: 1
   alphaUsage: 1
@@ -126,13 +126,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: foreground5_0
+      name: ropeGun_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 640
-        height: 360
+        x: 1
+        y: 1
+        width: 62
+        height: 49
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +141,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6b95fbc986ac2e510800000000000000
-      internalID: 1577045370188290486
+      spriteID: 4635097353e7f9810800000000000000
+      internalID: 1774275545237836644
       vertices: []
       indices: 
       edges: []
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      foreground5_0: 1577045370188290486
+      ropeGun_0: 1774275545237836644
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
