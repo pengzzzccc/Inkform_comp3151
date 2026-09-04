@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 1140000000000000001}
   - component: {fileID: 1140000000000000002}
   - component: {fileID: 6075525136103228041}
-  m_Layer: 0
+  m_Layer: 14
   m_Name: InventoryCapacityPickup
   m_TagString: Untagged
   m_Icon: {fileID: 0}

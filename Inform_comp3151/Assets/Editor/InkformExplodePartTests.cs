@@ -71,6 +71,35 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void ExplodePart_ArmedWorldContactRespectsTheLayerMask()
+        {
+            // The Interactable-mask contract: an armed bomb brushes pickups, checkpoints and doors
+            // (Default layer) without popping — only worldDetonatorMask layers (Terrain | Breakable)
+            // detonate it
+            GameObject bomb = NewBomb(out ExplodePart part, out _, chainDelay: 1f);
+            WithBlastCounter(count =>
+            {
+                Collider2D pickup = NewOther("pickup", tag: null, layer: 0);   // Default — not in the mask
+                Collider2D wall = NewOther("wall", tag: null, layer: 6);       // Terrain — in the mask
+                try
+                {
+                    ((IOnSpit)part).OnSpit();       // spat out of the player's mouth
+
+                    Assert.IsFalse(part.HandleContact(ContactPhase.Enter, pickup));
+                    Assert.AreEqual(0, count(), "an armed bomb must not detonate on a non-mask layer");
+
+                    Assert.IsTrue(part.HandleContact(ContactPhase.Enter, wall));
+                    Assert.AreEqual(1, count(), "an armed bomb still detonates on a mask layer (Terrain)");
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(pickup.gameObject);
+                    UnityEngine.Object.DestroyImmediate(wall.gameObject);
+                }
+            });
+        }
+
+        [Test]
         public void ExplodePart_HazardLayerContactDetonatesWithoutArming()
         {
             // Spikes: an explosive does not survive resting on them, spat or not

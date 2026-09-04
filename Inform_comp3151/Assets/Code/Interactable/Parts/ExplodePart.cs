@@ -16,8 +16,10 @@ namespace Inkform.Interactable.Parts
     /// 2. Hazard contact: touching a hazardDetonatorMask layer (spikes) detonates, armed or not —
     ///    an explosive does not survive resting on spikes;
     /// 3. Contact while armed: a spat/thrown bomb (CarriablePart.Release fires IOnSpit) detonates
-    ///    on contact with anything else — terrain, walls, breakables. Unarmed bombs ignore world
-    ///    contact, which is what lets spawner bombs lie on the ground waiting for the player;
+    ///    on contact with a worldDetonatorMask layer (Terrain | Breakable by default). Unarmed bombs
+    ///    ignore world contact, which is what lets spawner bombs lie on the ground waiting for the
+    ///    player; the mask is what keeps an armed bomb from popping on pickups, checkpoints and
+    ///    doors — the old maskless version detonated on every Interactable it brushed past;
     /// 4. Chain: caught in another explosion (HazardBus.Exploded, claimed via the victim) it
     ///    detonates after chainDelay, so a row of bombs blows in sequence instead of one frame.
     ///
@@ -42,9 +44,13 @@ namespace Inkform.Interactable.Parts
         [Header("Detonation")]
         [Tooltip("Who detonates it by touch, armed or not. CompareTag never errors on a wrong string, it just never matches — use the Tags constants")]
         [SerializeField] private string targetTag = Tags.Player;
-        [Tooltip("Once spat out (armed), contact with anything other than the target detonates too." +
+        [Tooltip("Once spat out (armed), contact with a worldDetonatorMask layer detonates too." +
             " Off restores pure target-touch behavior")]
         [SerializeField] private bool explodeOnWorldContactWhenArmed = true;
+        [Tooltip("Armed world-contact detonates only against these layers — the same Terrain|Breakable" +
+            " convention as RopeGun.hitMask / ContactSensor.terrainMask. Without this filter an armed" +
+            " bomb pops on pickups, checkpoints, doors, every Interactable it brushes past")]
+        [SerializeField] private LayerMask worldDetonatorMask = (1 << 6) | (1 << 11);
         [Tooltip("Contact with these layers detonates regardless of arming — spikes and other" +
             " hazards. Defaults to the Hazard layer; existing prefabs take it via this default")]
         [SerializeField] private LayerMask hazardDetonatorMask = 1 << 13;
@@ -127,7 +133,8 @@ namespace Inkform.Interactable.Parts
                 Explode();      // spikes and kin: an explosive does not survive resting on them
                 return true;
             }
-            if (armed && explodeOnWorldContactWhenArmed)
+            if (armed && explodeOnWorldContactWhenArmed
+                && (worldDetonatorMask.value & (1 << other.gameObject.layer)) != 0)
             {
                 Explode();
                 return true;

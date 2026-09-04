@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 10000000006}
   - component: {fileID: 10000000008}
   - component: {fileID: 10000000009}
-  m_Layer: 0
+  m_Layer: 14
   m_Name: TimeCard
   m_TagString: Untagged
   m_Icon: {fileID: 0}

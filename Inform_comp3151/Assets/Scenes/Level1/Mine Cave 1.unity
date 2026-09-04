@@ -124155,7 +124155,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8654766724467786088, guid: 6546db56898c4328836ed57bd0d3e47c, type: 3}
       propertyPath: pointA.x
-      value: -4
+      value: -2.5
       objectReference: {fileID: 0}
     - target: {fileID: 8654766724467786088, guid: 6546db56898c4328836ed57bd0d3e47c, type: 3}
       propertyPath: pointB.x
