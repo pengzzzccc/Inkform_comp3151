@@ -112,6 +112,10 @@ namespace Inkform.UI
         [SerializeField] private Text fpsLabel;
         [SerializeField] private Toggle showFpsToggle;
         [SerializeField] private Slider fxSlider;
+        [SerializeField] private Toggle perfToggle;
+        [SerializeField] private Button perfLeft;
+        [SerializeField] private Button perfRight;
+        [SerializeField] private Text perfLabel;
 
         [SerializeField] private Dropdown deviceDropdown;
         [SerializeField] private GameObject kbmContent;
@@ -162,6 +166,10 @@ namespace Inkform.UI
             if (fpsLabel == null) fpsLabel = FindText($"{GraphicsRoot}/Lbl_Fps");
             if (showFpsToggle == null) showFpsToggle = FindToggle($"{GraphicsRoot}/Tgl_ShowFps");
             if (fxSlider == null) fxSlider = FindSlider($"{GraphicsRoot}/Sld_Fx");
+            if (perfToggle == null) perfToggle = FindToggle($"{GraphicsRoot}/Tgl_Perf");
+            if (perfLeft == null) perfLeft = FindButton($"{GraphicsRoot}/Btn_PerfLeft");
+            if (perfRight == null) perfRight = FindButton($"{GraphicsRoot}/Btn_PerfRight");
+            if (perfLabel == null) perfLabel = FindText($"{GraphicsRoot}/Lbl_Perf");
 
             if (deviceDropdown == null) deviceDropdown = FindDropdown($"{ControlsRoot}/Dpd_Device");
             if (unstuckButton == null) unstuckButton = FindButton($"{ControlsRoot}/Btn_Unstuck");
@@ -222,6 +230,11 @@ namespace Inkform.UI
             if (showFpsToggle != null)
                 showFpsToggle.onValueChanged.AddListener(v => SettingsStore.SetShowFps(v));
 
+            Bind(perfLeft, "Btn_PerfLeft", () => StepPerfRate(-1));
+            Bind(perfRight, "Btn_PerfRight", () => StepPerfRate(+1));
+            if (perfToggle != null)
+                perfToggle.onValueChanged.AddListener(v => SettingsStore.SetPerfRecording(v));
+
             // Dropdown option order must match the InputDevice enum — UIBuilder fills it in that order
             if (deviceDropdown != null)
                 deviceDropdown.onValueChanged.AddListener(i => SelectDevice((SettingsStore.InputDevice)i));
@@ -269,6 +282,8 @@ namespace Inkform.UI
             SetLabel(fullLabel, OnOffText(SettingsStore.Fullscreen));
             SetLabel(fpsLabel, FpsText(SettingsStore.FpsCap));
             if (showFpsToggle != null) showFpsToggle.SetIsOnWithoutNotify(SettingsStore.ShowFps);
+            if (perfToggle != null) perfToggle.SetIsOnWithoutNotify(SettingsStore.PerfRecording);
+            SetLabel(perfLabel, RateText(SettingsStore.PerfInterval));
             SetSlider(fxSlider, SettingsStore.FxIntensity);
 
             SetSlider(mouseSlider, SettingsStore.MouseSensitivity);
@@ -331,6 +346,26 @@ namespace Inkform.UI
             i = (i + dir + opts.Length) % opts.Length;
             SettingsStore.SetFpsCap(opts[i]);
             SetLabel(fpsLabel, FpsText(opts[i]));
+        }
+
+        /// <summary>Cycles the PerfIntervals list (seconds); matched by value like StepFps.</summary>
+        private void StepPerfRate(int dir)
+        {
+            float[] opts = SettingsStore.PerfIntervals;
+            int i = Array.IndexOf(opts, SettingsStore.PerfInterval);
+            if (i < 0) i = 2;   // stored value is not one of the options: land on 1 Hz
+
+            i = (i + dir + opts.Length) % opts.Length;
+            SettingsStore.SetPerfInterval(opts[i]);
+            SetLabel(perfLabel, RateText(opts[i]));
+        }
+
+        /// <summary>Intervals are stored in seconds but shown as their reciprocal in Hz
+        /// ("10 Hz" .. "0.2 Hz"), matching how the numbers read on the panel.</summary>
+        private static string RateText(float intervalSeconds)
+        {
+            float hz = 1f / Mathf.Max(intervalSeconds, 0.0001f);
+            return $"{hz:0.#} Hz";
         }
 
         // Two-state rows keep the same ◀ value ▶ shape as the cycling ones, so both arrows just flip

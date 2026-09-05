@@ -53,7 +53,9 @@ namespace Inkform.EditorTools
         // Controls runs well past it: the key-binding rows live below the fold, which is what the
         // design's partially-filled scrollbars imply.
         private const float SoundContentH = ViewportH;
-        private const float GraphicsContentH = ViewportH;
+        // Graphics grew two rows (Performance Log toggle + Sample Rate stepper): taller than the
+        // viewport so the pane scrolls a little, which the always-present scrollbar already covers
+        private const float GraphicsContentH = ViewportH + 220f;
         private const float ControlsContentH = 1000f;
 
         // One shared column geometry for every settings row, so the three tabs line up with each other.
@@ -604,6 +606,11 @@ namespace Inkform.EditorTools
 
             AddRowLabel(content, "Show FPS", Y(495f));
             AddToggle(content, "Tgl_ShowFps", new Vector2(-120f, Y(495f)), new Vector2(46f, 46f));
+
+            AddRowLabel(content, "Performance Log", Y(605f));
+            AddToggle(content, "Tgl_Perf", new Vector2(-120f, Y(605f)), new Vector2(46f, 46f));
+
+            AddArrowRow(content, "Sample Rate", "Btn_PerfLeft", "Lbl_Perf", "Btn_PerfRight", "1 Hz", Y(715f));
         }
 
         /// <summary>

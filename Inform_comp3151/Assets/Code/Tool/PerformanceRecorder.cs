@@ -9,6 +9,7 @@ using Inkform.Fx;
 using Inkform.Level;
 using Inkform.Life;
 using Inkform.Player;
+using Inkform.Settings;
 using UnityEngine;
 using Unity.Profiling;
 
@@ -19,9 +20,11 @@ using Debug = UnityEngine.Debug;
 namespace Inkform.Tool
 {
     /// <summary>
-    /// Session performance recorder: starts sampling the moment the game boots and writes one CSV row
-    /// per second until shutdown, so every play session leaves a comparable trace on disk — frame
-    /// pacing plus where the player was and what state they were in when it got slow.
+    /// Session performance recorder: samples once per SettingsStore.PerfInterval (Graphics tab's
+    /// "Sample Rate", 0.1–5 s) whenever SettingsStore.PerfRecording is on, writing one CSV row per
+    /// sample until shutdown — frame pacing plus where the player was and what state they were in
+    /// when it got slow. Toggling the setting mid-run closes the current file (with its summary)
+    /// and opens a fresh one, so each recorded stretch is a self-contained session.
     ///
     /// Output location follows one rule: an existing project-root Log/ folder wins; otherwise a
     /// PerfLogs folder is created under Docs/ and used. The session header stamps the git branch and
@@ -29,9 +32,10 @@ namespace Inkform.Tool
     /// "unknown" rather than failing), because a perf file nobody can pin to a code revision is only
     /// half evidence.
     ///
-    /// Attach to GameManager: the host survives scene switches via DontDestroyOnLoad, duplicate copies
-    /// arriving with each new scene are destroyed together with their host (PersistentGameRoot's dedup)
-    /// — the active-instance guard below is belt-and-braces for Awake ordering edge cases.
+    /// Attach to GameManager: the host survives scene switches (PersistentGameRoot keeps it alive),
+    /// duplicate copies arriving with each new scene are destroyed together with their host
+    /// (PersistentGameRoot's dedup) — the active-instance guard below is belt-and-braces for Awake
+    /// ordering edge cases.
     ///
     /// All timing is unscaled so hitstop (timeScale = 0) never freezes or divides by zero; per-frame
     /// costs are aggregated over the sample window before being written, which is what makes rows of
@@ -39,10 +43,14 @@ namespace Inkform.Tool
     /// </summary>
     public sealed class PerformanceRecorder : MonoBehaviour
     {
-        private const float SampleInterval = 1f;
         private const float HitchThresholdSeconds = 1f / 30f;   // a frame that misses 30 fps is a hitch
         private const float PausedGapSeconds = 1f;              // larger = sleep/minimize gap, not a frame
         private const string HeadlessFallbackFolder = "PerfLogs";
+
+        // Sampling cadence lives in SettingsStore (Graphics tab: Performance Log + Sample Rate);
+        // this cached copy is re-synced whenever the settings change
+        private float sampleInterval = 1f;
+        private bool recording;     // a session file is open and being written
 
         private static PerformanceRecorder active;
 
@@ -102,6 +110,7 @@ namespace Inkform.Tool
                 return;
             }
             active = this;
+            sampleInterval = SettingsStore.PerfInterval;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             // "Draw Calls Count" reads 0 on Unity 6000.4 (the counter name no longer resolves);
@@ -111,17 +120,17 @@ namespace Inkform.Tool
             setPassRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "SetPass Calls Count");
             trianglesRecorder = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Triangles Count");
 #endif
-            OpenSession();
+            if (SettingsStore.PerfRecording) StartRecording();
         }
 
         void OnEnable()
         {
-            LevelBus.Started += OnSceneStarted;
+            SettingsStore.Changed += OnSettingsChanged;
         }
 
         void OnDisable()
         {
-            LevelBus.Started -= OnSceneStarted;
+            SettingsStore.Changed -= OnSettingsChanged;
         }
 
         void OnDestroy()
@@ -134,8 +143,63 @@ namespace Inkform.Tool
             setPassRecorder.Dispose();
             trianglesRecorder.Dispose();
 #endif
+            if (recording)
+            {
+                LevelBus.Started -= OnSceneStarted;
+                WriteSummary();
+                CloseStream();
+                recording = false;
+            }
+        }
+
+        // ---- Settings-driven recording state ----
+
+        private void OnSettingsChanged()
+        {
+            sampleInterval = SettingsStore.PerfInterval;
+            ResetWindow();      // a mid-window interval change would make that one row lopsided
+
+            if (SettingsStore.PerfRecording && !recording) StartRecording();
+            else if (!SettingsStore.PerfRecording && recording) StopRecording();
+        }
+
+        /// <summary>Opens a session file and starts sampling. No-op while already recording; a
+        /// failed open (unwritable directory) leaves recording off and the recorder idle-but-alive,
+        /// so a later settings change can try again.</summary>
+        private void StartRecording()
+        {
+            if (recording) return;
+
+            OpenSession();
+            if (writer == null) return;     // OpenSession warned; recording stays off
+
+            recording = true;
+            lastGcBytes = GC.GetTotalMemory(false);
+            lastGcCollects = GC.CollectionCount(0);
+            lastSceneName = SceneManagerSceneName();
+            LevelBus.Started += OnSceneStarted;
+        }
+
+        /// <summary>Closes the session: a summary line, the scene-marker unsubscribe, the stream.</summary>
+        private void StopRecording()
+        {
+            if (!recording) return;
+            recording = false;
+
+            LevelBus.Started -= OnSceneStarted;
             WriteSummary();
             CloseStream();
+            ResetWindow();
+        }
+
+        private void ResetWindow()
+        {
+            windowTime = 0f;
+            windowFrames = 0;
+            windowMinFps = float.MaxValue;
+            windowMaxFps = 0f;
+            windowMaxFrameMs = 0f;
+            windowHitchCount = 0;
         }
 
         void Update()
@@ -150,12 +214,7 @@ namespace Inkform.Tool
             // partial window and wait for real frames.
             if (dt > PausedGapSeconds)
             {
-                windowTime = 0f;
-                windowFrames = 0;
-                windowMinFps = float.MaxValue;
-                windowMaxFps = 0f;
-                windowMaxFrameMs = 0f;
-                windowHitchCount = 0;
+                ResetWindow();
                 return;
             }
 
@@ -169,15 +228,10 @@ namespace Inkform.Tool
 
             windowTime += dt;
             windowFrames++;
-            if (windowTime < SampleInterval) return;
+            if (windowTime < sampleInterval) return;
 
             WriteSample();
-            windowTime = 0f;
-            windowFrames = 0;
-            windowMinFps = float.MaxValue;
-            windowMaxFps = 0f;
-            windowMaxFrameMs = 0f;
-            windowHitchCount = 0;
+            ResetWindow();
         }
 
         // ---- session lifecycle ----
@@ -193,6 +247,7 @@ namespace Inkform.Tool
                     $"perf_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
                 writer = new StreamWriter(path, append: false, Encoding.UTF8);
+                streamFailed = false;   // an earlier failed open must not make CloseStream skip this one
 
                 WriteHeader();
 
@@ -206,7 +261,9 @@ namespace Inkform.Tool
             {
                 streamFailed = true;
                 writer = null;
-                enabled = false;   // recording must never cost the game anything
+                // Deliberately NOT disabling the component: the settings toggle must stay able to
+                // retry (a directory that was unwritable at boot can come back). Recording stays
+                // off; Update idles on its writer == null guard.
                 Debug.LogWarning($"PerformanceRecorder: could not open log file, recording disabled ({e.Message})", this);
             }
         }
