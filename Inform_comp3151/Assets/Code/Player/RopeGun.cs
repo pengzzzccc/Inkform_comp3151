@@ -1,3 +1,5 @@
+using Inkform.Ability;
+using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
@@ -10,7 +12,9 @@ namespace Inkform.Player
 {
     /// <summary>
     /// Rope gun: replaces dash as the primary weapon (dash moved to Shift). On hit, pulls in a straight
-    /// line — no hanging, no swinging.
+    /// line — no hanging, no swinging. Ability-gated: firing and the reticle stay locked until the
+    /// rope gun ability is earned by picking up the rope gun card; a denied shot plays a cue and
+    /// nothing else (same denial pattern as Checkpoint).
     ///
     /// Aiming: the reticle is a free cursor, driven by mouse delta / right stick (the Aim action),
     /// moving around the player between a small safety radius and the current maximum range. Firing
@@ -41,7 +45,7 @@ namespace Inkform.Player
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        private enum RopePhase { Idle, Flying, Pulling, Miss }
+        public enum RopePhase { Idle, Flying, Pulling, Miss }
 
         [Header("Range")]
         [SerializeField] private float maxRange = 4f;                       // default reticle / hook travel cap
@@ -84,7 +88,15 @@ namespace Inkform.Player
         [SerializeField] private float reelSpeed = 5f;                      // miss recovery: straight-line hook pull-back speed
         [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
 
+        [Header("Ability Gate")]
+        [Tooltip("Played when a player without the rope gun ability presses fire")]
+        [SerializeField] private SoundCue deniedCue;
+
         private RopePhase phase = RopePhase.Idle;
+
+        /// <summary>Current hook state — the performance recorder logs it so frame costs can be
+        /// correlated with the rope's Flying/Pulling phases.</summary>
+        public RopePhase Phase => phase;
         private float currentMaxRange;
         private readonly Dictionary<object, float> rangeOverrides = new Dictionary<object, float>();
 
@@ -122,6 +134,10 @@ namespace Inkform.Player
         private Transform reticle;
         private SpriteRenderer reticleSprite;
         private readonly RaycastHit2D[] previewCastHits = new RaycastHit2D[8];
+
+        // Built once in Awake from the serialized hitMask: UpdatePreview's per-segment casts reuse
+        // it instead of reconstructing a filter every segment of every idle frame
+        private ContactFilter2D previewFilter;
 
         private static Sprite discSprite;   // runtime-generated white disc, fallback when no sprite is configured
 
@@ -166,11 +182,19 @@ namespace Inkform.Player
             }
         }
 
+        /// <summary>The aim cursor's world position (player centre + aim offset) — the same point
+        /// UpdatePreview parks the reticle at. Read by the camera's midpoint follow mode; anything
+        /// else that cares where the player is pointing should read this too, not rebuild it.</summary>
+        public Vector2 CursorPosition =>
+            playerBody != null ? playerBody.position + aimOffset : (Vector2)transform.position + aimOffset;
+
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
+            previewFilter.SetLayerMask(hitMask);
+            previewFilter.useTriggers = false;
 
             mouseSensitivityBase = mouseAimSensitivity;
             stickAimSpeedBase = stickAimSpeed;
@@ -245,6 +269,15 @@ namespace Inkform.Player
         public void TryFire()
         {
             if (LifeBus.IsDead) return;
+
+            // Ability gate, same denial pattern as Checkpoint: without the rope gun ability every
+            // press is refused with a sound. Phase stays Idle, so there is never a rope to cancel.
+            if (!AbilityStore.Owns(AbilityIds.RopeGun))
+            {
+                PlayCue(deniedCue);
+                return;
+            }
+
             if (phase != RopePhase.Idle)
             {
                 Cancel();           // pressing again = cancel this shot / release the rope
@@ -453,9 +486,15 @@ namespace Inkform.Player
         void Update()
         {
             if (LifeBus.IsDead) return;
-            // The reticle is always visible: it updates every frame while idle, so the player always
-            // knows exactly where the next shot will go
-            if (phase == RopePhase.Idle) UpdatePreview();
+
+            // Without the rope gun ability the reticle would promise a shot the player cannot fire,
+            // so it hides until the card is picked up
+            bool hasGun = AbilityStore.Owns(AbilityIds.RopeGun);
+            reticle.gameObject.SetActive(hasGun);
+
+            // The reticle is always visible while earned: it updates every frame while idle, so the
+            // player always knows exactly where the next shot will go
+            if (hasGun && phase == RopePhase.Idle) UpdatePreview();
         }
 
         void FixedUpdate()
@@ -623,11 +662,8 @@ namespace Inkform.Player
                 float segLen = seg.magnitude;
                 if (segLen > 0.0001f)
                 {
-                    ContactFilter2D filter = new ContactFilter2D();
-                    filter.SetLayerMask(hitMask);
-                    filter.useTriggers = false;
                     int hitCount = Physics2D.CircleCast(
-                        last, bulletRadius, seg / segLen, filter, previewCastHits, segLen);
+                        last, bulletRadius, seg / segLen, previewFilter, previewCastHits, segLen);
                     if (hitCount > 0)
                     {
                         hit = true;
@@ -839,6 +875,13 @@ namespace Inkform.Player
             // pixels-per-unit (link spacing) and ropeWidth (thickness) independent of each other.
             Sprite s = ropeRenderer.sprite;
             ropeTileWidth = s.rect.width / s.pixelsPerUnit;
+        }
+
+        // Same guard as Checkpoint: a missing cue or missing manager degrades to silence, not errors
+        private static void PlayCue(SoundCue cue)
+        {
+            if (cue == null || AudioManager.Instance == null) return;
+            AudioManager.Instance.Play(cue);
         }
 
         void OnDrawGizmosSelected()

@@ -74,10 +74,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fb36daf3f4a4a38a7a70fb00c81c381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.PatrolMover
+  waypoints: []
+  mode: 0
+  stopTimes: []
   pointA: {x: -5, y: 0}
   pointB: {x: 4.71, y: 0}
   speed: 2.2
   returnSpeed: 0
+  speedMode: 0
+  randomSpeedMin: 1.5
+  randomSpeedMax: 3
   stopTimeAtA: 0
   stopTimeAtB: 0
   forwardCurve:
@@ -232,7 +238,7 @@ SpriteRenderer:
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 0.64, y: 0.64}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1

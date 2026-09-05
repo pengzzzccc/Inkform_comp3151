@@ -4,6 +4,7 @@ using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Input;
+using Inkform.Life;
 using Inkform.Save;
 using Inkform.Settings;
 using UnityEngine;
@@ -17,14 +18,15 @@ namespace Inkform.UI
 {
     /// <summary>
     /// UI manager: the single gatekeeper for the menu layer. Lives on GameManager (which persists
-    /// across scenes via AudioManager's DontDestroyOnLoad), owns the one UI Canvas, instantiates all
+    /// across scenes via PersistentGameRoot's DontDestroyOnLoad), owns the one UI Canvas, instantiates all
     /// panel prefabs under it, and routes the pause state machine + cursor + Escape key.
     ///
     /// Panels never talk to each other or to the game: MainMenuPanel asks this class to load a scene,
     /// PausePanel asks it to resume, etc. The game never knows a menu exists.
     ///
     /// Scene policy is owned by the SceneDirector (a sibling component on this same GameManager): it
-    /// reads the level graph (LevelGraph.txt) and answers IsMenuScene / StartNewGame /
+    /// holds the WorldDefinition asset (menu, entry room, room registry) and answers IsMenuScene /
+    /// StartNewGame /
     /// ReturnToMainMenu, so no scene name is duplicated here. The main menu shows on load for the
     /// menu scene; any other scene is gameplay — all panels close on load, Escape opens pause.
     /// </summary>
@@ -37,6 +39,7 @@ namespace Inkform.UI
         [SerializeField] private BasePanel pauseMenuPrefab;
         [SerializeField] private BasePanel saveMenuPrefab;
         [SerializeField] private BasePanel settingsPrefab;
+        [SerializeField] private BasePanel tutorialPrefab;
 
         // Menu sounds. Same "event -> cue" mapping AudioDirector does for gameplay, kept here rather
         // than there because these are the menu layer's own feedback and this class already is the
@@ -85,6 +88,7 @@ namespace Inkform.UI
             CreateCanvas();
             EnsureGamepadCursor();
             EnsureInventoryHud();
+            EnsureSaveIndicator();
             InstantiatePanels();
             // No "close them all" pass here: BasePanel.Awake lands its own hidden state on instantiate.
             // A pass here could never have worked anyway — Close() early-returns while IsOpen is still
@@ -101,6 +105,15 @@ namespace Inkform.UI
             UiBus.Hovered += OnUiHovered;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
+
+            // A pickup grants an ability and the menu layer answers with its tutorial. Raised here
+            // (not on the panel) because panels never touch the game bus — same stance as every
+            // other panel; this class is the one place gameplay meets menus.
+            ItemBus.AbilityUnlocked += OnAbilityUnlocked;
+
+            // The tutorial is a non-blocking overlay, so the player can take a hit while it is up:
+            // a death under the sheet just closes it, and respawn owns the screen from there.
+            LifeBus.Died += OnPlayerDied;
         }
 
         void OnDestroy()
@@ -111,6 +124,8 @@ namespace Inkform.UI
             UiBus.Hovered -= OnUiHovered;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
+            ItemBus.AbilityUnlocked -= OnAbilityUnlocked;
+            LifeBus.Died -= OnPlayerDied;
             // No uiActions Dispose: it is the shared InputActions.Wrapper, released by play mode end.
         }
 
@@ -154,6 +169,7 @@ namespace Inkform.UI
             if (!pausePressed) return;
 
             // Innermost sheet first, then outwards — Escape always backs out one level
+            if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { Close<SaveMenuPanel>(); return; }
 
@@ -180,9 +196,56 @@ namespace Inkform.UI
             SetCursor(false);
         }
 
+        // ---- Tutorial ----
+
+        private void OnAbilityUnlocked(Vector2 position, string abilityId) => OpenTutorial(abilityId);
+
+        /// <summary>
+        /// A pickup just granted an ability: show that ability's tutorial as a NON-BLOCKING overlay.
+        /// The game keeps running — no pause, no input change; the only thing released is the cursor,
+        /// so the sheet's buttons are clickable (it is re-locked on close). Fires only when the
+        /// Tutorial panel is wired, its Show On Pickup checkbox is on, and it carries pages for this
+        /// ability — any of those missing, the unlock simply happens silently.
+        ///
+        /// Known trade-off of leaving gameplay input untouched: the click on a tutorial button is
+        /// also a gameplay press (left mouse fires the rope gun, gamepad A jumps). One stray shot or
+        /// hop per click is the price of the game never stopping.
+        /// </summary>
+        public void OpenTutorial(string abilityId)
+        {
+            TutorialPanel panel = GetPanel<TutorialPanel>();
+            if (panel == null || !panel.ShowOnPickup || !panel.HasPages(abilityId)) return;
+
+            panel.OpenWith(abilityId);
+            panel.transform.SetAsLastSibling();
+            SelectFirstControl(panel);
+            SetCursor(true);
+        }
+
+        /// <summary>Tutorial's Close button / Escape: hide the sheet and lock the cursor back for
+        /// gameplay. Idempotent — both the button and the sheet chain can land here in one frame.</summary>
+        public void CloseTutorial()
+        {
+            Close<TutorialPanel>();
+            SetCursor(false);
+        }
+
+        private void OnPlayerDied(DeathContext ctx)
+        {
+            if (IsOpen<TutorialPanel>()) CloseTutorial();
+        }
+
         private void SetPaused(bool value)
         {
             paused = value;
+            // One of the two GameStateStore writers (the other is SceneDirector): pause/unpause is
+            // the only flow transition this class owns. Unpausing returns to whichever side of the
+            // menu/gameplay divide the player is on, and ApplySceneState always re-runs SetPaused
+            // after assigning IsInMainMenu, so a scene landing settles the state too.
+            GameStateStore.Set(value
+                ? GameStateStore.GameState.Paused
+                : IsInMainMenu ? GameStateStore.GameState.MainMenu
+                : GameStateStore.GameState.Playing);
             gameTime?.SetUserPaused(value);
             // sceneLoaded fires before SceneDirector's AsyncOperation continuation. Do not let the
             // new scene's UI state re-enable gameplay during that small but real transition window;
@@ -209,6 +272,7 @@ namespace Inkform.UI
             Close<PausePanel>();
             Close<SettingsPanel>();
             Close<SaveMenuPanel>();
+            Close<TutorialPanel>();
 
             if (IsInMainMenu)
             {
@@ -346,6 +410,7 @@ namespace Inkform.UI
             AddPanel(pauseMenuPrefab);
             AddPanel(saveMenuPrefab);
             AddPanel(settingsPrefab);
+            AddPanel(tutorialPrefab);
         }
 
         private void AddPanel(BasePanel prefab)
@@ -484,6 +549,12 @@ namespace Inkform.UI
         {
             if (GetComponent<InventoryHud>() == null)
                 gameObject.AddComponent<InventoryHud>();
+        }
+
+        private void EnsureSaveIndicator()
+        {
+            if (GetComponent<SaveIndicator>() == null)
+                gameObject.AddComponent<SaveIndicator>();
         }
     }
 }

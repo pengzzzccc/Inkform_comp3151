@@ -9,5 +9,9 @@ namespace Inkform.Ability
     {
         /// <summary>Using checkpoint machines. Granted by picking up the timecard.</summary>
         public const string Checkpoint = "checkpoint";
+
+        /// <summary>Firing the rope gun (the reticle hides and every shot is denied until earned).
+        /// Granted by picking up the rope gun card.</summary>
+        public const string RopeGun = "ropegun";
     }
 }

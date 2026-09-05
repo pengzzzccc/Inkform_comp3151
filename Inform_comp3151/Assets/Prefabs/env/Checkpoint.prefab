@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5108392746215038473}
   - component: {fileID: 5108392746215038474}
   - component: {fileID: 5108392746215038475}
-  m_Layer: 0
+  m_Layer: 14
   m_Name: Checkpoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -44,10 +44,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f244e862675e264bb5eafdd5d797b45, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Checkpoint
   isStartPoint: 0
   spawnOffset: {x: 0, y: 0.5}
+  spawnId: 
   frames:
   - {fileID: -5827963998548881495, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   - {fileID: -1248754081186967259, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}

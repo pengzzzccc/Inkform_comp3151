@@ -14,6 +14,11 @@ namespace Inkform.Level
     /// point — at startup RespawnDirector teleports the player there, so "spawn point" and
     /// "checkpoint" remain the same kind of object, just gated behind the ability now.
     ///
+    /// Machines are mutually exclusive: the respawn point is one place, so when a machine is stamped
+    /// it announces itself on LifeBus.CheckpointSet and every other machine resets to its idle,
+    /// un-stamped look — walking back into an older machine simply stamps it anew and steals the
+    /// respawn point back.
+    ///
     /// Presentation is a hand-driven sprite sequence rather than an Animator: frame 0 stands resident
     /// while idle, activation steps through every frame once and freezes on the last one — which falls
     /// out of simply never writing another sprite afterwards (same manual sprite-swapping pattern as
@@ -26,6 +31,10 @@ namespace Inkform.Level
         [Header("Checkpoint setting")]
         [SerializeField] private bool isStartPoint = false;                     // checked = also the level spawn point; only one per level
         [SerializeField] private Vector2 spawnOffset = new Vector2(0f, 0.5f);   // raised a bit so respawn feet do not sink into the ground and get pushed out
+
+        [Header("Arrival spawn")]
+        [Tooltip("Door-arrival id: the LevelExit leading into this scene names this checkpoint in its targetSpawnId. Replaces the old Spawn_<scene> object-name convention; plain mid-level checkpoints leave it empty")]
+        [SerializeField] private string spawnId = "";
 
         [Header("Timecard machine look")]
         [Tooltip("Activation sequence: first frame = idle resident, last frame = stamped freeze-frame")]
@@ -40,11 +49,37 @@ namespace Inkform.Level
 
         public bool IsStartPoint => isStartPoint;
         public Vector2 SpawnPos => (Vector2)transform.position + spawnOffset;
+        public string SpawnId => spawnId;
 
         void Awake()
         {
             // The idle look IS the first animation frame, so editor authoring and runtime can never drift apart
             spriteRenderer = GetComponent<SpriteRenderer>();
+            ShowFrame(0);
+        }
+
+        // Mutually exclusive machines: each stamp goes out on the bus, and every machine that did
+        // not just stamp resets. OnEnable/OnDisable pairing keeps a destroyed machine from receiving
+        // the event after its scene unloads (LifeBus outlives scene objects)
+        void OnEnable() => LifeBus.CheckpointSet += OnCheckpointSetElsewhere;
+        void OnDisable() => LifeBus.CheckpointSet -= OnCheckpointSetElsewhere;
+
+        private void OnCheckpointSetElsewhere(Vector2 pos)
+        {
+            if (pos != SpawnPos) Deactivate();
+        }
+
+        /// <summary>Back to the un-stamped state: idle frame, animation stopped, and the trigger gate
+        /// open again so this machine can be stamped anew (which steals the respawn point back).</summary>
+        private void Deactivate()
+        {
+            if (!active) return;
+            active = false;
+            if (playingAnimation != null)
+            {
+                StopCoroutine(playingAnimation);
+                playingAnimation = null;
+            }
             ShowFrame(0);
         }
 
@@ -69,6 +104,8 @@ namespace Inkform.Level
         private void PlayActivationSequence()
         {
             if (playingAnimation != null) StopCoroutine(playingAnimation);
+            // Coroutines need the player loop; play mode is also the only way this callback arrives
+            if (!Application.isPlaying) return;
             playingAnimation = StartCoroutine(PlayFrames());
         }
 
@@ -124,6 +161,15 @@ namespace Inkform.Level
 
             if (touched) Gizmos.DrawSphere(SpawnPos, 0.14f);        // solid = stepped on this run
             else Gizmos.DrawWireSphere(SpawnPos, 0.14f);
+
+#if UNITY_EDITOR
+            // The arrival id at a glance: it is the exact string a door's targetSpawnId must match
+            if (!string.IsNullOrEmpty(spawnId))
+            {
+                Gizmos.color = c;
+                UnityEditor.Handles.Label(SpawnPos + Vector2.up * 0.4f, spawnId);
+            }
+#endif
 
             // The spawn point gets an extra cross to distinguish it from plain checkpoints (only one per level)
             if (!isStartPoint) return;

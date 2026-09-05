@@ -3,12 +3,12 @@
 # SceneDirector reads this file at runtime — what you save is what the game runs.
 
 menu   MainMenu
-entry  B2
+entry  Mine Cave 1
 
-room   B2          @1178,261
-room   B3          @1410,261  door 2
-room   PlayerTest  @1279,422  door 2
+room   Mine Cave 1  @1187,311  door 2
+room   Mine Cave 2  @1087,464  door 2
+room   Mine Cave 3  @1329,464  door 2
 
-link   PlayerTest  <-> B2
-link   B2          <-> B3
-link   B3          <-> PlayerTest
+link   Mine Cave 1  <-> Mine Cave 2
+link   Mine Cave 2  <-> Mine Cave 3
+link   Mine Cave 3  <-> Mine Cave 1

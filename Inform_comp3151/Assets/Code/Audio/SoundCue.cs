@@ -17,7 +17,7 @@ namespace Inkform.Audio
         public AudioClip[] clips;                    // variants, picked randomly to avoid repetition fatigue
         public AudioMixerGroup output;
         [Range(0f, 1f)] public float volume = 1f;
-        [Tooltip("Which settings track scales this sound (AudioManager reads SettingsStore). Music needs a music playback path — none exists yet; the track exists so Cue assets can be tagged ahead of time")]
+        [Tooltip("Which settings track scales this sound (AudioManager reads SettingsStore). Music Cues feed the music path (PlayMusic)")]
         public Category category = Category.Sfx;
         [Tooltip("Random pitch range. Never set either end to 0 — a source at pitch 0 never finishes playing and permanently occupies a pool slot")]
         public Vector2 pitchRange = new Vector2(0.95f, 1.05f);
@@ -27,6 +27,10 @@ namespace Inkform.Audio
         [Tooltip("Minimum retrigger interval for the same Cue, prevents stacked pops within one frame")]
         public float cooldown = 0.05f;
         [Range(1, 8)] public int maxConcurrent = 3;
+        [Tooltip("Which lane this sound competes in when the pool runs dry. Critical bypasses cooldown" +
+            " and concurrency and may steal lower lanes — reserve for death/game-over feedback." +
+            " Existing Cue assets predate this field and deserialize to Gameplay, unchanged behavior")]
+        public CuePriority priority = CuePriority.Gameplay;
 
         [Header("Distance falloff")]
         // Defaulting to off is intentional: existing Cue assets do not store these fields, they take

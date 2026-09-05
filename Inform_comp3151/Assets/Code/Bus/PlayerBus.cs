@@ -26,8 +26,8 @@ namespace Inkform.Bus
 
         // The current scene's live player, registered by PlayerHandler on Awake and cleared on
         // destroy. Persistent managers must read the player from here instead of a serialized
-        // reference: the GameManager survives scene switches (AudioManager's DontDestroyOnLoad), so a
-        // reference to the spawning scene's player goes stale the moment the scene changes.
+        // reference: the GameManager survives scene switches (PersistentGameRoot's DontDestroyOnLoad),
+        // so a reference to the spawning scene's player goes stale the moment the scene changes.
         public static PlayerHandler Player { get; private set; }
 
         public static void RegisterPlayer(PlayerHandler player) => Player = player;

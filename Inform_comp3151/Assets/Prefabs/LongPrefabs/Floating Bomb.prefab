@@ -12,10 +12,7 @@ GameObject:
   - component: {fileID: 978652543122846978}
   - component: {fileID: 5713076287492010071}
   - component: {fileID: 3029611092000652681}
-  - component: {fileID: 7633286874167689058}
   - component: {fileID: 1391212707012425504}
-  - component: {fileID: 4598473542990691007}
-  - component: {fileID: 6899676052817514577}
   - component: {fileID: 6226552708803336386}
   - component: {fileID: 3816028758277302456}
   - component: {fileID: 7095600481869306254}
@@ -38,7 +35,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 115.35, y: -2.41, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -82,19 +79,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ba180997b2205c6479539a20dcb5b72d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.RestorablePart
---- !u!114 &7633286874167689058
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3ef71459cee344c3901e9474491580a4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnBlast
-  chainDelay: 0.1
 --- !u!114 &1391212707012425504
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -113,6 +97,12 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 2121
   breakCue: {fileID: 11400000, guid: b7d92e04a1c5f8439e26d7b0a3c14f85, type: 2}
+  targetTag: Player
+  explodeOnWorldContactWhenArmed: 1
+  hazardDetonatorMask:
+    serializedVersion: 2
+    m_Bits: 8192
+  chainDelay: 0.1
   triggerFrames:
   - {fileID: -43189483694800998, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: 2626840833397699699, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
@@ -120,53 +110,6 @@ MonoBehaviour:
   - {fileID: -8756790491359087728, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   - {fileID: -3034200899849956086, guid: 31b2e210484a3ac4fadf72477858c2b0, type: 3}
   proximityRadius: 4
---- !u!114 &4598473542990691007
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d071132458284dee8674394ee5ae5f02, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.ExplodeOnContact
-  targetTag: Player
---- !u!114 &6899676052817514577
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8fd73bf8f9524bfead46befee7e19929, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.HangingChain
-  attachPoint: {x: 0, y: 0}
-  chainSettings:
-    solver:
-      segmentLength: 0.25
-      maxSegments: 32
-      solverIterations: 6
-      gravityScale: 1
-      damping: 0.99
-      attachStiffness: 0.6
-      attachDamping: 0.25
-      maxCorrectionSpeed: 20
-      collisionMask:
-        serializedVersion: 2
-        m_Bits: 0
-      collisionRadius: 0.04
-    lineWidth: 0.08
-    sortingOrder: -1
-  materialCue: {fileID: 0}
-  requireAnchors: 0
-  anchorCount: 0
-  anchorSpacing: {x: 0.6, y: 0}
-  anchorHeight: 3
 --- !u!212 &6226552708803336386
 SpriteRenderer:
   serializedVersion: 2

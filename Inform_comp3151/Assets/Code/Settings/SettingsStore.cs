@@ -10,8 +10,9 @@ namespace Inkform.Settings
     ///
     /// Fully static — no scene object, no prefab wiring: values load automatically before the first
     /// scene loads (RuntimeInitializeOnLoadMethod) and every Set saves back. Readers use the static
-    /// properties directly: AudioManager scales playback volume per Play, RopeGun applies sensitivity
-    /// and subscribes to Changed to re-read after edits. The Settings panel is the only writer.
+    /// properties directly: AudioManager reads volumes when a sound starts and subscribes to Changed
+    /// to retune its live voices, RopeGun applies sensitivity and subscribes to Changed to re-read
+    /// after edits. The Settings panel is the only writer.
     ///
     /// Static (over a GameManager component) because settings are cross-domain infrastructure like the
     /// buses — Audio / Player / UI all touch them — and a static API needs zero scene or prefab edits.
@@ -46,7 +47,7 @@ namespace Inkform.Settings
         public static int ResolutionWidth { get; private set; }
         public static int ResolutionHeight { get; private set; }
         public static bool Fullscreen { get; private set; } = true;
-        public static int FpsCap { get; private set; } = 60;      // 0 = uncapped
+        public static int FpsCap { get; private set; } = 120;     // 0 = uncapped
         public static bool VSync { get; private set; }
 
         /// <summary>Frame rate counter overlay visible in gameplay.</summary>
@@ -63,7 +64,8 @@ namespace Inkform.Settings
 
         /// <summary>
         /// Raised after any setting changes and was applied. Subscribers re-read the properties they
-        /// care about (RopeGun's sensitivities); AudioManager reads per Play instead — no subscription.
+        /// care about (RopeGun's sensitivities; AudioManager retunes every voice already playing —
+        /// its Plays read the volumes once, at start).
         /// </summary>
         public static event Action Changed;
 
@@ -144,7 +146,7 @@ namespace Inkform.Settings
             StickSensitivity = PlayerPrefs.GetFloat(KeyStickSens, 1f);
             Device = (InputDevice)PlayerPrefs.GetInt(KeyDevice, (int)InputDevice.KeyboardMouse);
             Fullscreen = PlayerPrefs.GetInt(KeyFullscreen, 1) != 0;
-            FpsCap = PlayerPrefs.GetInt(KeyFps, 60);
+            FpsCap = PlayerPrefs.GetInt(KeyFps, 120);
             VSync = PlayerPrefs.GetInt(KeyVSync, 0) != 0;
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
@@ -173,8 +175,8 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
-        /// <summary>Music track volume. Stored and applied to the AudioManager's music multiplier, but
-        /// no music playback path exists yet — the track is ready ahead of the music system.</summary>
+        /// <summary>Music track volume. Applied by MusicPlayer, which recomputes running music
+        /// volume every frame — slider drags land on the next frame, no restart needed.</summary>
         public static void SetMusicVolume(float value)
         {
             value = Mathf.Clamp01(value);

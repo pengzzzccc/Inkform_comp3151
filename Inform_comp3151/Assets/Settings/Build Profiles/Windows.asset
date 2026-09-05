@@ -23,20 +23,20 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Menu/MainMenu.unity
     m_guid: 37631e5845af32445b0a05c4cfa3a1a1
-  - m_enabled: 1
+  - m_enabled: 0
     m_path: Assets/Scenes/Level1/L1_B1.unity
     m_guid: 872cc82b6e188a04a88a96448d41875e
-  - m_enabled: 1
-    m_path: Assets/Scenes/Level1/B2.unity
+  - m_enabled: 0
+    m_path: Assets/Scenes/Level1/L1_B2.unity
     m_guid: ebd79b34ceae0d14daf8895d7fa20e6c
-  - m_enabled: 1
-    m_path: Assets/Scenes/Level1/B3.unity
+  - m_enabled: 0
+    m_path: Assets/Scenes/Level1/L1_B3.unity
     m_guid: 8e86c152b693822479aa95649eb85236
-  - m_enabled: 1
+  - m_enabled: 0
     m_path: Assets/Scenes/Test/PlayerTest.unity
     m_guid: 7f80c46cb978389418099080bbd56749
   - m_enabled: 1
-    m_path: Assets/Scenes/Level1/Level1.unity
+    m_path: Assets/Scenes/Level1/Mine Cave 1.unity
     m_guid: 742e3b7aacdf8d74bac3cd030b491f51
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []

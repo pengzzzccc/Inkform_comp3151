@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 4561477894416084726}
   - component: {fileID: 4520520228573097506}
   m_Layer: 6
-  m_Name: moveAblePlatfrom
+  m_Name: MovablePlatform
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -74,9 +74,66 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fb36daf3f4a4a38a7a70fb00c81c381, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.PatrolMover
+  waypoints: []
+  mode: 0
+  stopTimes: []
   pointA: {x: -2.5, y: 0}
   pointB: {x: 2.5, y: 0}
   speed: 2.2
+  returnSpeed: 0
+  speedMode: 0
+  randomSpeedMin: 1.5
+  randomSpeedMax: 3
+  stopTimeAtA: 0
+  stopTimeAtB: 0
+  forwardCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  returnCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!19719996 &2058395896941935710
 TilemapCollider2D:
   m_ObjectHideFlags: 0
@@ -303,8 +360,8 @@ Tilemap:
   - first: {x: -7, y: -1, z: 0}
     second:
       serializedVersion: 2
-      m_TileIndex: 0
-      m_TileSpriteIndex: 0
+      m_TileIndex: 1
+      m_TileSpriteIndex: 1
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -313,8 +370,8 @@ Tilemap:
   - first: {x: -6, y: -1, z: 0}
     second:
       serializedVersion: 2
-      m_TileIndex: 0
-      m_TileSpriteIndex: 0
+      m_TileIndex: 3
+      m_TileSpriteIndex: 3
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -333,8 +390,8 @@ Tilemap:
   - first: {x: -4, y: -1, z: 0}
     second:
       serializedVersion: 2
-      m_TileIndex: 0
-      m_TileSpriteIndex: 0
+      m_TileIndex: 2
+      m_TileSpriteIndex: 2
       m_TileMatrixIndex: 0
       m_TileColorIndex: 0
       m_TileObjectToInstantiateIndex: 65535
@@ -343,12 +400,30 @@ Tilemap:
   m_AnimatedTiles: {}
   m_TileAssetArray:
   - serializedVersion: 2
-    m_RefCount: 4
-    m_Data: {fileID: 11400000, guid: c65670e9f66edf54fa3eb386aa6ea413, type: 2}
+    m_RefCount: 1
+    m_Data: {fileID: 11400000, guid: 7c740aa53f4ea2048b1a0236d819133d, type: 2}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: 11400000, guid: 64c22173714c2474db94dec86740f462, type: 2}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: 11400000, guid: 8805f2ead60a58b43883aa7c5b31dad2, type: 2}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: 11400000, guid: 3c3f52d98e68e734589af571d0f92e1f, type: 2}
   m_TileSpriteArray:
   - serializedVersion: 2
-    m_RefCount: 4
-    m_Data: {fileID: 1594439084, guid: 67abd515bfaf3da49a0040915665553c, type: 3}
+    m_RefCount: 1
+    m_Data: {fileID: -730494221, guid: b2bc5b2b14174b746ad3b379e1d2c040, type: 3}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: -354036656, guid: b2bc5b2b14174b746ad3b379e1d2c040, type: 3}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: 611241071, guid: b2bc5b2b14174b746ad3b379e1d2c040, type: 3}
+  - serializedVersion: 2
+    m_RefCount: 1
+    m_Data: {fileID: -1880132855, guid: b2bc5b2b14174b746ad3b379e1d2c040, type: 3}
   m_TileMatrixArray:
   - serializedVersion: 2
     m_RefCount: 4

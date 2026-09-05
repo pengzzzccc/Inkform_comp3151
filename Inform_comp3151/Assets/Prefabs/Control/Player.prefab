@@ -122,9 +122,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: -1112191443
-  m_SortingLayer: 1
-  m_SortingOrder: 100
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 5
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4621391574002942694, guid: ff50abeed78ba564a86e071f97a9f437, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -191,6 +191,7 @@ MonoBehaviour:
   detachDistance: 0.5
   reelSpeed: 22
   hitStopTime: 0.06
+  deniedCue: {fileID: 11400000, guid: f0bc49645f4da13ef9922fe7dbef111b, type: 2}
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5

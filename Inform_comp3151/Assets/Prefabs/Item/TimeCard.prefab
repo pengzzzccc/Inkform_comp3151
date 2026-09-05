@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 10000000006}
   - component: {fileID: 10000000008}
   - component: {fileID: 10000000009}
-  m_Layer: 0
+  m_Layer: 14
   m_Name: TimeCard
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -170,9 +170,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.InteractionPromptPart
   outlineMaterial: {fileID: 2100000, guid: 4fb7dee77d574e7cb75369359b8e6102, type: 2}
+  outlinePadding: 0.25
   pulseSpeed: 2.2
-  pulseStrength: 0.35
-  fadeDuration: 0.15
+  pulseStrength: 1
+  fadeDuration: 0.3
   iconWorldSize: 0.5
   promptOffset: {x: 0, y: 0.18}
   keycapColor: {r: 0.05, g: 0.06, b: 0.1, a: 0.85}

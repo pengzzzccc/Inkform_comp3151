@@ -1,17 +1,18 @@
 using System;
+using Inkform.Level;
 using UnityEngine;
 
 namespace Inkform.Bus
 {
     /// <summary>
     /// Level bus: scene/level flow signals. The only publisher of Started is SceneDirector (on every
-    /// level load); the only publishers of Completed are LevelExit triggers placed in scenes. Neither
-    /// the exit trigger nor the director need to know the other — the trigger says "this level was
-    /// completed at exit X", the director decides where that leads by consulting the level graph.
+    /// level load); the only publishers of ExitReached are LevelExit triggers placed in scenes.
+    /// Neither the exit trigger nor the director need to know the other — the trigger carries its
+    /// own destination reference, the director decides whether and when to load it.
     ///
     /// Started keeps a snapshot (Current) like PlayerBus — subscribers can sync on first enable without
-    /// needing a SceneDirector reference; Completed is a pure command-style signal (FxBus style): it
-    /// fires once per completion, there is no "still completing" state to read back.
+    /// needing a SceneDirector reference; ExitReached is a pure command-style signal (FxBus style): it
+    /// fires once per door, there is no "still exiting" state to read back.
     /// </summary>
     public static class LevelBus
     {
@@ -20,9 +21,11 @@ namespace Inkform.Bus
         /// room in this project, so subscribers never need to resolve it back to data.</summary>
         public static event Action<string> Started;
 
-        /// <summary>The level was completed at the exit whose id matches LevelExit.exitId. What happens
-        /// next (which level loads) is the SceneDirector's decision via the topology, not the trigger's.</summary>
-        public static event Action<string> Completed;
+        /// <summary>A door fired: destination is the room the door points at, spawnId names the
+        /// arrival checkpoint in it ("" = the room's start point). A RoomDefinition rather than a
+        /// scene-name string, because the door holds a direct reference now — there is no central
+        /// text graph to resolve an exit id against anymore.</summary>
+        public static event Action<RoomDefinition, string> ExitReached;
 
         /// <summary>Current snapshot: the scene name of the active gameplay scene, null while in the
         /// menu. Subscribers may read it anytime instead of tracking their own copy.</summary>
@@ -34,9 +37,9 @@ namespace Inkform.Bus
             Started?.Invoke(sceneName);
         }
 
-        public static void RaiseCompleted(string exitId)
+        public static void RaiseExitReached(RoomDefinition destination, string spawnId)
         {
-            Completed?.Invoke(exitId);
+            ExitReached?.Invoke(destination, spawnId);
         }
 
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
@@ -45,7 +48,7 @@ namespace Inkform.Bus
         private static void ResetStatics()
         {
             Started = null;
-            Completed = null;
+            ExitReached = null;
             Current = null;
         }
     }
