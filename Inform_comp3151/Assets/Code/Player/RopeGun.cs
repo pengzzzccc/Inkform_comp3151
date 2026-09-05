@@ -1,3 +1,5 @@
+using Inkform.Ability;
+using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
@@ -10,7 +12,9 @@ namespace Inkform.Player
 {
     /// <summary>
     /// Rope gun: replaces dash as the primary weapon (dash moved to Shift). On hit, pulls in a straight
-    /// line — no hanging, no swinging.
+    /// line — no hanging, no swinging. Ability-gated: firing and the reticle stay locked until the
+    /// rope gun ability is earned by picking up the rope gun card; a denied shot plays a cue and
+    /// nothing else (same denial pattern as Checkpoint).
     ///
     /// Aiming: the reticle is a free cursor, driven by mouse delta / right stick (the Aim action),
     /// moving around the player between a small safety radius and the current maximum range. Firing
@@ -83,6 +87,10 @@ namespace Inkform.Player
         [Header("Reel & hit")]
         [SerializeField] private float reelSpeed = 5f;                      // miss recovery: straight-line hook pull-back speed
         [SerializeField] private float hitStopTime = 0.06f;                 // brief hitstop on hit (via FxBus; ScreenFx caps at 0.25s)
+
+        [Header("Ability Gate")]
+        [Tooltip("Played when a player without the rope gun ability presses fire")]
+        [SerializeField] private SoundCue deniedCue;
 
         private RopePhase phase = RopePhase.Idle;
 
@@ -261,6 +269,15 @@ namespace Inkform.Player
         public void TryFire()
         {
             if (LifeBus.IsDead) return;
+
+            // Ability gate, same denial pattern as Checkpoint: without the rope gun ability every
+            // press is refused with a sound. Phase stays Idle, so there is never a rope to cancel.
+            if (!AbilityStore.Owns(AbilityIds.RopeGun))
+            {
+                PlayCue(deniedCue);
+                return;
+            }
+
             if (phase != RopePhase.Idle)
             {
                 Cancel();           // pressing again = cancel this shot / release the rope
@@ -469,9 +486,15 @@ namespace Inkform.Player
         void Update()
         {
             if (LifeBus.IsDead) return;
-            // The reticle is always visible: it updates every frame while idle, so the player always
-            // knows exactly where the next shot will go
-            if (phase == RopePhase.Idle) UpdatePreview();
+
+            // Without the rope gun ability the reticle would promise a shot the player cannot fire,
+            // so it hides until the card is picked up
+            bool hasGun = AbilityStore.Owns(AbilityIds.RopeGun);
+            reticle.gameObject.SetActive(hasGun);
+
+            // The reticle is always visible while earned: it updates every frame while idle, so the
+            // player always knows exactly where the next shot will go
+            if (hasGun && phase == RopePhase.Idle) UpdatePreview();
         }
 
         void FixedUpdate()
@@ -852,6 +875,13 @@ namespace Inkform.Player
             // pixels-per-unit (link spacing) and ropeWidth (thickness) independent of each other.
             Sprite s = ropeRenderer.sprite;
             ropeTileWidth = s.rect.width / s.pixelsPerUnit;
+        }
+
+        // Same guard as Checkpoint: a missing cue or missing manager degrades to silence, not errors
+        private static void PlayCue(SoundCue cue)
+        {
+            if (cue == null || AudioManager.Instance == null) return;
+            AudioManager.Instance.Play(cue);
         }
 
         void OnDrawGizmosSelected()

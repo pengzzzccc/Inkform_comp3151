@@ -17,10 +17,13 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 711c3e599f8f5ad44872fb71a4b9ef24, type: 3}
   output: {fileID: 0}
   volume: 0.585
+  category: 0
   pitchRange: {x: 0.95, y: 1.05}
   loop: 0
+  ignoreListenerPause: 0
   cooldown: 0.05
-  maxConcurrent: 3
+  maxConcurrent: 2
+  priority: 128
   spatial: 1
   falloffRange: 20
   minVolume: 0.15

@@ -49,11 +49,19 @@ namespace Inkform.Audio
         /// listener degrade to 0 ("at the ear"), which is pre-distance behavior.
         /// Measured on the XY plane only (z dropped): the camera sits at z = -10, counting z would
         /// put even a sound at the player's feet at 10 units minimum.
+        ///
+        /// The ratio is eased in quadratically rather than used raw: loudness perception is
+        /// logarithmic, so a linear gain ramp reads as dropping steeply from the very first step
+        /// away (Unity's own stock Linear rolloff is the one mode with exactly that complaint; the
+        /// engine's default is logarithmic, and middleware leaves curve shaping to the designer).
+        /// t² holds near-full gain through the inner half of the range and concentrates the fall
+        /// into its outer half, while keeping both endpoints exactly where they were.
         /// </summary>
         public static float DistanceT(bool spatial, float falloffRange, Vector2 listenerPos, Vector2? emitterPos)
         {
             if (!spatial || !emitterPos.HasValue || falloffRange <= 0f) return 0f;
-            return Mathf.Clamp01(Vector2.Distance(emitterPos.Value, listenerPos) / falloffRange);
+            float linear = Mathf.Clamp01(Vector2.Distance(emitterPos.Value, listenerPos) / falloffRange);
+            return linear * linear;
         }
 
         /// <summary>Cue volume × distance falloff × settings tracks × zone scale. Zone scale is the

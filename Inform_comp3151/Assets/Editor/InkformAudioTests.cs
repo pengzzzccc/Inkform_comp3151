@@ -108,11 +108,14 @@ namespace Inkform.Tests
         [Test]
         public void Premix_DistanceT_MeasuresXYPlaneAndClamps()
         {
-            // The camera sits at z = -10; counting z would attenuate even sounds at the player's feet
-            Assert.AreEqual(0.5f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f), new Vector2(10f, 0f)), 1e-4f);
-            Assert.AreEqual(0.5f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f),
+            // The camera sits at z = -10; counting z would attenuate even sounds at the player's feet.
+            // The XY ratio is eased in quadratically (10/20 → 0.25, not 0.5): near sounds hold close
+            // to full gain and the fall concentrates in the outer half of the range.
+            Assert.AreEqual(0.25f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f), new Vector2(10f, 0f)), 1e-4f);
+            Assert.AreEqual(0.25f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f),
                 new Vector3(10f, 0f, -50f)), 1e-4f, "z must not contribute");
-            Assert.AreEqual(1f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)), 1e-4f);
+            Assert.AreEqual(1f, AudioPremix.DistanceT(true, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)), 1e-4f,
+                "clamped to 1 before easing, so beyond the range it stays fully attenuated");
             Assert.AreEqual(0f, AudioPremix.DistanceT(false, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)),
                 "non-spatial cues are always 'at the ear'");
         }

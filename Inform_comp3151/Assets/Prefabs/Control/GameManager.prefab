@@ -232,6 +232,7 @@ MonoBehaviour:
   pauseMenuPrefab: {fileID: 8893543741165366722, guid: 9b6da9c34b3fd61479362dc7019c04a4, type: 3}
   saveMenuPrefab: {fileID: 2164662438562936563, guid: 42ddecc13d608e347be1ef0e1a630189, type: 3}
   settingsPrefab: {fileID: 3616246168738148539, guid: d6e5aa6a422c35d4b87b61d0842b2095, type: 3}
+  tutorialPrefab: {fileID: 2288663264479354303, guid: 3322bbcececc0924eb246c1a0540e841, type: 3}
   hoverCue: {fileID: 11400000, guid: e1d0cd899ff18644fbf944f4c7170bc6, type: 2}
   clickCue: {fileID: 11400000, guid: 390adebeb5deeed4aa95918eee10f655, type: 2}
   toggleOnCue: {fileID: 11400000, guid: 63f54ceb8946dba4eaf667dd184541ce, type: 2}
