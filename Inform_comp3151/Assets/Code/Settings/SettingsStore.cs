@@ -53,6 +53,14 @@ namespace Inkform.Settings
         /// <summary>Frame rate counter overlay visible in gameplay.</summary>
         public static bool ShowFps { get; private set; }
 
+        /// <summary>Session performance recorder on/off — writes the Docs/PerfLogs (or Log/) CSV
+        /// traces. On by default: it is a development tool and silence would be a behavior change.</summary>
+        public static bool PerfRecording { get; private set; } = true;
+
+        /// <summary>Performance recorder sampling interval in seconds (0.1 = 10 Hz). Values outside
+        /// PerfIntervals never get in through the setter.</summary>
+        public static float PerfInterval { get; private set; } = 1f;
+
         /// <summary>Global visual FX intensity 0~1: scales screen shake, camera zoom, post punch and
         /// shatter launch speed at their consumers. Hitstop is a duration, not a strength, so it is
         /// deliberately untouched — same for gamepad rumble, which is haptic, not visual.</summary>
@@ -61,6 +69,10 @@ namespace Inkform.Settings
         /// <summary>Frame cap options offered by the Graphics tab; 0 = uncapped. The current pick
         /// lives in FpsCap; this list only feeds the UI's left/right stepping.</summary>
         public static readonly int[] FpsOptions = { 30, 60, 120, 0 };
+
+        /// <summary>Performance recorder sampling intervals (seconds) the Graphics tab steps
+        /// through; shown to the player as their reciprocal in Hz (10 Hz .. 0.2 Hz).</summary>
+        public static readonly float[] PerfIntervals = { 0.1f, 0.5f, 1f, 2f, 5f };
 
         /// <summary>
         /// Raised after any setting changes and was applied. Subscribers re-read the properties they
@@ -101,6 +113,8 @@ namespace Inkform.Settings
         private const string KeyVSync = "Inkform.vsync";
         private const string KeyShowFps = "Inkform.showFps";
         private const string KeyFxIntensity = "Inkform.fxIntensity";
+        private const string KeyPerfRecording = "Inkform.perfRecording";
+        private const string KeyPerfInterval = "Inkform.perfInterval";
 
         // ---- Lifecycle ----
 
@@ -119,6 +133,8 @@ namespace Inkform.Settings
             FpsCap = 60;
             VSync = false;
             ShowFps = false;
+            PerfRecording = true;
+            PerfInterval = 1f;
             FxIntensity = 1f;
             cachedResolutions = null;
         }
@@ -149,6 +165,8 @@ namespace Inkform.Settings
             FpsCap = PlayerPrefs.GetInt(KeyFps, 120);
             VSync = PlayerPrefs.GetInt(KeyVSync, 0) != 0;
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
+            PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 1) != 0;
+            PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
 
             ResolutionWidth = PlayerPrefs.GetInt(KeyResW, 0);
@@ -288,6 +306,26 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
+        public static void SetPerfRecording(bool value)
+        {
+            if (PerfRecording == value) return;
+            PerfRecording = value;
+            PlayerPrefs.SetInt(KeyPerfRecording, value ? 1 : 0);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Performance recorder sampling interval in seconds. Only the PerfIntervals
+        /// values are accepted — the Graphics stepper cycles exactly those, and an off-list value
+        /// would desync its display.</summary>
+        public static void SetPerfInterval(float value)
+        {
+            if (System.Array.IndexOf(PerfIntervals, value) < 0) return;
+            if (Mathf.Approximately(PerfInterval, value)) return;
+            PerfInterval = value;
+            PlayerPrefs.SetFloat(KeyPerfInterval, value);
+            Changed?.Invoke();
+        }
+
         public static void ResetToDefaults()
         {
             MasterVolume = MusicVolume = SfxVolume = 1f;
@@ -295,9 +333,11 @@ namespace Inkform.Settings
             MouseSensitivity = StickSensitivity = 1f;
             Device = InputDevice.KeyboardMouse;
             Fullscreen = true;
-            FpsCap = 60;
+            FpsCap = 120;
             VSync = false;
             ShowFps = false;
+            PerfRecording = true;
+            PerfInterval = 1f;
             FxIntensity = 1f;
             Resolution r = Screen.currentResolution;
             ResolutionWidth = r.width;
@@ -321,6 +361,8 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyVSync);
             PlayerPrefs.DeleteKey(KeyShowFps);
             PlayerPrefs.DeleteKey(KeyFxIntensity);
+            PlayerPrefs.DeleteKey(KeyPerfRecording);
+            PlayerPrefs.DeleteKey(KeyPerfInterval);
 
             ApplyGraphics();
             ApplyAudio();
