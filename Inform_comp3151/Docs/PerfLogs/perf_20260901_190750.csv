@@ -1,0 +1,27 @@
+﻿# Inkform performance log
+# startedAt=2026-09-01T19:07:50
+# branch=Test
+# commit=d1229eb44ae0e0122a8604020ef0722e29f9a5dd
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# screen=2560x1440 targetFps=60 vSync=0
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face
+0.3,Mine Cave 1,0,0,0,3394.52,670.7,364.14,112.90,Fall,R
+1.2,Mine Cave 1,17,1,386,59.72,680.9,364.14,111.64,Land,R
+2.2,Mine Cave 1,59,29,73,16.98,681.9,368.85,111.64,Idle,R
+3.2,Mine Cave 1,60,45,79,16.62,684.7,368.85,111.64,Idle,R
+4.3,Mine Cave 1,60,50,73,16.66,688.5,368.85,111.64,Idle,R
+5.3,Mine Cave 1,60,53,68,16.69,693.1,373.29,111.64,Land,R
+6.3,Mine Cave 1,60,54,68,16.65,697.2,369.20,111.64,Land,L
+7.3,Mine Cave 1,60,55,70,16.65,700.9,369.77,111.64,Land,R
+8.3,Mine Cave 1,60,46,80,16.69,704.9,371.09,111.65,Move,R
+9.3,Mine Cave 1,60,45,67,16.77,709.6,371.34,111.65,Move,R
+10.3,Mine Cave 1,60,55,64,16.66,715.2,377.98,111.65,Idle,R
+11.3,Mine Cave 1,60,55,65,16.67,720.7,385.17,110.93,Fall,R
+12.4,Mine Cave 1,60,50,71,16.65,727.2,384.71,109.64,Land,R
+13.4,Mine Cave 1,60,50,74,16.67,733.5,394.45,111.14,Fall,R
+14.4,Mine Cave 1,60,54,70,16.68,739.6,397.25,109.64,Land,R
+15.4,Mine Cave 1,60,52,72,16.65,745.9,399.65,110.64,Land,R
+16.4,Mine Cave 1,60,29,155,16.79,701.0,399.65,110.64,Idle,R
+17.4,Mine Cave 1,60,41,102,16.64,701.5,399.65,110.64,Idle,R
+# summary duration_s=17.4 frames=987 fps_avg_global=48 fps_min_session=0

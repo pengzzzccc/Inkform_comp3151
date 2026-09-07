@@ -1,0 +1,23 @@
+﻿# Inkform performance log
+# startedAt=2026-09-06T19:01:57
+# branch=Test
+# commit=8ef4a241c080bb24d43cfa3619bdf38092f0f684
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.4,Mine Cave 1,2,1,11,519.71,688.9,235.00,76.26,Fall,R,Playing,2,951.33,-34080,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,38,6516
+2.4,Mine Cave 1,109,32,206,9.20,691.1,240.81,74.72,Land,L,Playing,0,31.69,2196,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,11,153
+3.4,Mine Cave 1,119,69,168,8.41,695.6,241.84,74.71,Land,R,Playing,0,14.46,4596,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,13,174
+4.4,Mine Cave 1,120,79,182,8.33,703.3,245.04,76.62,Fall,R,Playing,0,12.66,7952,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,11,141
+5.4,Mine Cave 1,119,57,185,8.41,712.1,254.98,78.38,JumpUp,R,Playing,0,17.41,8976,0,-1.0,4,0,Idle,4,PlayerCursorMidpoint,-1,11,400
+6.4,Mine Cave 1,120,92,166,8.33,721.2,262.84,75.70,Land,R,Playing,0,10.93,9328,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,11,401
+7.4,Mine Cave 1,120,97,180,8.33,730.6,264.77,79.71,Land,R,Playing,0,10.34,9676,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,11,957
+8.4,Mine Cave 1,120,82,202,8.33,740.2,272.84,81.15,JumpUp,R,Playing,0,12.19,9748,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,11,854
+9.4,Mine Cave 1,120,88,164,8.34,749.7,274.30,84.70,Land,L,Playing,0,11.39,9804,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,11,850
+10.4,Mine Cave 1,120,92,165,8.34,759.5,268.57,89.35,WallSlideL,L,Playing,0,10.87,10004,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,11,957
+11.4,Mine Cave 1,120,82,247,8.32,768.4,272.74,93.54,Fall,R,Playing,0,12.14,9148,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,11,591
+12.4,Mine Cave 1,119,45,211,8.42,695.4,274.51,96.70,Land,R,Playing,0,22.39,-74840,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,11,593
+13.4,Mine Cave 1,120,73,261,8.33,699.6,274.51,96.70,Land,R,Paused,0,13.61,4304,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,13,649
+# summary duration_s=13.4 frames=1434 fps_avg_global=110 fps_min_session=1 hitch_total=2

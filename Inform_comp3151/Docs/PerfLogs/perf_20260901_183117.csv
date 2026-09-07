@@ -1,0 +1,44 @@
+﻿# Inkform performance log
+# startedAt=2026-09-01T18:31:17
+# branch=Test
+# commit=033a258981944c8070ce74422bf5d0d191966a66
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# screen=2560x1440 targetFps=60 vSync=0
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face
+0.3,Mine Cave 1,0,0,0,3378.92,675.9,364.14,112.90,Fall,R
+1.3,Mine Cave 1,18,1,142,55.98,685.9,363.71,111.64,Land,R
+2.3,Mine Cave 1,60,53,69,16.64,686.5,371.70,111.65,Move,R
+3.3,Mine Cave 1,60,55,66,16.68,688.8,381.15,110.64,Land,R
+4.3,Mine Cave 1,60,46,86,16.68,691.9,385.05,109.64,Land,R
+5.3,Mine Cave 1,60,47,79,16.69,695.3,386.77,109.64,Land,R
+6.3,Mine Cave 1,60,57,63,16.67,698.8,396.77,110.50,JumpUp,R
+7.3,Mine Cave 1,60,50,85,16.68,702.4,401.37,112.98,JumpUp,R
+8.3,Mine Cave 1,60,55,66,16.67,706.6,403.84,116.86,WallSlideR,R
+9.3,Mine Cave 1,60,54,68,16.68,710.7,403.83,114.35,WallSlideR,R
+10.3,Mine Cave 1,60,51,69,16.68,714.9,407.98,111.97,Fall,R
+11.3,Mine Cave 1,60,50,74,16.68,719.6,399.04,110.70,JumpUp,R
+12.3,Mine Cave 1,60,49,77,16.68,724.4,404.24,110.80,Fall,R
+13.3,Mine Cave 1,60,47,86,16.62,730.1,398.55,110.50,JumpUp,R
+14.3,Mine Cave 1,60,45,90,16.66,737.1,407.58,112.96,Fall,R
+15.3,Mine Cave 1,60,45,90,16.67,744.6,417.78,113.91,Fall,R
+16.3,Mine Cave 1,60,40,141,16.66,704.7,419.30,117.11,CeilingStick,R
+17.3,Mine Cave 1,60,53,68,16.67,705.2,425.99,115.64,Land,R
+18.4,Mine Cave 1,60,56,65,16.66,706.2,424.77,115.64,Land,L
+19.4,Mine Cave 1,60,54,66,16.68,708.7,424.02,121.90,Rise,R
+20.4,Mine Cave 1,60,51,76,16.67,711.5,427.24,124.10,CeilingMove,R
+21.4,Mine Cave 1,60,55,65,16.66,714.2,436.36,123.63,JumpUp,R
+22.4,Mine Cave 1,60,52,67,16.66,718.0,441.65,123.29,Fall,R
+23.4,Mine Cave 1,60,56,66,16.68,721.6,447.35,121.57,JumpUp,R
+24.4,Mine Cave 1,60,33,240,16.66,724.9,444.51,120.64,Fall,L
+25.4,Mine Cave 1,60,51,67,16.68,728.3,442.71,121.27,JumpUp,L
+26.4,Mine Cave 1,60,51,74,16.62,731.9,442.55,119.71,Land,L
+27.4,Mine Cave 1,60,52,69,16.68,735.4,442.55,119.71,Idle,L
+28.4,Mine Cave 1,60,54,68,16.68,738.8,444.32,121.20,Fall,R
+29.4,Mine Cave 1,60,58,63,16.67,742.5,445.37,119.71,Land,R
+30.4,Mine Cave 1,60,55,67,16.68,748.3,446.57,118.71,Land,L
+31.4,Mine Cave 1,60,57,64,16.68,754.5,444.66,119.71,Land,L
+32.4,Mine Cave 1,60,50,67,16.68,760.6,444.66,119.71,Idle,L
+33.4,Mine Cave 1,60,53,67,16.67,767.3,444.66,119.71,Idle,L
+34.4,Mine Cave 1,60,45,87,16.69,717.0,444.66,119.71,Idle,L
+# summary duration_s=34.4 frames=2009 fps_avg_global=53 fps_min_session=0

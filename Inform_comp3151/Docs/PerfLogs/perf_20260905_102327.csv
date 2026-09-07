@@ -1,0 +1,36 @@
+﻿# Inkform performance log
+# startedAt=2026-09-05T10:23:27
+# branch=Test
+# commit=031bc3610848889dbdf07332c4d8cfedb02ca444
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.3,Mine Cave 1,8,1,142,126.05,677.9,364.14,111.68,Land,R,Playing,2,794.00,-34204,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,0,0
+2.4,Mine Cave 1,113,31,362,8.81,681.4,364.14,111.64,Idle,R,Playing,0,32.68,3564,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,1033
+3.4,Mine Cave 1,120,81,191,8.34,689.4,361.89,114.29,Rise,L,Playing,0,12.33,8156,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,21,1720
+4.4,Mine Cave 1,120,95,166,8.34,699.4,369.44,113.45,JumpUp,R,Playing,0,10.54,10272,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,24,1260
+5.4,Mine Cave 1,120,94,253,8.34,709.9,379.45,112.59,Fall,R,Playing,0,10.68,10704,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,24,1256
+6.4,Mine Cave 1,120,82,194,8.34,720.7,389.45,110.70,JumpUp,R,Playing,0,12.12,11040,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,20,1091
+7.4,Mine Cave 1,118,44,173,8.49,732.7,393.73,109.64,Land,L,Playing,0,22.65,12300,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,20,1034
+8.4,Mine Cave 1,120,97,200,8.34,745.9,383.73,112.07,JumpUp,L,Playing,0,10.28,13516,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,1143
+9.4,Mine Cave 1,119,55,323,8.39,681.2,373.90,111.64,Land,L,Playing,0,18.28,-66208,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,782
+10.4,Mine Cave 1,120,96,184,8.34,685.6,366.68,113.85,Fall,L,Playing,0,10.46,4460,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,24,1722
+11.4,Mine Cave 1,120,97,222,8.33,694.9,364.77,111.64,Land,L,Playing,0,10.35,9528,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,17,1033
+12.4,Mine Cave 1,120,94,184,8.34,706.0,355.32,111.64,Idle,R,Playing,0,10.59,11424,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,15,831
+13.4,Mine Cave 1,120,103,148,8.32,718.0,364.63,111.64,Move,R,Playing,0,9.74,12292,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,17,1033
+14.4,Mine Cave 1,120,96,159,8.34,729.8,374.83,111.64,Move,R,Playing,0,10.38,12032,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,785
+15.4,Mine Cave 1,120,89,194,8.33,741.5,384.83,112.21,JumpUp,R,Playing,0,11.21,12016,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,1146
+16.4,Mine Cave 1,120,93,169,8.33,755.1,383.90,109.64,Land,R,Playing,0,10.73,13956,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,18,1088
+17.4,Mine Cave 1,120,102,155,8.33,769.0,393.89,111.68,JumpUp,R,Playing,0,9.83,14148,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,20,1037
+18.4,Mine Cave 1,119,52,237,8.39,686.8,399.23,110.64,Land,R,Playing,0,19.17,-84136,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,630
+19.4,Mine Cave 1,120,98,185,8.34,693.4,399.41,110.64,Land,R,Playing,0,10.23,6808,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,622
+20.4,Mine Cave 1,120,85,212,8.33,703.4,405.90,111.22,WallSlideR,R,Playing,0,11.75,10200,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,1896
+21.4,Mine Cave 1,120,83,199,8.34,714.7,364.14,112.89,Fall,R,Playing,0,12.01,11604,0,-1.0,3,1,Idle,4,PlayerCursorMidpoint,-1,24,1719
+22.4,Mine Cave 1,120,96,151,8.33,726.8,364.14,111.64,Land,R,Playing,0,10.47,12296,0,-1.0,2,1,Idle,4,PlayerCursorMidpoint,-1,24,1721
+23.4,Mine Cave 1,120,98,160,8.34,738.3,364.14,111.64,Idle,R,Playing,0,10.16,11800,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,24,1723
+24.4,Mine Cave 1,120,97,148,8.33,750.0,364.14,111.64,Idle,R,Playing,0,10.35,11972,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,24,1723
+25.5,Mine Cave 1,119,66,316,8.39,761.5,364.14,111.64,Idle,R,Paused,0,15.23,11776,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,26,1778
+26.5,Mine Cave 1,120,95,162,8.32,775.4,364.14,111.64,Idle,R,Paused,0,10.55,14308,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,26,1778
+# summary duration_s=26.5 frames=3010 fps_avg_global=115 fps_min_session=1 hitch_total=2

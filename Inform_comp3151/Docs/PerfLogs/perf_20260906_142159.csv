@@ -1,0 +1,22 @@
+﻿# Inkform performance log
+# startedAt=2026-09-06T14:21:59
+# branch=Test
+# commit=7e1dc511c54b794608f141a19e226fa9073a8a85
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.2,Mine Cave 1,14,1,280,71.69,677.9,296.79,55.46,Fall,R,Playing,2,818.51,-25968,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+2.3,Mine Cave 1,120,62,315,8.33,682.9,300.87,56.97,JumpUp,R,Playing,0,16.19,5116,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,219
+3.3,Mine Cave 1,120,79,301,8.33,693.5,311.07,58.00,Fall,R,Playing,0,12.63,10816,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,213
+4.3,Mine Cave 1,120,103,148,8.33,705.8,321.07,58.56,Fall,R,Playing,0,9.71,12572,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,705
+5.3,Mine Cave 1,118,48,203,8.45,717.3,331.07,58.73,Fall,R,Playing,0,20.68,11780,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,10,710
+6.3,Mine Cave 1,120,98,177,8.33,728.2,326.77,57.98,Fall,L,Playing,0,10.19,11176,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,708
+7.3,Mine Cave 1,120,97,154,8.34,738.8,323.14,58.42,JumpUp,L,Playing,0,10.34,10904,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,707
+8.3,Mine Cave 1,120,82,206,8.34,750.4,326.14,58.59,JumpUp,R,Playing,0,12.13,11876,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,710
+9.3,Mine Cave 1,120,78,255,8.35,760.1,334.23,55.70,Land,R,Playing,0,12.88,9936,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,517
+10.3,Mine Cave 1,119,42,222,8.39,684.1,325.00,56.32,JumpUp,L,Playing,0,24.05,-77888,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,708
+11.3,Mine Cave 1,120,81,260,8.35,689.2,323.56,56.49,WallSlideL,L,Paused,0,12.40,5244,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,12,763
+12.3,Mine Cave 1,120,82,262,8.35,698.0,323.56,56.49,WallSlideL,L,Paused,0,12.18,9060,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,12,763
+# summary duration_s=12.3 frames=1337 fps_avg_global=111 fps_min_session=1 hitch_total=2

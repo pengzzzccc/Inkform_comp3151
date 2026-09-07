@@ -1,0 +1,21 @@
+﻿# Inkform performance log
+# startedAt=2026-09-05T14:50:12
+# branch=Test
+# commit=347f5617757eefaa1cbba0a727b83c218fb1dc82
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.4,Mine Cave 1,11,1,164,91.80,684.7,365.05,111.88,Fall,R,Playing,2,827.83,-29344,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,52,11780
+2.4,Mine Cave 1,120,78,195,8.36,687.8,375.05,111.64,Land,R,Playing,0,12.76,3148,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,26,5246
+3.4,Mine Cave 1,113,30,198,8.85,693.2,370.57,111.65,Idle,L,Playing,1,33.89,5492,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,24,4693
+4.4,Mine Cave 1,120,89,202,8.33,701.7,370.70,111.65,Idle,L,Playing,0,11.28,8780,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,26,5244
+5.4,Mine Cave 1,119,80,154,8.38,711.4,370.52,111.65,Move,R,Playing,0,12.45,9920,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,26,5243
+6.4,Mine Cave 1,120,95,186,8.33,721.5,380.71,112.98,Fall,R,Playing,0,10.49,10300,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,25,5220
+7.4,Mine Cave 1,120,96,151,8.34,731.7,386.17,111.76,JumpUp,L,Playing,0,10.38,10496,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,22,5652
+8.4,Mine Cave 1,120,91,204,8.34,741.9,378.90,111.89,JumpUp,L,Playing,0,11.04,10396,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,26,5228
+9.4,Mine Cave 1,120,88,222,8.33,752.5,371.82,111.64,Land,R,Playing,0,11.31,10868,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,26,5242
+10.4,Mine Cave 1,120,83,206,8.33,762.7,379.09,111.64,Idle,R,Playing,0,12.05,10436,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,22,5224
+11.4,Mine Cave 1,119,47,232,8.41,691.3,379.09,111.64,Idle,R,Paused,0,21.16,-73100,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,27,5280
+# summary duration_s=11.4 frames=1207 fps_avg_global=109 fps_min_session=1 hitch_total=3

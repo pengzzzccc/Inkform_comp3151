@@ -1,0 +1,36 @@
+﻿# Inkform performance log
+# startedAt=2026-09-06T14:33:52
+# branch=Test
+# commit=7e1dc511c54b794608f141a19e226fa9073a8a85
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.4,Mine Cave 1,16,1,311,62.65,680.2,279.97,44.29,Fall,R,Playing,2,805.44,-46668,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,94
+2.4,Mine Cave 1,120,76,278,8.34,685.3,281.65,44.16,Rise,R,Playing,0,13.13,5208,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,11,96
+3.4,Mine Cave 1,114,32,215,8.78,694.2,284.64,45.42,JumpUp,R,Playing,0,30.87,9060,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,12,405
+4.4,Mine Cave 1,120,77,279,8.34,704.7,293.44,44.70,Land,R,Playing,0,12.96,10836,0,-1.0,1,0,Pulling,4,PlayerCursorMidpoint,-1,12,403
+5.4,Mine Cave 1,119,60,244,8.41,716.2,300.07,46.19,JumpUp,R,Playing,0,16.58,11768,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,10,770
+6.4,Mine Cave 1,120,85,234,8.34,728.4,307.03,48.84,Fall,R,Playing,0,11.81,12452,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,713
+7.4,Mine Cave 1,120,97,160,8.32,741.2,314.84,50.14,WallSlideR,R,Playing,0,10.28,13136,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,712
+8.4,Mine Cave 1,120,99,158,8.34,753.6,315.98,54.10,Fall,R,Playing,0,10.07,12668,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,1167
+9.4,Mine Cave 1,119,63,177,8.41,685.3,310.56,57.87,WallSlideL,L,Playing,0,16.00,-69984,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,423
+10.4,Mine Cave 1,120,82,204,8.31,690.3,310.57,58.84,WallSlideL,L,Playing,0,12.12,5160,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,423
+11.4,Mine Cave 1,120,82,297,8.34,698.4,314.83,64.93,Rise,R,Playing,0,12.17,8284,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,424
+12.4,Mine Cave 1,120,98,161,8.34,708.2,321.66,68.28,Rise,R,Playing,0,10.17,10056,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,878
+13.4,Mine Cave 1,120,73,250,8.34,718.6,330.83,69.95,CeilingMove,R,Playing,0,13.66,10628,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,877
+14.4,Mine Cave 1,120,97,184,8.32,729.5,340.83,66.03,JumpUp,R,Playing,0,10.31,11176,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,480
+15.4,Mine Cave 1,120,87,224,8.33,740.6,345.98,65.37,JumpUp,L,Playing,0,11.55,11344,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,478
+16.4,Mine Cave 1,120,96,158,8.33,752.8,335.98,65.62,Fall,L,Playing,0,10.39,12468,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,478
+17.4,Mine Cave 1,120,96,150,8.33,765.6,334.17,67.80,JumpUp,L,Playing,0,10.37,13184,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,877
+18.4,Mine Cave 1,119,49,213,8.41,686.9,333.28,66.70,Land,L,Playing,0,20.26,-80564,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,877
+19.4,Mine Cave 1,120,91,181,8.34,691.3,342.01,66.04,Fall,R,Playing,0,10.95,4492,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,479
+20.4,Mine Cave 1,120,86,243,8.32,699.2,352.01,64.70,Land,R,Playing,0,11.65,8084,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,10,738
+21.4,Mine Cave 1,120,81,256,8.34,708.9,362.01,67.33,Fall,R,Playing,0,12.41,9916,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,743
+22.5,Mine Cave 1,120,78,314,8.33,719.2,365.30,71.83,Fall,R,Playing,0,12.75,10548,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,13,739
+23.5,Mine Cave 1,120,98,187,8.33,730.0,365.84,75.51,WallSlideR,R,Playing,0,10.25,11040,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,13,288
+24.5,Mine Cave 1,120,90,183,8.34,740.6,365.83,73.31,WallSlideR,R,Playing,0,11.13,10876,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,13,742
+25.5,Mine Cave 1,120,99,148,8.33,752.1,364.32,71.70,Land,L,Playing,0,10.05,11776,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,741
+26.5,Mine Cave 1,120,75,331,8.34,763.5,364.32,71.70,Land,L,Paused,0,13.29,11696,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,12,797
+# summary duration_s=26.5 frames=3020 fps_avg_global=116 fps_min_session=1 hitch_total=2

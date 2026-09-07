@@ -1,0 +1,92 @@
+﻿# Inkform performance log
+# startedAt=2026-09-05T10:17:21
+# branch=Test
+# commit=031bc3610848889dbdf07332c4d8cfedb02ca444
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.3,PlayerTest,19,1,142,52.78,672.0,-1.90,-0.76,Fall,R,Playing,2,775.78,-21632,1,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,31,1822
+2.3,PlayerTest,120,98,163,8.34,679.7,-1.90,-0.76,Land,R,Playing,0,10.19,7864,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,31,1819
+3.3,PlayerTest,120,87,155,8.33,692.3,-1.90,-0.76,Idle,R,Playing,0,11.43,12936,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,31,1821
+4.3,PlayerTest,120,70,265,8.35,705.8,-0.78,-0.76,Move,R,Playing,0,14.39,13776,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,31,1819
+5.3,PlayerTest,119,75,232,8.40,717.0,4.02,-0.70,Land,R,Playing,0,13.27,11500,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,35,1865
+6.3,PlayerTest,120,91,182,8.34,729.1,2.32,-0.70,Idle,L,Playing,0,10.96,12388,0,-1.0,2,0,Idle,1,PlayerCursorMidpoint,-1,35,1871
+7.3,PlayerTest,120,99,154,8.33,743.3,2.32,-0.70,Idle,L,Playing,0,10.09,14508,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,35,1871
+8.3,PlayerTest,119,62,214,8.40,676.9,4.87,-0.70,Idle,R,Playing,0,16.20,-67980,1,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,35,1853
+9.3,PlayerTest,120,93,160,8.32,682.4,3.64,-0.70,Idle,L,Playing,0,10.70,5628,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,35,1861
+10.3,PlayerTest,120,93,188,8.34,691.5,3.83,-0.70,Idle,L,Playing,0,10.71,9348,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,35,1863
+11.3,PlayerTest,120,93,179,8.34,702.3,6.00,-0.24,JumpUp,R,Playing,0,10.70,11076,0,-1.0,2,0,Idle,1,PlayerCursorMidpoint,-1,64,3656
+12.3,PlayerTest,120,98,160,8.34,714.0,8.60,-0.70,Land,R,Playing,0,10.20,11964,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1041
+13.3,PlayerTest,120,101,162,8.34,725.3,8.60,-0.70,Idle,R,Playing,0,9.94,11616,0,-1.0,3,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+14.3,PlayerTest,120,93,166,8.33,734.3,8.60,-0.70,Idle,R,Playing,0,10.77,9144,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1042
+15.4,PlayerTest,120,94,166,8.32,744.2,8.60,-0.70,Idle,R,Playing,0,10.66,10184,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+16.4,PlayerTest,120,77,197,8.34,756.4,8.60,-0.70,Idle,R,Playing,0,13.04,12532,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+17.4,PlayerTest,119,38,234,8.42,682.0,8.60,-0.70,Idle,R,Playing,0,26.57,-76236,1,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1042
+18.4,PlayerTest,120,79,231,8.34,684.6,8.60,-0.70,Idle,R,Playing,0,12.61,2640,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+19.4,PlayerTest,120,84,207,8.34,688.7,8.60,-0.70,Idle,R,Playing,0,11.84,4192,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1042
+20.4,PlayerTest,120,70,362,8.33,697.3,8.60,-0.70,Idle,R,Playing,0,14.35,8876,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+21.4,PlayerTest,120,92,186,8.33,708.8,8.60,-0.70,Idle,R,Playing,0,10.89,11736,0,-1.0,2,0,Idle,1,PlayerCursorMidpoint,-1,32,1048
+22.4,PlayerTest,120,96,170,8.34,720.5,8.60,-0.70,Idle,R,Playing,0,10.40,12008,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1044
+23.4,PlayerTest,120,98,151,8.34,733.1,8.60,-0.70,Idle,R,Playing,0,10.24,12864,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1050
+24.4,PlayerTest,120,99,153,8.34,745.3,6.85,-0.69,Move,L,Playing,0,10.06,12500,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,32,1810
+25.4,PlayerTest,120,98,156,8.33,757.5,5.36,-0.69,Idle,L,Playing,0,10.20,12480,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1821
+26.4,PlayerTest,120,93,155,8.33,771.9,5.36,-0.69,Idle,L,Playing,0,10.77,14760,0,-1.0,3,0,Idle,1,PlayerCursorMidpoint,-1,32,1827
+27.4,PlayerTest,119,54,227,8.39,687.4,5.36,-0.69,Idle,L,Playing,0,18.40,-86520,1,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,64,3642
+28.4,PlayerTest,120,89,248,8.33,691.6,7.46,-0.70,Idle,R,Playing,0,11.24,4280,0,-1.0,1,0,Pulling,1,PlayerCursorMidpoint,-1,32,1058
+29.4,PlayerTest,120,94,159,8.34,701.6,9.22,-0.69,Land,R,Playing,0,10.67,10296,0,-1.0,1,0,Idle,1,PlayerCursorMidpoint,-1,28,1047
+30.4,PlayerTest,120,100,153,8.34,712.7,14.03,1.90,Fall,R,Playing,0,9.96,11344,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,28,1053
+31.4,PlayerTest,120,94,163,8.32,724.0,13.97,-0.69,Land,L,Playing,0,10.61,11504,0,-1.0,2,0,Idle,1,PlayerCursorMidpoint,-1,25,1041
+32.4,PlayerTest,119,65,160,8.40,736.3,11.27,0.94,JumpUp,L,Playing,0,15.47,12604,0,-1.0,0,0,Idle,1,PlayerCursorMidpoint,-1,32,1057
+33.4,PlayerTest,120,90,203,8.33,748.9,10.22,0.23,Fall,L,Playing,0,11.10,12952,0,-1.0,1,1,Idle,1,PlayerCursorMidpoint,-1,32,1833
+34.4,PlayerTest,120,101,150,8.34,761.8,11.07,0.24,JumpUp,L,Playing,0,9.87,13156,0,-1.0,1,2,Idle,1,PlayerCursorMidpoint,-1,32,1847
+35.4,PlayerTest,120,97,159,8.32,774.0,11.81,-0.70,Land,L,Playing,0,10.35,12536,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,32,1298
+36.4,PlayerTest,119,39,232,8.43,688.7,6.57,-0.70,Land,L,Playing,0,25.58,-87372,1,-1.0,1,2,Idle,1,PlayerCursorMidpoint,-1,0,0
+37.4,PlayerTest,120,83,210,8.35,691.3,6.57,-0.70,Idle,L,Playing,0,12.00,2704,0,-1.0,1,2,Idle,1,PlayerCursorMidpoint,-1,64,3662
+38.4,PlayerTest,120,85,208,8.35,698.0,6.57,-0.70,Idle,L,Paused,0,11.74,6884,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1885
+39.5,PlayerTest,120,93,150,8.33,709.4,6.57,-0.70,Idle,L,Paused,0,10.78,11624,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1885
+40.5,PlayerTest,120,95,193,8.33,722.1,5.22,-0.70,Move,L,Playing,0,10.52,12964,0,-1.0,1,2,Idle,1,PlayerCursorMidpoint,-1,32,1831
+41.5,PlayerTest,120,97,153,8.33,734.4,4.40,-0.70,Idle,L,Playing,0,10.33,12664,0,-1.0,2,2,Idle,1,PlayerCursorMidpoint,-1,32,1834
+42.5,PlayerTest,120,96,152,8.34,746.3,4.40,-0.70,Idle,L,Paused,0,10.44,12168,0,-1.0,1,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+43.5,PlayerTest,120,100,157,8.32,759.2,4.40,-0.70,Idle,L,Paused,0,10.02,13216,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+44.5,PlayerTest,114,15,364,8.81,771.6,4.40,-0.70,Idle,L,Paused,1,67.38,12656,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+45.5,PlayerTest,118,43,235,8.47,694.5,4.40,-0.70,Idle,L,Paused,0,23.40,-78928,1,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+46.5,PlayerTest,120,101,153,8.34,701.5,4.40,-0.70,Idle,L,Paused,0,9.91,7156,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+47.5,PlayerTest,120,102,154,8.32,711.3,4.40,-0.70,Idle,L,Paused,0,9.79,10048,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+48.5,PlayerTest,120,90,154,8.34,723.9,4.40,-0.70,Idle,L,Paused,0,11.15,12888,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+49.5,PlayerTest,120,100,155,8.34,737.0,4.40,-0.70,Idle,L,Paused,0,10.03,13420,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+50.5,PlayerTest,120,87,242,8.32,749.9,4.40,-0.70,Idle,L,Paused,0,11.45,13212,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+51.5,PlayerTest,119,78,172,8.39,764.2,4.40,-0.70,Idle,L,Paused,0,12.79,14688,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+52.5,PlayerTest,119,83,150,8.38,777.5,4.40,-0.70,Idle,L,Paused,0,12.07,13632,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+53.5,PlayerTest,118,39,225,8.45,695.1,4.40,-0.70,Idle,L,Paused,0,25.74,-84376,1,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+54.5,PlayerTest,120,94,156,8.33,700.2,4.40,-0.70,Idle,L,Paused,0,10.58,5136,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+55.5,PlayerTest,120,80,276,8.34,709.6,4.40,-0.70,Idle,L,Paused,0,12.53,9720,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+56.5,PlayerTest,119,45,243,8.41,716.8,4.40,-0.70,Idle,L,Paused,0,22.22,7340,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+57.5,PlayerTest,118,36,187,8.48,727.8,4.40,-0.70,Idle,L,Paused,0,27.41,11288,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+58.5,PlayerTest,120,54,264,8.35,733.5,4.40,-0.70,Idle,L,Paused,0,18.56,5748,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+59.6,PlayerTest,119,56,258,8.39,739.5,4.40,-0.70,Idle,L,Paused,0,17.86,6148,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+60.6,PlayerTest,119,47,156,8.43,746.5,4.40,-0.70,Idle,L,Paused,0,21.18,7168,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+61.6,PlayerTest,120,60,385,8.31,755.9,4.40,-0.70,Idle,L,Paused,0,16.77,9676,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+62.6,PlayerTest,119,56,173,8.38,766.6,4.40,-0.70,Idle,L,Paused,0,17.78,10952,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+63.6,PlayerTest,120,103,147,8.34,776.8,4.40,-0.70,Idle,L,Paused,0,9.75,10432,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+64.6,PlayerTest,118,51,314,8.45,714.5,4.40,-0.70,Idle,L,Paused,0,19.67,-63756,1,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+65.6,PlayerTest,119,46,231,8.38,719.5,4.40,-0.70,Idle,L,Paused,0,21.78,5108,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+66.6,PlayerTest,120,100,174,8.34,723.0,4.40,-0.70,Idle,L,Paused,0,10.01,3524,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+67.6,PlayerTest,119,49,219,8.39,728.0,4.40,-0.70,Idle,L,Paused,0,20.26,5148,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+68.6,PlayerTest,120,98,156,8.34,733.5,4.40,-0.70,Idle,L,Paused,0,10.15,5644,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+69.6,PlayerTest,119,56,147,8.39,739.8,4.40,-0.70,Idle,L,Paused,0,17.96,6408,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+70.6,PlayerTest,120,101,154,8.32,745.8,4.40,-0.70,Idle,L,Paused,0,9.88,6176,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+71.6,PlayerTest,119,44,269,8.40,752.2,4.40,-0.70,Idle,L,Paused,0,22.61,6592,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+72.6,PlayerTest,120,100,149,8.33,758.4,4.40,-0.70,Idle,L,Paused,0,10.04,6336,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+73.6,PlayerTest,119,59,173,8.40,766.4,4.40,-0.70,Idle,L,Paused,0,17.03,8140,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+74.6,PlayerTest,119,64,149,8.39,777.1,4.40,-0.70,Idle,L,Paused,0,15.68,10968,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+75.6,PlayerTest,119,44,326,8.41,722.2,4.40,-0.70,Idle,L,Paused,0,22.68,-56164,1,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+76.6,PlayerTest,120,102,143,8.34,723.8,4.40,-0.70,Idle,L,Paused,0,9.82,1600,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+77.6,PlayerTest,119,50,274,8.39,726.0,4.40,-0.70,Idle,L,Paused,0,19.84,2252,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+78.6,PlayerTest,120,96,158,8.34,729.4,4.40,-0.70,Idle,L,Paused,0,10.37,3472,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+79.6,PlayerTest,120,97,170,8.34,733.0,4.40,-0.70,Idle,L,Paused,0,10.33,3752,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+80.6,PlayerTest,120,100,157,8.34,738.0,4.40,-0.70,Idle,L,Paused,0,10.00,5040,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+81.6,PlayerTest,120,98,158,8.33,743.5,4.40,-0.70,Idle,L,Paused,0,10.19,5700,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+82.6,PlayerTest,120,80,224,8.33,749.5,4.40,-0.70,Idle,L,Paused,0,12.53,6088,0,-1.0,0,2,Idle,1,PlayerCursorMidpoint,-1,34,1889
+# summary duration_s=82.6 frames=9749 fps_avg_global=118 fps_min_session=1 hitch_total=3

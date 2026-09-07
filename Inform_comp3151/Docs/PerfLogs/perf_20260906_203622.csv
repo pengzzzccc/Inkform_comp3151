@@ -1,0 +1,36 @@
+﻿# Inkform performance log
+# startedAt=2026-09-06T20:36:22
+# branch=Test
+# commit=65d88af9455b867c5a2bcf5aa68735198e836ac0
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+2.3,Mine Cave 1,109,10,274,9.20,688.2,235.00,74.64,Land,R,Playing,1,101.17,-25152,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3206
+3.3,Mine Cave 1,113,27,183,8.83,695.0,235.00,74.64,Idle,R,Playing,1,37.66,6876,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3206
+4.3,Mine Cave 1,120,64,297,8.37,705.3,236.87,74.65,Idle,R,Playing,0,15.67,10580,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,21,3212
+5.3,Mine Cave 1,118,57,172,8.45,716.3,236.49,74.65,Idle,L,Playing,0,17.41,11248,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,22,3230
+6.3,Mine Cave 1,120,77,318,8.34,726.8,236.51,74.65,Idle,L,Playing,0,12.99,10796,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,3197
+7.3,Mine Cave 1,120,88,225,8.33,737.1,236.51,74.65,Idle,L,Playing,0,11.34,10532,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,3197
+8.3,Mine Cave 1,120,81,213,8.33,747.4,228.56,74.64,Move,L,Playing,0,12.31,10508,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,16,1697
+9.3,Mine Cave 1,120,91,170,8.32,757.9,229.46,74.64,Move,R,Playing,0,11.04,10800,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,16,1693
+10.3,Mine Cave 1,119,43,196,8.42,688.7,239.66,74.64,Move,R,Playing,0,23.02,-70924,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,22,2740
+11.3,Mine Cave 1,120,91,202,8.32,692.1,249.09,76.32,Fall,R,Playing,0,10.94,3540,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,2702
+12.3,Mine Cave 1,120,89,259,8.33,697.9,259.09,80.44,Rise,R,Playing,0,11.24,5924,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,5554
+13.3,Mine Cave 1,120,89,172,8.35,705.9,262.90,77.21,WallSlideR,R,Playing,0,11.20,8192,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,2794
+14.3,Mine Cave 1,120,91,168,8.32,715.1,267.65,80.54,JumpUp,R,Playing,0,11.03,9468,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,20,5380
+15.3,Mine Cave 1,120,92,172,8.34,724.6,272.47,84.13,JumpUp,R,Playing,0,10.88,9720,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3958
+16.3,Mine Cave 1,120,92,183,8.34,734.0,269.91,87.03,Fall,L,Playing,0,10.87,9584,0,-1.0,0,0,Flying,4,PlayerCursorMidpoint,-1,20,5382
+17.3,Mine Cave 1,120,88,195,8.32,743.3,268.87,92.52,JumpUp,L,Playing,0,11.40,9512,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3710
+18.3,Mine Cave 1,120,87,244,8.33,753.0,268.50,95.83,JumpUp,L,Playing,0,11.44,9928,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3709
+19.3,Mine Cave 1,120,83,183,8.34,763.2,268.50,101.11,WallSlideL,L,Playing,0,12.01,10512,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,3709
+20.4,Mine Cave 1,120,93,199,8.35,773.8,271.67,101.16,CeilingMove,R,Playing,0,10.74,10784,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,20,4119
+21.4,Mine Cave 1,119,49,211,8.41,691.4,278.43,96.64,Land,R,Playing,0,20.39,-84332,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,23,3293
+22.4,Mine Cave 1,120,92,200,8.35,694.9,283.70,98.21,JumpUp,R,Playing,0,10.92,3560,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,23,3296
+23.4,Mine Cave 1,120,93,182,8.32,700.6,279.40,96.64,Land,R,Playing,0,10.72,5864,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,23,3293
+24.4,Mine Cave 1,120,91,233,8.34,708.3,286.22,98.63,Fall,R,Playing,0,10.99,7868,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,23,4550
+25.4,Mine Cave 1,120,83,239,8.33,717.3,291.54,94.64,Fall,R,Playing,0,12.07,9220,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,23,4473
+26.4,Mine Cave 1,120,87,254,8.32,726.4,235.00,74.64,Land,R,Playing,0,11.51,9280,0,-1.0,1,1,Idle,4,PlayerCursorMidpoint,-1,20,3192
+27.4,Mine Cave 1,120,94,193,8.34,735.9,235.00,74.64,Land,R,Paused,0,10.61,9808,0,-1.0,0,1,Idle,4,PlayerCursorMidpoint,-1,22,3251
+# summary duration_s=27.4 frames=3110 fps_avg_global=119 fps_min_session=10 hitch_total=2

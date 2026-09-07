@@ -1,0 +1,49 @@
+﻿# Inkform performance log
+# startedAt=2026-09-06T14:13:13
+# branch=Test
+# commit=7e1dc511c54b794608f141a19e226fa9073a8a85
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.2,Mine Cave 1,13,1,146,77.14,677.6,309.10,74.69,Fall,R,Playing,2,824.85,-29580,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,99
+2.2,Mine Cave 1,119,73,279,8.39,684.4,314.66,75.62,Fall,R,Playing,0,13.69,6992,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,94
+3.2,Mine Cave 1,115,27,229,8.71,695.5,324.66,76.87,Fall,R,Playing,1,36.64,11296,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,295
+4.2,Mine Cave 1,120,94,154,8.33,708.3,334.61,78.94,JumpUp,R,Playing,0,10.63,13176,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,294
+5.2,Mine Cave 1,119,65,157,8.40,721.1,344.82,79.88,JumpUp,R,Playing,0,15.40,13080,0,-1.0,3,0,Idle,4,PlayerCursorMidpoint,-1,10,224
+6.2,Mine Cave 1,120,85,172,8.34,734.0,352.84,74.70,Land,R,Playing,0,11.79,13180,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,262
+7.2,Mine Cave 1,120,87,172,8.34,747.2,345.22,77.32,Fall,L,Playing,0,11.45,13568,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+8.3,Mine Cave 1,120,82,251,8.32,759.3,343.56,77.85,WallSlideL,L,Playing,0,12.16,12324,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+9.3,Mine Cave 1,119,67,180,8.39,684.7,341.71,78.71,Land,L,Playing,0,14.89,-76356,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+10.3,Mine Cave 1,120,98,158,8.34,691.2,348.84,80.59,Rise,R,Playing,0,10.24,6660,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,544
+11.3,Mine Cave 1,120,92,259,8.33,700.9,352.58,78.67,Fall,L,Playing,0,10.89,9980,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,265
+12.3,Mine Cave 1,120,97,152,8.34,712.5,342.66,78.75,Land,L,Playing,0,10.26,11836,0,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,10,545
+13.3,Mine Cave 1,120,91,154,8.33,724.3,340.84,78.27,WallSlideR,R,Playing,0,11.00,12116,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+14.3,Mine Cave 1,120,77,270,8.34,736.0,341.21,78.71,Land,R,Playing,0,12.97,11968,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+15.3,Mine Cave 1,120,88,185,8.33,748.1,350.96,80.62,Fall,R,Playing,0,11.42,12412,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,1059
+16.3,Mine Cave 1,120,84,274,8.34,761.2,349.67,75.37,JumpUp,L,Playing,0,11.87,13348,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,266
+17.3,Mine Cave 1,120,80,244,8.34,773.7,343.56,76.04,WallSlideL,L,Playing,0,12.56,12852,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+18.3,Mine Cave 1,119,50,211,8.42,688.2,342.04,78.70,Land,L,Playing,0,19.81,-87568,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+19.3,Mine Cave 1,120,101,160,8.34,695.8,342.54,78.70,Move,R,Playing,0,9.89,7740,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+20.3,Mine Cave 1,120,92,186,8.35,705.7,352.74,78.56,Fall,R,Playing,0,10.81,10172,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,1055
+21.3,Mine Cave 1,120,86,194,8.34,716.3,347.68,77.35,Rise,L,Playing,0,11.59,10820,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+22.3,Mine Cave 1,120,82,273,8.32,726.8,343.87,78.13,JumpUp,L,Playing,0,12.26,10792,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+23.3,Mine Cave 1,120,79,266,8.33,737.8,341.52,78.70,Land,L,Playing,0,12.62,11216,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+24.3,Mine Cave 1,120,75,307,8.33,749.1,341.88,78.70,Move,R,Playing,0,13.39,11644,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+25.3,Mine Cave 1,120,88,185,8.34,760.9,351.87,79.52,Fall,R,Playing,0,11.41,12036,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,1060
+26.3,Mine Cave 1,120,90,163,8.32,775.4,347.73,77.21,Rise,L,Playing,0,11.13,14884,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+27.3,Mine Cave 1,119,56,262,8.38,691.5,344.00,78.33,JumpUp,L,Playing,0,17.97,-85908,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+28.3,Mine Cave 1,120,89,187,8.35,699.1,343.30,78.70,Land,R,Playing,0,11.17,7732,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+29.3,Mine Cave 1,120,76,298,8.31,708.5,352.84,76.40,WallSlideR,R,Playing,0,13.18,9656,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,266
+30.3,Mine Cave 1,120,81,230,8.34,719.0,347.53,74.70,Land,L,Playing,0,12.32,10756,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+31.3,Mine Cave 1,120,82,231,8.33,730.1,340.36,79.23,Fall,L,Playing,0,12.15,11316,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+32.3,Mine Cave 1,120,99,150,8.34,741.3,334.57,76.40,WallSlideL,L,Playing,0,10.11,11472,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,293
+33.3,Mine Cave 1,120,87,193,8.34,752.8,340.84,78.33,JumpUp,R,Playing,0,11.48,11784,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+34.3,Mine Cave 1,120,82,253,8.34,764.7,344.77,78.92,JumpUp,R,Playing,0,12.14,12200,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+35.3,Mine Cave 1,120,89,165,8.33,779.6,352.84,74.89,WallSlideR,R,Playing,0,11.30,15308,0,-1.0,2,0,Idle,4,PlayerCursorMidpoint,-1,10,266
+36.4,Mine Cave 1,119,46,289,8.40,694.9,344.84,75.39,Fall,L,Playing,0,21.53,-86720,1,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,221
+37.4,Mine Cave 1,120,93,163,8.34,702.2,344.14,79.59,JumpUp,L,Playing,0,10.76,7476,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,10,222
+38.4,Mine Cave 1,120,88,177,8.32,711.8,342.68,78.70,Land,L,Paused,0,11.36,9744,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,12,277
+39.4,Mine Cave 1,120,77,248,8.35,722.5,342.68,78.70,Land,L,Paused,0,12.99,11028,0,-1.0,0,0,Idle,4,PlayerCursorMidpoint,-1,12,277
+# summary duration_s=39.4 frames=4579 fps_avg_global=117 fps_min_session=1 hitch_total=3

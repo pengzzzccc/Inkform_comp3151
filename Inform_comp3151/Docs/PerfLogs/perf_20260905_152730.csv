@@ -1,0 +1,11 @@
+﻿# Inkform performance log
+# startedAt=2026-09-05T15:27:30
+# branch=Test
+# commit=046a2c0b25bc03b9dd0772c2ed3424173c6099e7
+# unity=6000.4.10f1 platform=WindowsEditor
+# device=Z890 UD WIFI6E (Gigabyte Technology Co., Ltd.) os=Windows 11  (10.0.26200)
+# gpu=NVIDIA GeForce RTX 5080 sysMemMB=32474 quality=Very Low
+time_s,scene,fps_avg,fps_min,fps_max,frame_ms,gc_mb,x,y,state,face,game_state,hitches,max_frame_ms,gc_alloc_kb,gc_collects,scene_load_ms,voices,deaths,rope,mementos,cam_mode,draw_calls,set_pass,tris
+# screen=2560x1440 targetFps=120 vSync=0
+1.5,Mine Cave 1,12,1,197,83.70,682.1,364.14,111.68,Land,R,Playing,2,800.88,-37600,1,-1.0,1,0,Idle,4,PlayerCursorMidpoint,-1,26,6696
+# summary duration_s=1.5 frames=12 fps_avg_global=12 fps_min_session=1 hitch_total=2
