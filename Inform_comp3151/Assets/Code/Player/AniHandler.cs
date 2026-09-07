@@ -13,10 +13,6 @@ namespace Inkform.Player
         {
             PlayerBus.StateChanged += OnState;
             PlayerBus.FaceChanged += OnFace;
-            // A runtime-spawned player registers long after sceneLoaded's refresh, and its initial
-            // Idle/R can match the deduped snapshot exactly — the registration event is the one
-            // broadcast guaranteed to reach us for every newcomer
-            PlayerBus.PlayerRegistered += OnPlayerRegistered;
             // Rebind on every scene load: the persistent GameManager hosting this survives scene
             // switches, and the bus snapshot (deduped to change-only broadcasts) may not fire for the
             // new scene's player — Refresh here guarantees the animation targets the live player
@@ -28,13 +24,11 @@ namespace Inkform.Player
         {
             PlayerBus.StateChanged -= OnState;
             PlayerBus.FaceChanged -= OnFace;
-            PlayerBus.PlayerRegistered -= OnPlayerRegistered;
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         private void OnState(PlayerState state) => Refresh();
         private void OnFace(FaceDirection face) => Refresh();
-        private void OnPlayerRegistered(PlayerHandler player) => Refresh();
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => Refresh();
 
         private void Refresh()

@@ -1,7 +1,6 @@
 using Inkform.Audio;
 using Inkform.Settings;
 using Inkform.UI;
-using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -11,8 +10,8 @@ using UnityEngine.UI;
 namespace Inkform.EditorTools
 {
     /// <summary>
-    /// One-shot UI builder: creates the five panel prefabs plus the gameplay HUD prefab under
-    /// Assets/Prefabs/UI, wires them into GameManager.prefab's UIManager component,
+    /// One-shot UI builder: creates the five panel prefabs (main menu / pause / save / settings /
+    /// tutorial) under Assets/Prefabs/UI, wires them into GameManager.prefab's UIManager component,
     /// builds the main menu scene under Assets/Scenes/Menu, and puts that scene at index 0 of Build
     /// Settings.
     ///
@@ -22,7 +21,7 @@ namespace Inkform.EditorTools
     /// The generated prefabs are plain uGUI structures (CanvasGroup root + named Buttons). All button
     /// wiring happens at runtime by the panel scripts finding children by name — the builder only
     /// needs to name them correctly. Re-running is safe (it overwrites in place), but it *does*
-    /// overwrite: hand edits to the generated prefabs or to the menu scene are lost on the next run.
+    /// overwrite: hand edits to the four prefabs or to the menu scene are lost on the next run.
     ///
     /// Two things are pointedly outside that rule, because they are yours to edit rather than the
     /// builder's to own: the menu Cue assets under Assets/Audio/UI are created only when missing, and
@@ -164,151 +163,12 @@ namespace Inkform.EditorTools
             });
 
             GameObject tutorial = BuildTutorialPanel();
-            GameObject hud = BuildHudPrefab();
 
-            WireGameManager(mainMenu, pause, saveMenu, settings, tutorial, hud);
-            RemoveLegacySceneHud();
+            WireGameManager(mainMenu, pause, saveMenu, settings, tutorial);
             BuildMenuScene();
             SetBuildSettings();
 
             Debug.Log("Inkform UI built: prefabs, GameManager wiring, MainMenu scene, build settings.");
-        }
-
-        [MenuItem("Tools/Inkform/Build HUD")]
-        public static void BuildHud()
-        {
-            EnsureFolders();
-            GameObject hud = BuildHudPrefab();
-            WireHudOnGameManager(hud);
-            RemoveLegacySceneHud();
-            AssetDatabase.SaveAssets();
-            Debug.Log("Inkform HUD built: HudRoot.prefab + GameManager wiring + legacy scene HUD cleanup.");
-        }
-
-        private static GameObject BuildHudPrefab()
-        {
-            GameObject root = new GameObject("HudRoot", typeof(RectTransform), typeof(Canvas),
-                typeof(CanvasScaler), typeof(HudRoot));
-
-            Canvas canvas = root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 90;
-
-            CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-            scaler.matchWidthOrHeight = 0.5f;
-
-            GameObject gameplay = new GameObject("Gameplay HUD", typeof(RectTransform));
-            gameplay.transform.SetParent(root.transform, false);
-            StretchFill(gameplay.GetComponent<RectTransform>());
-
-            FpsDisplay fps = gameplay.AddComponent<FpsDisplay>();
-            GameTimer timer = gameplay.AddComponent<GameTimer>();
-            InventoryHud inventory = gameplay.AddComponent<InventoryHud>();
-            SaveIndicator save = gameplay.AddComponent<SaveIndicator>();
-
-            GameObject fpsRoot = CreateHudRect("Fps Counter", gameplay.transform, Vector2.zero, Vector2.one,
-                new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
-            StretchFill(fpsRoot.GetComponent<RectTransform>());
-            Text fpsLabel = CreateLegacyHudLabel("Label", fpsRoot.transform, "",
-                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(1f, 1f),
-                new Vector2(-16f, -16f), new Vector2(160f, 40f), 24, TextAnchor.MiddleRight,
-                new Color(1f, 1f, 1f, 0.8f));
-
-            GameObject timerObject = CreateHudRect("Level Timer", gameplay.transform,
-                new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f),
-                new Vector2(-144f, -129f), new Vector2(200f, 50f));
-            TextMeshProUGUI timerLabel = timerObject.AddComponent<TextMeshProUGUI>();
-            timerLabel.text = "00:00";
-            timerLabel.fontSize = 36f;
-            timerLabel.alignment = TextAlignmentOptions.Center;
-            timerLabel.color = Color.white;
-            timerLabel.raycastTarget = false;
-
-            GameObject inventoryRoot = CreateHudRect("Current Item", gameplay.transform,
-                new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f),
-                new Vector2(-36f, 36f), new Vector2(132f, 86f));
-            Image inventoryBackground = inventoryRoot.AddComponent<Image>();
-            inventoryBackground.color = new Color(0.03f, 0.04f, 0.06f, 0.8f);
-            inventoryBackground.raycastTarget = false;
-
-            GameObject iconObject = CreateHudRect("Icon", inventoryRoot.transform,
-                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(14f, 0f), new Vector2(54f, 54f));
-            Image icon = iconObject.AddComponent<Image>();
-            icon.preserveAspect = true;
-            icon.raycastTarget = false;
-
-            Text count = CreateLegacyHudLabel("Count", inventoryRoot.transform, "0/1",
-                new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
-                new Vector2(-12f, 0f), new Vector2(52f, 42f), 24, TextAnchor.MiddleCenter, Color.white);
-
-            Text saveLabel = CreateLegacyHudLabel("Save Indicator", gameplay.transform, "Saved",
-                new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f),
-                new Vector2(-44f, 138f), new Vector2(200f, 32f), 24, TextAnchor.MiddleRight,
-                new Color(1f, 1f, 1f, 0.9f));
-            saveLabel.fontStyle = FontStyle.Italic;
-            saveLabel.enabled = false;
-
-            SerializedObject soFps = new SerializedObject(fps);
-            soFps.FindProperty("root").objectReferenceValue = fpsRoot;
-            soFps.FindProperty("label").objectReferenceValue = fpsLabel;
-            soFps.ApplyModifiedPropertiesWithoutUndo();
-
-            SerializedObject soTimer = new SerializedObject(timer);
-            soTimer.FindProperty("timerText").objectReferenceValue = timerLabel;
-            soTimer.ApplyModifiedPropertiesWithoutUndo();
-
-            SerializedObject soInventory = new SerializedObject(inventory);
-            soInventory.FindProperty("hudRoot").objectReferenceValue = inventoryRoot;
-            soInventory.FindProperty("currentIcon").objectReferenceValue = icon;
-            soInventory.FindProperty("countText").objectReferenceValue = count;
-            soInventory.ApplyModifiedPropertiesWithoutUndo();
-
-            SerializedObject soSave = new SerializedObject(save);
-            soSave.FindProperty("label").objectReferenceValue = saveLabel;
-            soSave.ApplyModifiedPropertiesWithoutUndo();
-
-            SerializedObject soRoot = new SerializedObject(root.GetComponent<HudRoot>());
-            soRoot.FindProperty("gameplayRoot").objectReferenceValue = gameplay;
-            soRoot.FindProperty("levelTimer").objectReferenceValue = timer;
-            soRoot.ApplyModifiedPropertiesWithoutUndo();
-
-            string path = $"{PanelsDir}/HudRoot.prefab";
-            PrefabUtility.SaveAsPrefabAsset(root, path);
-            Object.DestroyImmediate(root);
-            return AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        }
-
-        private static GameObject CreateHudRect(string name, Transform parent, Vector2 anchorMin,
-            Vector2 anchorMax, Vector2 pivot, Vector2 position, Vector2 size)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            RectTransform rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.pivot = pivot;
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-            return go;
-        }
-
-        private static Text CreateLegacyHudLabel(string name, Transform parent, string value,
-            Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 position, Vector2 size,
-            int fontSize, TextAnchor alignment, Color color)
-        {
-            GameObject go = CreateHudRect(name, parent, anchorMin, anchorMax, pivot, position, size);
-            Text label = go.AddComponent<Text>();
-            label.text = value;
-            label.font = FontUtils.LegacyFont;
-            label.fontSize = fontSize;
-            label.alignment = alignment;
-            label.color = color;
-            label.raycastTarget = false;
-            return label;
         }
 
         // ---- Tutorial sheet ----
@@ -1159,7 +1019,7 @@ namespace Inkform.EditorTools
         // ---- GameManager wiring ----
 
         private static void WireGameManager(GameObject mainMenu, GameObject pause, GameObject saveMenu,
-            GameObject settings, GameObject tutorial, GameObject hud)
+            GameObject settings, GameObject tutorial)
         {
             if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
             {
@@ -1170,9 +1030,10 @@ namespace Inkform.EditorTools
             GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefabPath);
             UIManager ui = root.GetComponent<UIManager>();
             if (ui == null) ui = root.AddComponent<UIManager>();
+            FpsDisplay fps = root.GetComponent<FpsDisplay>();
+            if (fps == null) fps = root.AddComponent<FpsDisplay>();
             GamepadCursor cursor = root.GetComponent<GamepadCursor>();
             if (cursor == null) cursor = root.AddComponent<GamepadCursor>();
-            RemoveLegacyFpsDisplay(root);
 
             // The fields are typed BasePanel; Unity cannot auto-convert a GameObject reference, so
             // resolve the matching panel component on each prefab before assigning.
@@ -1182,7 +1043,6 @@ namespace Inkform.EditorTools
             so.FindProperty("saveMenuPrefab").objectReferenceValue = saveMenu.GetComponent<SaveMenuPanel>();
             so.FindProperty("settingsPrefab").objectReferenceValue = settings.GetComponent<SettingsPanel>();
             so.FindProperty("tutorialPrefab").objectReferenceValue = tutorial.GetComponent<TutorialPanel>();
-            so.FindProperty("hudPrefab").objectReferenceValue = hud.GetComponent<HudRoot>();
 
             // Menu sound slots. Filled only when empty, unlike the panel slots just above: those point
             // at prefabs this builder just regenerated, while a Cue slot may have been repointed by
@@ -1194,6 +1054,17 @@ namespace Inkform.EditorTools
             AssignIfEmpty(so, "toggleOffCue", toggleOff);
 
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            // The FPS counter is a runtime-created Text, so it cannot pick up the font from a UIBuilder
+            // label like the panels do — hand the same font to it through a serialized reference
+            // (falls back to the built-in font if never wired, see FpsDisplay).
+            Font fpsFont = AssetDatabase.LoadAssetAtPath<Font>(PanelFontPath);
+            if (fpsFont != null)
+            {
+                SerializedObject soFps = new SerializedObject(fps);
+                soFps.FindProperty("font").objectReferenceValue = fpsFont;
+                soFps.ApplyModifiedPropertiesWithoutUndo();
+            }
 
             // Virtual cursor sprite. Filled only when empty like the Cue slots, so a hand-made
             // assignment survives the next build.
@@ -1207,55 +1078,6 @@ namespace Inkform.EditorTools
 
             PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefabPath);
             PrefabUtility.UnloadPrefabContents(root);
-        }
-
-        private static void WireHudOnGameManager(GameObject hud)
-        {
-            if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
-            {
-                Debug.LogError($"UIBuilder: no GameManager prefab at {GameManagerPrefabPath} — HUD not wired.");
-                return;
-            }
-
-            GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefabPath);
-            UIManager ui = root.GetComponent<UIManager>();
-            if (ui == null) ui = root.AddComponent<UIManager>();
-            RemoveLegacyFpsDisplay(root);
-
-            SerializedObject so = new SerializedObject(ui);
-            so.FindProperty("hudPrefab").objectReferenceValue = hud.GetComponent<HudRoot>();
-            so.ApplyModifiedPropertiesWithoutUndo();
-
-            PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefabPath);
-            PrefabUtility.UnloadPrefabContents(root);
-        }
-
-        private static void RemoveLegacyFpsDisplay(GameObject root)
-        {
-            foreach (FpsDisplay legacy in root.GetComponents<FpsDisplay>())
-                Object.DestroyImmediate(legacy, true);
-        }
-
-        private static void RemoveLegacySceneHud()
-        {
-            const string scenePath = "Assets/Scenes/Level1/Mine Cave 1.unity";
-            Scene scene = SceneManager.GetSceneByPath(scenePath);
-            bool wasLoaded = scene.isLoaded;
-            if (!wasLoaded) scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Additive);
-            bool changed = false;
-
-            foreach (GameObject sceneRoot in scene.GetRootGameObjects())
-            {
-                if (sceneRoot.GetComponent<Canvas>() == null ||
-                    sceneRoot.GetComponentInChildren<GameTimer>(true) == null)
-                    continue;
-
-                Object.DestroyImmediate(sceneRoot);
-                changed = true;
-            }
-
-            if (changed) EditorSceneManager.SaveScene(scene);
-            if (!wasLoaded) EditorSceneManager.CloseScene(scene, true);
         }
 
         /// <summary>Fills a serialized object-reference slot only when it is currently empty, so a

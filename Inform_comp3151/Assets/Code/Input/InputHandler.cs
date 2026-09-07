@@ -66,9 +66,8 @@ namespace Inkform.Input
             // switches via PersistentGameRoot's DontDestroyOnLoad, so after a change the old player
             // becomes a Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
             ResolvePlayer();
-            // No warning when this leaves player null: the boot scene (the menu) legitimately has
-            // none, and rooms with a runtime-spawned player bind later — sceneLoaded re-resolves,
-            // and Update re-reads the bus every frame until the reference sticks
+            if (player == null)
+                Debug.LogWarning($"InputHandler's player is not wired (scene instance override on the GameManager prefab)", this);
         }
 
         /// <summary>
@@ -106,8 +105,6 @@ namespace Inkform.Input
         // new scene's objects are all instantiated, so re-binding here always finds the live player.
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => ResolvePlayer();
 
-        private void OnPlayerRegistered(PlayerHandler registered) => player = registered;
-
         private void ResolvePlayer()
         {
             // The bus holds the current scene's live player (registered by PlayerHandler on Awake);
@@ -122,13 +119,7 @@ namespace Inkform.Input
             // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
             // charge, and ReadValue on a disabled action returns default which would push a stale
             // "no input" into PlayerHandler every frame.
-            if (!actionsEnabled) return;
-
-            // Runtime-spawned players bind here: PlayerBus.Player is only filled once RoomIntro's
-            // entrance instantiates the cast, which can be seconds after sceneLoaded's one-shot
-            // re-bind — so the reference is re-read until it sticks instead of staying null forever
-            if (player == null) player = PlayerBus.Player;
-            if (player == null) return;
+            if (!actionsEnabled || player == null) return;
 
             // Device filter: the Controls tab picks one input family; the other family's controls are
             // ignored so a gamepad left in the drawer cannot drive the player (and vice versa). The
@@ -256,7 +247,6 @@ namespace Inkform.Input
             // player, not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
             SettingsStore.Changed += OnSettingsChanged;
-            PlayerBus.PlayerRegistered += OnPlayerRegistered;
 
             if (wantsActionsEnabled) EnableActions();
         }
@@ -265,7 +255,6 @@ namespace Inkform.Input
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SettingsStore.Changed -= OnSettingsChanged;
-            PlayerBus.PlayerRegistered -= OnPlayerRegistered;
 
             DisableActions();
         }

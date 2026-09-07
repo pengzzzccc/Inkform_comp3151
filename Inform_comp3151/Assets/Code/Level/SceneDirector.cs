@@ -24,8 +24,6 @@ namespace Inkform.Level
     /// </summary>
     public class SceneDirector : MonoBehaviour
     {
-        public enum SceneArrivalType { None, NewGame, Continue, Door, Menu }
-
         public static SceneDirector Instance { get; private set; }
 
         [Header("World")]
@@ -45,7 +43,6 @@ namespace Inkform.Level
 
         private string pendingSpawnId;
         private Vector2? pendingSpawnPos;
-        private SceneArrivalType pendingArrivalType;
 
         private SceneFader fader;
 
@@ -55,8 +52,6 @@ namespace Inkform.Level
         public static float LastLoadMs { get; private set; } = -1f;
 
         public bool IsTransitioning => transitionInProgress;
-
-        public SceneArrivalType PendingArrivalType => pendingArrivalType;
 
         void Awake()
         {
@@ -102,15 +97,6 @@ namespace Inkform.Level
             // the shared operation here used to make that coroutine dereference null on its next tick.
             sceneInitPending = true;
             GameTimeController.Instance?.ClearHitStop();
-
-            // This callback is the earliest deterministic point at which every new-scene object
-            // exists. Put the new-game stage on hold here, before RespawnDirector's deferred Update
-            // gets any chance to create the player. LoadSceneRoutine repeats the call idempotently.
-            if (pendingArrivalType == SceneArrivalType.NewGame)
-            {
-                RoomIntro intro = FindAnyObjectByType<RoomIntro>();
-                if (intro != null) intro.PrepareBeforeReveal(GetComponent<RespawnDirector>());
-            }
         }
 
         private void InitForScene()
@@ -186,7 +172,7 @@ namespace Inkform.Level
 
             pendingSpawnId = null;
             pendingSpawnPos = null;
-            return RequestScene(world.EntryRoom.SceneName, SceneArrivalType.NewGame);
+            return RequestScene(world.EntryRoom.SceneName);
         }
 
         public bool CanContinueGame(SaveData save, out string reason)
@@ -233,9 +219,7 @@ namespace Inkform.Level
             // point of continuing a run (RespawnDirector consumes it after the load)
             pendingSpawnId = null;
             pendingSpawnPos = new Vector2(save.spawnX, save.spawnY);
-            if (RequestScene(save.sceneName, SceneArrivalType.Continue)) return true;
-            pendingSpawnPos = null;
-            return false;
+            return RequestScene(save.sceneName);
         }
 
         public bool ReturnToMainMenu()
@@ -252,7 +236,7 @@ namespace Inkform.Level
             SaveStore.EndRun();
             pendingSpawnId = null;
             pendingSpawnPos = null;
-            return RequestScene(world.MenuSceneName, SceneArrivalType.Menu);
+            return RequestScene(world.MenuSceneName);
         }
 
         // ---- Doors ----
@@ -263,12 +247,12 @@ namespace Inkform.Level
             if (destination == null) return;   // LevelExit already warned; the World validator owns content errors
 
             pendingSpawnId = spawnId;
-            if (!RequestScene(destination.SceneName, SceneArrivalType.Door)) pendingSpawnId = null;
+            if (!RequestScene(destination.SceneName)) pendingSpawnId = null;
         }
 
         // ---- The one loading path ----
 
-        private bool RequestScene(string sceneName, SceneArrivalType arrivalType)
+        private bool RequestScene(string sceneName)
         {
             if (transitionInProgress || string.IsNullOrWhiteSpace(sceneName)) return false;
             if (!Application.CanStreamedLevelBeLoaded(sceneName))
@@ -279,7 +263,6 @@ namespace Inkform.Level
             }
 
             transitionInProgress = true;
-            pendingArrivalType = arrivalType;
             GameStateStore.Set(GameStateStore.GameState.Transition);
             GetComponent<InputHandler>()?.SetPlaying(false);
             StartCoroutine(LoadSceneRoutine(sceneName));
@@ -320,35 +303,18 @@ namespace Inkform.Level
 
             LastLoadMs = (Time.realtimeSinceStartup - loadStart) * 1000f;
             loadOperation = null;
-            GameStateStore.Set(GameStateStore.GameState.Transition);
-
-            RoomIntro intro = FindAnyObjectByType<RoomIntro>();
-            RespawnDirector respawn = GetComponent<RespawnDirector>();
-            bool playIntro = pendingArrivalType == SceneArrivalType.NewGame && intro != null;
-            if (playIntro) intro.PrepareBeforeReveal(respawn);
-
-            // Normal arrivals are initialized by RespawnDirector during this fade. A new-game intro
-            // has explicitly held that initializer, so the revealed shot remains empty.
-            if (fader != null) yield return fader.FadeIn(fadeInSeconds);
-
-            if (playIntro) yield return intro.WaitAndSpawn(respawn);
-
-            // The player gets control before the bars leave. Keep the transition gate closed until
-            // the camera has also been released, so a spawn overlapping an exit cannot start a
-            // second load coroutine in the middle of this presentation.
+            transitionInProgress = false;
             SetGameStateFromActiveScene();
             GetComponent<InputHandler>()?.SetPlaying(UIManager.Instance == null || !UIManager.Instance.IsPaused);
 
-            if (playIntro && intro != null) yield return intro.FinishAfterControl();
-
-            transitionInProgress = false;
-            pendingArrivalType = SceneArrivalType.None;
+            // RespawnDirector places the player one frame later (its deferred scene init); the fade-in
+            // covers that placement exactly like it covered the load
+            if (fader != null) yield return fader.FadeIn(fadeInSeconds);
         }
 
         private void HandleLoadFailure()
         {
             transitionInProgress = false;
-            pendingArrivalType = SceneArrivalType.None;
             SetGameStateFromActiveScene();
             loadOperation = null;
             pendingSpawnId = null;

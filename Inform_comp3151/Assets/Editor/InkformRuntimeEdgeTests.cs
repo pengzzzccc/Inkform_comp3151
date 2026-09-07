@@ -8,7 +8,6 @@ using Inkform.Fx;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
 using Inkform.Item;
-using Inkform.Level;
 using Inkform.Player;
 using Inkform.Save;
 using Inkform.Settings;
@@ -725,11 +724,8 @@ namespace Inkform.Tests
         [Test]
         public void InventoryHud_AlwaysShowsCountAndUsesFifoHeadIcon()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
-            GameObject host = UnityEngine.Object.Instantiate(prefab);
-            InventoryHud hud = host.GetComponentInChildren<InventoryHud>(true);
-            Assert.IsNotNull(hud);
+            GameObject host = new GameObject("Inventory HUD test");
+            InventoryHud hud = host.AddComponent<InventoryHud>();
             InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
             SetField(item, "id", "hud-head");
             try
@@ -743,7 +739,7 @@ namespace Inkform.Tests
 
                 Assert.IsTrue(InventoryStore.TryAdd(item));
                 Assert.AreEqual("1/1", count.text);
-                Assert.IsTrue(icon.sprite == item.Icon);
+                Assert.AreSame(item.Icon, icon.sprite);
             }
             finally
             {
@@ -751,133 +747,6 @@ namespace Inkform.Tests
                 UnityEngine.Object.DestroyImmediate(item);
                 UnityEngine.Object.DestroyImmediate(host);
             }
-        }
-
-        [Test]
-        public void HudRootPrefab_HasOneConfiguredCanvasAndAllFourReadouts()
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
-
-            Canvas[] canvases = prefab.GetComponentsInChildren<Canvas>(true);
-            Assert.AreEqual(1, canvases.Length);
-            Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvases[0].renderMode);
-            Assert.AreEqual(90, canvases[0].sortingOrder);
-
-            CanvasScaler scaler = prefab.GetComponent<CanvasScaler>();
-            Assert.IsNotNull(scaler);
-            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
-            Assert.AreEqual(new Vector2(1920f, 1080f), scaler.referenceResolution);
-            Assert.AreEqual(0.5f, scaler.matchWidthOrHeight);
-
-            Assert.IsNotNull(prefab.GetComponent<HudRoot>());
-            Assert.IsNotNull(prefab.GetComponentInChildren<FpsDisplay>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<GameTimer>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<InventoryHud>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<SaveIndicator>(true));
-
-            foreach (Graphic graphic in prefab.GetComponentsInChildren<Graphic>(true))
-                Assert.IsFalse(graphic.raycastTarget, $"{graphic.name} must not block pointer input");
-
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "gameplayRoot");
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "levelTimer");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "root");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "label");
-            AssertSerializedReference(prefab.GetComponentInChildren<GameTimer>(true), "timerText");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "hudRoot");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "currentIcon");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "countText");
-            AssertSerializedReference(prefab.GetComponentInChildren<SaveIndicator>(true), "label");
-        }
-
-        [Test]
-        public void GameManager_WiresHudPrefabAndHasNoLegacyFpsComponent()
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Control/GameManager.prefab");
-            Assert.IsNotNull(prefab);
-            Assert.IsNull(prefab.GetComponent<FpsDisplay>());
-
-            UIManager manager = prefab.GetComponent<UIManager>();
-            Assert.IsNotNull(manager);
-            AssertSerializedReference(manager, "hudPrefab");
-        }
-
-        [Test]
-        public void GameManager_RuntimeSpawnerReferencesThePlayerHandlerRoot()
-        {
-            GameObject managerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Control/GameManager.prefab");
-            GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Control/Player.prefab");
-            Assert.IsNotNull(managerPrefab);
-            Assert.IsNotNull(playerPrefab);
-
-            RespawnDirector respawn = managerPrefab.GetComponent<RespawnDirector>();
-            Assert.IsNotNull(respawn);
-            SerializedProperty property = new SerializedObject(respawn).FindProperty("playerPrefab");
-            Assert.IsNotNull(property);
-            Assert.AreSame(playerPrefab.GetComponent<PlayerHandler>(), property.objectReferenceValue,
-                "the runtime spawn slot must reference PlayerHandler on the Player root, never a sensor child");
-            Assert.IsNotNull(playerPrefab.GetComponent<SpriteRenderer>());
-            Assert.IsNotNull(playerPrefab.GetComponent<Animator>());
-            Assert.IsNotNull(playerPrefab.GetComponent<Rigidbody2D>());
-            Assert.IsNotNull(playerPrefab.GetComponent<Collider2D>());
-        }
-
-        [Test]
-        public void RoomIntroPrefab_ContainsOnlyTheCoordinatedEntranceTiming()
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Control/RoomIntro.prefab");
-            Assert.IsNotNull(prefab);
-            RoomIntro intro = prefab.GetComponent<RoomIntro>();
-            Assert.IsNotNull(intro);
-
-            SerializedObject serialized = new SerializedObject(intro);
-            AssertSerializedReference(intro, "camAnchor");
-            Assert.AreEqual(1f, serialized.FindProperty("spawnDelay").floatValue);
-            Assert.AreEqual(0.3f, serialized.FindProperty("barsSeconds").floatValue);
-            Assert.IsNull(serialized.FindProperty("fallHeight"));
-            Assert.IsNull(serialized.FindProperty("startDelay"));
-            Assert.IsNull(serialized.FindProperty("panSeconds"));
-        }
-
-        [Test]
-        public void CamHandler_HoldAndSmoothResumePreserveTheStagedPosition()
-        {
-            GameObject cameraGo = new GameObject("held camera", typeof(Camera), typeof(CamHandler));
-            GameObject anchorGo = new GameObject("camera anchor");
-            anchorGo.transform.position = new Vector3(12f, 8f, 4f);
-            try
-            {
-                CamHandler handler = cameraGo.GetComponent<CamHandler>();
-                handler.HoldAt(anchorGo.transform);
-                Assert.IsTrue(handler.IsFollowHeld);
-                Assert.AreEqual(new Vector3(12f, 8f, cameraGo.transform.position.z), cameraGo.transform.position);
-
-                Vector3 staged = cameraGo.transform.position;
-                handler.ResumeFollow(false);
-                Assert.IsFalse(handler.IsFollowHeld);
-                Assert.AreEqual(staged, cameraGo.transform.position,
-                    "smooth resume must not cut to the player on the release frame");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(anchorGo);
-                UnityEngine.Object.DestroyImmediate(cameraGo);
-            }
-        }
-
-        [TestCase(0f, "00:00")]
-        [TestCase(59.99f, "00:59")]
-        [TestCase(60f, "01:00")]
-        [TestCase(3599f, "59:59")]
-        [TestCase(3600f, "01:00:00")]
-        [TestCase(3661f, "01:01:01")]
-        public void GameTimer_FormatsElapsedTime(float seconds, string expected)
-        {
-            Assert.AreEqual(expected, GameTimer.FormatElapsedTime(seconds));
         }
 
         [Test]
@@ -1637,14 +1506,6 @@ namespace Inkform.Tests
 
         private static T GetField<T>(object target, string name) =>
             (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
-
-        private static void AssertSerializedReference(UnityEngine.Object target, string propertyName)
-        {
-            SerializedProperty property = new SerializedObject(target).FindProperty(propertyName);
-            Assert.IsNotNull(property, $"Missing serialized property {propertyName} on {target.GetType().Name}");
-            Assert.IsNotNull(property.objectReferenceValue,
-                $"Unassigned serialized property {propertyName} on {target.GetType().Name}");
-        }
 
         private static void SetStaticField(Type type, string name, object value) =>
             type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic)?.SetValue(null, value);
