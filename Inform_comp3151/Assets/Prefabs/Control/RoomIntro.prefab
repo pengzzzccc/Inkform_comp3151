@@ -10,6 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 900000000000000002}
   - component: {fileID: 900000000000000003}
+  - component: {fileID: 900000000000000006}
   m_Layer: 0
   m_Name: RoomIntro
   m_TagString: Untagged
@@ -46,8 +47,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.RoomIntro
   camAnchor: {fileID: 900000000000000005}
-  spawnDelay: 1
+  introCue: {fileID: 11400000, guid: 3734f8dfc538e2944bf415876e1383ac, type: 2}
+  spawnDelay: 2.7
   barsSeconds: 1
+--- !u!114 &900000000000000006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 900000000000000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aa5955a00aa69224eb92d67e02a151b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Fx.CinematicBars
+  barHeightFraction: 0.12
 --- !u!1 &900000000000000004
 GameObject:
   m_ObjectHideFlags: 0

@@ -52,6 +52,31 @@ namespace Inkform.Ability
             if (changed) Changed?.Invoke();
         }
 
+#if UNITY_EDITOR
+        /// <summary>Editor cheat (F4): flips both card abilities in memory only. A cheat granted
+        /// for one test run must never be written into the player's save slot, so this goes through
+        /// the same suppressPersistence gate Restore uses — Changed still fires, subscribers (the
+        /// rope-gun reticle, tutorial panels) refresh immediately, but Notify skips the save write.
+        /// Caveat: turning the cheat OFF removes the ids from memory; if a later real unlock then
+        /// triggers a save write, the cheat-held abilities are absent from that snapshot — they come
+        /// back on the next load, and a normal playthrough never hits this.</summary>
+        public static void SetCardsForCheat(bool owned)
+        {
+            suppressPersistence = true;
+            try
+            {
+                bool changed = false;
+                if (owned ? unlocked.Add(AbilityIds.Checkpoint) : unlocked.Remove(AbilityIds.Checkpoint)) changed = true;
+                if (owned ? unlocked.Add(AbilityIds.RopeGun) : unlocked.Remove(AbilityIds.RopeGun)) changed = true;
+                if (changed) Changed?.Invoke();
+            }
+            finally
+            {
+                suppressPersistence = false;
+            }
+        }
+#endif
+
         /// <summary>Replaces the set from a save slot. Raises Changed once and never writes back —
         /// restoring is a read, and the restored values are already on disk.</summary>
         public static void Restore(string[] abilityIds)
