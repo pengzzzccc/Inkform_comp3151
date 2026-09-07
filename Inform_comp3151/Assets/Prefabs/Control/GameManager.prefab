@@ -144,7 +144,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60be3a14fc1fb4044b170de2661afd40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Fx.RumbleManager
-  enableRumble: 0
+  enableRumble: 1
   landStrength: 0.35
   landDuration: 0.12
   blastStrength: 1

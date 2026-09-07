@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using Inkform.Bus;
+using Inkform.Item;
+using Inkform.Life;
 using Inkform.Player;
+using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -65,6 +68,43 @@ namespace Inkform.Fx
         [SerializeField] private float hitStrength = 0.55f;
         [SerializeField] private float hitDuration = 0.15f;
 
+        // Tier values follow Celeste's rumble tables (Light 0.15 / Medium 0.4 / Strong 1.0 strength,
+        // Short 0.1 / Medium 0.25 length): its Player.cs gives death a Light/Medium rumble — the
+        // audio-visual hit already carries the weight, touch stays restrained. High-frequency player
+        // moves (jump, wall jump) deliberately rumble nothing there, and the same restraint applies here.
+        [Header("Life")]
+        [SerializeField] private float deathStrength = 0.4f;       // Medium
+        [SerializeField] private float deathDuration = 0.25f;      // Medium
+        [SerializeField] private float checkpointStrength = 0.15f; // Light
+        [SerializeField] private float checkpointDuration = 0.25f;
+        [SerializeField] private float respawnStrength = 0.15f;    // Light — a teleport home, not an impact
+        [SerializeField] private float respawnDuration = 0.1f;
+
+        [Header("Dash")]
+        [SerializeField] private float dashStrength = 0.4f;
+        [SerializeField] private float dashDuration = 0.1f;
+        [SerializeField] private float dashFailStrength = 0.15f;   // no fuel: a faint tick, not a reward
+        [SerializeField] private float dashFailDuration = 0.06f;
+
+        [Header("Hazard")]
+        [SerializeField] private float tickStrength = 0.15f;       // bomb fuse warning pulse
+        [SerializeField] private float tickDuration = 0.05f;
+        [SerializeField] private float brokenStrength = 0.15f;     // wall shattered nearby
+        [SerializeField] private float brokenDuration = 0.1f;
+
+        [Header("Items")]
+        [SerializeField] private float storeStrength = 0.4f;       // swallow
+        [SerializeField] private float storeDuration = 0.1f;
+        [SerializeField] private float releaseStrength = 0.15f;    // spit (Celeste's Drop tier)
+        [SerializeField] private float releaseDuration = 0.1f;
+        [SerializeField] private float upgradeStrength = 0.4f;     // capacity / ability — permanent progress
+        [SerializeField] private float upgradeDuration = 0.25f;
+
+        [Header("UI")]
+        [SerializeField] private float uiStrength = 0.15f;
+        [SerializeField] private float uiClickDuration = 0.1f;
+        [SerializeField] private float uiToggleDuration = 0.1f;
+
         private struct ScheduledRumble
         {
             public float remainingDelay;
@@ -87,20 +127,63 @@ namespace Inkform.Fx
         void OnEnable()
         {
             PlayerBus.StateChanged += OnPlayerState;
+            PlayerBus.DashAttempted += OnDashAttempted;
             HazardBus.Blast += OnBlast;
+            HazardBus.Ticked += OnTicked;
+            HazardBus.Broken += OnBroken;
             RopeGunBus.Fired += OnRopeFired;
             RopeGunBus.Hit += OnRopeHit;
+            LifeBus.Died += OnDied;
+            LifeBus.CheckpointSet += OnCheckpointSet;
+            LifeBus.Respawned += OnRespawned;
+            ItemBus.ItemStored += OnItemStored;
+            ItemBus.ItemReleased += OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded += OnCapacityUpgraded;
+            ItemBus.AbilityUnlocked += OnAbilityUnlocked;
+            UiBus.Clicked += OnUiClicked;
+            UiBus.Toggled += OnUiToggled;
+
+            // The settings entry is the runtime authority; the serialized field is the editor default
+            enableRumble = SettingsStore.Rumble != SettingsStore.RumbleAmount.Off;
+            SettingsStore.Changed += OnSettingsChanged;
         }
 
         void OnDisable()
         {
             PlayerBus.StateChanged -= OnPlayerState;
+            PlayerBus.DashAttempted -= OnDashAttempted;
             HazardBus.Blast -= OnBlast;
+            HazardBus.Ticked -= OnTicked;
+            HazardBus.Broken -= OnBroken;
             RopeGunBus.Fired -= OnRopeFired;
             RopeGunBus.Hit -= OnRopeHit;
+            LifeBus.Died -= OnDied;
+            LifeBus.CheckpointSet -= OnCheckpointSet;
+            LifeBus.Respawned -= OnRespawned;
+            ItemBus.ItemStored -= OnItemStored;
+            ItemBus.ItemReleased -= OnItemReleased;
+            ItemBus.InventoryCapacityUpgraded -= OnCapacityUpgraded;
+            ItemBus.AbilityUnlocked -= OnAbilityUnlocked;
+            UiBus.Clicked -= OnUiClicked;
+            UiBus.Toggled -= OnUiToggled;
+
+            SettingsStore.Changed -= OnSettingsChanged;
             StopAllCoroutines();
             driveLoop = null;
             StopRumble();
+        }
+
+        // Celeste's model: the setting scales every rumble at the single entry point (Half = 0.5,
+        // Off = none at all), so no handler ever needs to know it exists
+        private static float SettingsScale =>
+            SettingsStore.Rumble == SettingsStore.RumbleAmount.Off ? 0f
+            : SettingsStore.Rumble == SettingsStore.RumbleAmount.Half ? 0.5f
+            : 1f;
+
+        private void OnSettingsChanged()
+        {
+            enableRumble = SettingsStore.Rumble != SettingsStore.RumbleAmount.Off;
+            if (!enableRumble) StopRumble();
         }
 
         // Clears every queued/active rumble and zeroes the motors
@@ -154,11 +237,46 @@ namespace Inkform.Fx
 
         private void OnRopeHit(Vector2 dir) => AddNow(dir, hitStrength, hitDuration);
 
-        // Immediate rumble with explicit per-motor strengths (directionless events split evenly)
+        // ---- New tier-calibrated handlers ----
+
+        // Fires into the death hitstop (0.1-0.18s depending on cause): the frozen branch holds the
+        // rumble back until the freeze lifts, so it lands inside the death pause — the Celeste beat
+        private void OnDied(DeathContext ctx) => AddNow(deathStrength, deathStrength, deathDuration);
+
+        private void OnCheckpointSet(Vector2 pos) => AddNow(checkpointStrength, checkpointStrength, checkpointDuration);
+
+        private void OnRespawned(GameObject victim, Vector2 pos) => AddNow(respawnStrength, respawnStrength, respawnDuration);
+
+        private void OnDashAttempted(Vector2 pos, bool succeeded)
+        {
+            if (succeeded) AddNow(dashStrength, dashStrength, dashDuration);
+            else AddNow(dashFailStrength, dashFailStrength, dashFailDuration);
+        }
+
+        private void OnTicked(Vector2 pos, int step, int total) => AddNow(tickStrength, tickStrength, tickDuration);
+
+        private void OnBroken(Vector2 pos) => AddNow(brokenStrength, brokenStrength, brokenDuration);
+
+        private void OnItemStored(InventoryItemDefinition item) => AddNow(storeStrength, storeStrength, storeDuration);
+
+        private void OnItemReleased(InventoryItemDefinition item, Vector2 pos, Vector2 velocity) =>
+            AddNow(releaseStrength, releaseStrength, releaseDuration);
+
+        private void OnCapacityUpgraded(Vector2 pos, int increase) => AddNow(upgradeStrength, upgradeStrength, upgradeDuration);
+
+        private void OnAbilityUnlocked(Vector2 pos, string abilityId) => AddNow(upgradeStrength, upgradeStrength, upgradeDuration);
+
+        private void OnUiClicked() => AddNow(uiStrength, uiStrength, uiClickDuration);
+
+        private void OnUiToggled(bool on) => AddNow(uiStrength, uiStrength, uiToggleDuration);
+
+        // Immediate rumble with explicit per-motor strengths (directionless events split evenly).
+        // The settings scale lands here and in AddAfter — the two funnels every rumble passes through
         private void AddNow(float low, float high, float duration)
         {
-            if (!enableRumble || Gamepad.current == null || duration <= 0f) return;
-            active.Add(new ActiveRumble { remainingDuration = duration, low = low, high = high });
+            float scale = SettingsScale;
+            if (!enableRumble || scale <= 0f || Gamepad.current == null || duration <= 0f) return;
+            active.Add(new ActiveRumble { remainingDuration = duration, low = low * scale, high = high * scale });
             EnsureLoop();
         }
 
@@ -173,10 +291,11 @@ namespace Inkform.Fx
         // Delayed rumble: the shockwave's left/right trigger ordering
         private void AddAfter(float delay, float low, float high, float duration)
         {
-            if (!enableRumble || Gamepad.current == null || duration <= 0f) return;
+            float scale = SettingsScale;
+            if (!enableRumble || scale <= 0f || Gamepad.current == null || duration <= 0f) return;
             scheduled.Add(new ScheduledRumble
             {
-                remainingDelay = Mathf.Max(0f, delay), low = low, high = high, duration = duration
+                remainingDelay = Mathf.Max(0f, delay), low = low * scale, high = high * scale, duration = duration
             });
             EnsureLoop();
         }

@@ -22,8 +22,12 @@ namespace Inkform.Settings
     /// </summary>
     public static class SettingsStore
     {
-        /// <summary>Which input device family gameplay input is filtered to.</summary>
+        /// <summary>Which input device family gameplay input is filtered to (InputHandler).</summary>
         public enum InputDevice { KeyboardMouse, Gamepad }
+
+        /// <summary>Gamepad rumble amount. Half scales every rumble's strength by 0.5, Off silences
+        /// them — Celeste's three-step setting, and an accessibility staple.</summary>
+        public enum RumbleAmount { Full, Half, Off }
 
         // Sensitivity is a plain multiplier shown as 0%~500% in the UI; 1.0 (=100%) means no change.
         public const float MinSensitivity = 0f;
@@ -60,6 +64,9 @@ namespace Inkform.Settings
         /// <summary>Performance recorder sampling interval in seconds (0.1 = 10 Hz). Values outside
         /// PerfIntervals never get in through the setter.</summary>
         public static float PerfInterval { get; private set; } = 1f;
+
+        /// <summary>Gamepad rumble amount; RumbleManager reads this live.</summary>
+        public static RumbleAmount Rumble { get; private set; } = RumbleAmount.Full;
 
         /// <summary>Global visual FX intensity 0~1: scales screen shake, camera zoom, post punch and
         /// shatter launch speed at their consumers. Hitstop is a duration, not a strength, so it is
@@ -115,6 +122,7 @@ namespace Inkform.Settings
         private const string KeyFxIntensity = "Inkform.fxIntensity";
         private const string KeyPerfRecording = "Inkform.perfRecording";
         private const string KeyPerfInterval = "Inkform.perfInterval";
+        private const string KeyRumble = "Inkform.rumble";
 
         // ---- Lifecycle ----
 
@@ -135,6 +143,7 @@ namespace Inkform.Settings
             ShowFps = false;
             PerfRecording = true;
             PerfInterval = 1f;
+            Rumble = RumbleAmount.Full;
             FxIntensity = 1f;
             cachedResolutions = null;
         }
@@ -167,6 +176,7 @@ namespace Inkform.Settings
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
             PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 1) != 0;
             PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
+            Rumble = (RumbleAmount)PlayerPrefs.GetInt(KeyRumble, (int)RumbleAmount.Full);
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
 
             ResolutionWidth = PlayerPrefs.GetInt(KeyResW, 0);
@@ -326,6 +336,14 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
+        public static void SetRumble(RumbleAmount value)
+        {
+            if (Rumble == value) return;
+            Rumble = value;
+            PlayerPrefs.SetInt(KeyRumble, (int)value);
+            Changed?.Invoke();
+        }
+
         public static void ResetToDefaults()
         {
             MasterVolume = MusicVolume = SfxVolume = 1f;
@@ -338,6 +356,7 @@ namespace Inkform.Settings
             ShowFps = false;
             PerfRecording = true;
             PerfInterval = 1f;
+            Rumble = RumbleAmount.Full;
             FxIntensity = 1f;
             Resolution r = Screen.currentResolution;
             ResolutionWidth = r.width;
@@ -363,6 +382,7 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyFxIntensity);
             PlayerPrefs.DeleteKey(KeyPerfRecording);
             PlayerPrefs.DeleteKey(KeyPerfInterval);
+            PlayerPrefs.DeleteKey(KeyRumble);
 
             ApplyGraphics();
             ApplyAudio();

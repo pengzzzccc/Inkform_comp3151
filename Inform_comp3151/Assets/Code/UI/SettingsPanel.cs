@@ -116,6 +116,9 @@ namespace Inkform.UI
         [SerializeField] private Button perfLeft;
         [SerializeField] private Button perfRight;
         [SerializeField] private Text perfLabel;
+        [SerializeField] private Button rumbleLeft;
+        [SerializeField] private Button rumbleRight;
+        [SerializeField] private Text rumbleLabel;
 
         [SerializeField] private Dropdown deviceDropdown;
         [SerializeField] private GameObject kbmContent;
@@ -170,6 +173,9 @@ namespace Inkform.UI
             if (perfLeft == null) perfLeft = FindButton($"{GraphicsRoot}/Btn_PerfLeft");
             if (perfRight == null) perfRight = FindButton($"{GraphicsRoot}/Btn_PerfRight");
             if (perfLabel == null) perfLabel = FindText($"{GraphicsRoot}/Lbl_Perf");
+            if (rumbleLeft == null) rumbleLeft = FindButton($"{ControlsRoot}/Btn_RumbleLeft");
+            if (rumbleRight == null) rumbleRight = FindButton($"{ControlsRoot}/Btn_RumbleRight");
+            if (rumbleLabel == null) rumbleLabel = FindText($"{ControlsRoot}/Lbl_Rumble");
 
             if (deviceDropdown == null) deviceDropdown = FindDropdown($"{ControlsRoot}/Dpd_Device");
             if (unstuckButton == null) unstuckButton = FindButton($"{ControlsRoot}/Btn_Unstuck");
@@ -235,6 +241,9 @@ namespace Inkform.UI
             if (perfToggle != null)
                 perfToggle.onValueChanged.AddListener(v => SettingsStore.SetPerfRecording(v));
 
+            Bind(rumbleLeft, "Btn_RumbleLeft", () => StepRumble(-1));
+            Bind(rumbleRight, "Btn_RumbleRight", () => StepRumble(+1));
+
             // Dropdown option order must match the InputDevice enum — UIBuilder fills it in that order
             if (deviceDropdown != null)
                 deviceDropdown.onValueChanged.AddListener(i => SelectDevice((SettingsStore.InputDevice)i));
@@ -284,6 +293,7 @@ namespace Inkform.UI
             if (showFpsToggle != null) showFpsToggle.SetIsOnWithoutNotify(SettingsStore.ShowFps);
             if (perfToggle != null) perfToggle.SetIsOnWithoutNotify(SettingsStore.PerfRecording);
             SetLabel(perfLabel, RateText(SettingsStore.PerfInterval));
+            SetLabel(rumbleLabel, RumbleText(SettingsStore.Rumble));
             SetSlider(fxSlider, SettingsStore.FxIntensity);
 
             SetSlider(mouseSlider, SettingsStore.MouseSensitivity);
@@ -359,6 +369,23 @@ namespace Inkform.UI
             SettingsStore.SetPerfInterval(opts[i]);
             SetLabel(perfLabel, RateText(opts[i]));
         }
+
+        /// <summary>Cycles the three-step rumble amount (Celeste's Full / Half / Off).</summary>
+        private void StepRumble(int dir)
+        {
+            var opts = (SettingsStore.RumbleAmount[])System.Enum.GetValues(typeof(SettingsStore.RumbleAmount));
+            int i = System.Array.IndexOf(opts, SettingsStore.Rumble);
+            if (i < 0) i = 0;
+
+            i = (i + dir + opts.Length) % opts.Length;
+            SettingsStore.SetRumble(opts[i]);
+            SetLabel(rumbleLabel, RumbleText(opts[i]));
+        }
+
+        private static string RumbleText(SettingsStore.RumbleAmount amount) =>
+            amount == SettingsStore.RumbleAmount.Full ? "Full"
+            : amount == SettingsStore.RumbleAmount.Half ? "Half"
+            : "Off";
 
         /// <summary>Intervals are stored in seconds but shown as their reciprocal in Hz
         /// ("10 Hz" .. "0.2 Hz"), matching how the numbers read on the panel.</summary>

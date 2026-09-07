@@ -56,7 +56,7 @@ namespace Inkform.EditorTools
         // Graphics grew two rows (Performance Log toggle + Sample Rate stepper): taller than the
         // viewport so the pane scrolls a little, which the always-present scrollbar already covers
         private const float GraphicsContentH = ViewportH + 220f;
-        private const float ControlsContentH = 1000f;
+        private const float ControlsContentH = 1070f;   // grew 70 for the Rumble row
 
         // One shared column geometry for every settings row, so the three tabs line up with each other.
         private const float RowLeft = -540f;                    // left edge each row's name label starts at
@@ -635,8 +635,10 @@ namespace Inkform.EditorTools
             AddLabel(content, "Label", "Use this button if you are stuck in a bug",
                 new Vector2(RowLeft + 320f, Y(337f)), new Vector2(640f, 30f), FontSize.Caption, TextAnchor.MiddleLeft, Palette.Hint);
 
-            AddRowLabel(content, "Key Bindings", Y(410f));
-            AddButton(content, "Btn_ResetBindings", "Reset Bindings", new Vector2(430f, Y(410f)), new Vector2(240f, 50f), FontSize.Small);
+            AddArrowRow(content, "Rumble", "Btn_RumbleLeft", "Lbl_Rumble", "Btn_RumbleRight", "Full", Y(390f));
+
+            AddRowLabel(content, "Key Bindings", Y(480f));
+            AddButton(content, "Btn_ResetBindings", "Reset Bindings", new Vector2(430f, Y(480f)), new Vector2(240f, 50f), FontSize.Small);
 
             BuildKbmPane(content);
             BuildGamepadPane(content);
@@ -655,7 +657,7 @@ namespace Inkform.EditorTools
 
         // Both device sub-panes start at the same height and share a pitch, so switching device does
         // not make the list jump. Fills the Controls tab from the fold down to its content height.
-        private static float BindRowY(int index) => ControlsContentH * 0.5f - (545f + index * 46f);
+        private static float BindRowY(int index) => ControlsContentH * 0.5f - (615f + index * 46f);
 
         private static void BuildKbmPane(GameObject content)
         {
