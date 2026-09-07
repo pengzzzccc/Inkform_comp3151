@@ -635,7 +635,7 @@ namespace Inkform.EditorTools
             AddLabel(content, "Label", "Use this button if you are stuck in a bug",
                 new Vector2(RowLeft + 320f, Y(337f)), new Vector2(640f, 30f), FontSize.Caption, TextAnchor.MiddleLeft, Palette.Hint);
 
-            AddArrowRow(content, "Rumble", "Btn_RumbleLeft", "Lbl_Rumble", "Btn_RumbleRight", "Full", Y(390f));
+            AddArrowRow(content, "Rumble", "Btn_RumbleLeft", "Lbl_Rumble", "Btn_RumbleRight", "On", Y(390f));
 
             AddRowLabel(content, "Key Bindings", Y(480f));
             AddButton(content, "Btn_ResetBindings", "Reset Bindings", new Vector2(430f, Y(480f)), new Vector2(240f, 50f), FontSize.Small);

@@ -370,22 +370,15 @@ namespace Inkform.UI
             SetLabel(perfLabel, RateText(opts[i]));
         }
 
-        /// <summary>Cycles the three-step rumble amount (Celeste's Full / Half / Off).</summary>
+        // Two-state rows keep the same ◀ value ▶ shape as the cycling ones, so both arrows just flip
+        // the value — stepping backwards and forwards through two options is the same move.
         private void StepRumble(int dir)
         {
-            var opts = (SettingsStore.RumbleAmount[])System.Enum.GetValues(typeof(SettingsStore.RumbleAmount));
-            int i = System.Array.IndexOf(opts, SettingsStore.Rumble);
-            if (i < 0) i = 0;
-
-            i = (i + dir + opts.Length) % opts.Length;
-            SettingsStore.SetRumble(opts[i]);
-            SetLabel(rumbleLabel, RumbleText(opts[i]));
+            SettingsStore.SetRumble(!SettingsStore.Rumble);
+            SetLabel(rumbleLabel, RumbleText(SettingsStore.Rumble));
         }
 
-        private static string RumbleText(SettingsStore.RumbleAmount amount) =>
-            amount == SettingsStore.RumbleAmount.Full ? "Full"
-            : amount == SettingsStore.RumbleAmount.Half ? "Half"
-            : "Off";
+        private static string RumbleText(bool on) => on ? "On" : "Off";
 
         /// <summary>Intervals are stored in seconds but shown as their reciprocal in Hz
         /// ("10 Hz" .. "0.2 Hz"), matching how the numbers read on the panel.</summary>

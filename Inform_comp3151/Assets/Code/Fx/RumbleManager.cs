@@ -47,12 +47,17 @@ namespace Inkform.Fx
             }
         }
 
+        // All strengths are tuned at half motor power (the player-facing "50% of full" feel); the
+        // tier references are Celeste's rumble tables (Light 0.3 / Medium 0.8 / Strong 2.0 at full
+        // power, Short 0.1 / Medium 0.25 length) — its Player.cs gives death a Light/Medium rumble,
+        // the audio-visual hit already carries the weight, touch stays restrained. High-frequency
+        // player moves (jump, wall jump) rumble nothing there, and the same restraint applies here.
         [Header("Land")]
-        [SerializeField] private float landStrength = 0.35f;
+        [SerializeField] private float landStrength = 0.18f;
         [SerializeField] private float landDuration = 0.12f;
 
         [Header("Blast (shockwave)")]
-        [SerializeField] private float blastStrength = 1f;
+        [SerializeField] private float blastStrength = 0.5f;
         [SerializeField] private float blastDuration = 0.22f;
         [SerializeField] private float blastFalloff = 20f;                 // blasts farther than this are completely unfelt
         [Tooltip("Shockwave speed: drives the left/right motor delay. Lower = stronger sweep feel")]
@@ -61,47 +66,43 @@ namespace Inkform.Fx
         [SerializeField] private float playerHalfWidth = 0.5f;
 
         [Header("Rope fired")]
-        [SerializeField] private float fireStrength = 0.2f;
+        [SerializeField] private float fireStrength = 0.1f;
         [SerializeField] private float fireDuration = 0.08f;
 
         [Header("Rope hit")]
-        [SerializeField] private float hitStrength = 0.55f;
+        [SerializeField] private float hitStrength = 0.28f;
         [SerializeField] private float hitDuration = 0.15f;
 
-        // Tier values follow Celeste's rumble tables (Light 0.15 / Medium 0.4 / Strong 1.0 strength,
-        // Short 0.1 / Medium 0.25 length): its Player.cs gives death a Light/Medium rumble — the
-        // audio-visual hit already carries the weight, touch stays restrained. High-frequency player
-        // moves (jump, wall jump) deliberately rumble nothing there, and the same restraint applies here.
         [Header("Life")]
-        [SerializeField] private float deathStrength = 0.4f;       // Medium
+        [SerializeField] private float deathStrength = 0.2f;       // Medium
         [SerializeField] private float deathDuration = 0.25f;      // Medium
-        [SerializeField] private float checkpointStrength = 0.15f; // Light
+        [SerializeField] private float checkpointStrength = 0.08f; // Light
         [SerializeField] private float checkpointDuration = 0.25f;
-        [SerializeField] private float respawnStrength = 0.15f;    // Light — a teleport home, not an impact
+        [SerializeField] private float respawnStrength = 0.08f;    // Light — a teleport home, not an impact
         [SerializeField] private float respawnDuration = 0.1f;
 
         [Header("Dash")]
-        [SerializeField] private float dashStrength = 0.4f;
+        [SerializeField] private float dashStrength = 0.2f;
         [SerializeField] private float dashDuration = 0.1f;
-        [SerializeField] private float dashFailStrength = 0.15f;   // no fuel: a faint tick, not a reward
+        [SerializeField] private float dashFailStrength = 0.08f;   // no fuel: a faint tick, not a reward
         [SerializeField] private float dashFailDuration = 0.06f;
 
         [Header("Hazard")]
-        [SerializeField] private float tickStrength = 0.15f;       // bomb fuse warning pulse
+        [SerializeField] private float tickStrength = 0.08f;       // bomb fuse warning pulse
         [SerializeField] private float tickDuration = 0.05f;
-        [SerializeField] private float brokenStrength = 0.15f;     // wall shattered nearby
+        [SerializeField] private float brokenStrength = 0.08f;     // wall shattered nearby
         [SerializeField] private float brokenDuration = 0.1f;
 
         [Header("Items")]
-        [SerializeField] private float storeStrength = 0.4f;       // swallow
+        [SerializeField] private float storeStrength = 0.2f;       // swallow
         [SerializeField] private float storeDuration = 0.1f;
-        [SerializeField] private float releaseStrength = 0.15f;    // spit (Celeste's Drop tier)
+        [SerializeField] private float releaseStrength = 0.08f;    // spit (Celeste's Drop tier)
         [SerializeField] private float releaseDuration = 0.1f;
-        [SerializeField] private float upgradeStrength = 0.4f;     // capacity / ability — permanent progress
+        [SerializeField] private float upgradeStrength = 0.2f;     // capacity / ability — permanent progress
         [SerializeField] private float upgradeDuration = 0.25f;
 
         [Header("UI")]
-        [SerializeField] private float uiStrength = 0.15f;
+        [SerializeField] private float uiStrength = 0.08f;
         [SerializeField] private float uiClickDuration = 0.1f;
         [SerializeField] private float uiToggleDuration = 0.1f;
 
@@ -144,8 +145,12 @@ namespace Inkform.Fx
             UiBus.Toggled += OnUiToggled;
 
             // The settings entry is the runtime authority; the serialized field is the editor default
-            enableRumble = SettingsStore.Rumble != SettingsStore.RumbleAmount.Off;
+            enableRumble = SettingsStore.Rumble;
             SettingsStore.Changed += OnSettingsChanged;
+
+            // A gamepad swapped mid-session leaves the old device object behind; react so motors
+            // never keep targeting a dead device and the new pad is usable immediately
+            InputSystem.onDeviceChange += OnDeviceChange;
         }
 
         void OnDisable()
@@ -168,30 +173,59 @@ namespace Inkform.Fx
             UiBus.Toggled -= OnUiToggled;
 
             SettingsStore.Changed -= OnSettingsChanged;
+            InputSystem.onDeviceChange -= OnDeviceChange;
             StopAllCoroutines();
             driveLoop = null;
             StopRumble();
         }
 
-        // Celeste's model: the setting scales every rumble at the single entry point (Half = 0.5,
-        // Off = none at all), so no handler ever needs to know it exists
-        private static float SettingsScale =>
-            SettingsStore.Rumble == SettingsStore.RumbleAmount.Off ? 0f
-            : SettingsStore.Rumble == SettingsStore.RumbleAmount.Half ? 0.5f
-            : 1f;
-
         private void OnSettingsChanged()
         {
-            enableRumble = SettingsStore.Rumble != SettingsStore.RumbleAmount.Off;
+            enableRumble = SettingsStore.Rumble;
             if (!enableRumble) StopRumble();
         }
 
-        // Clears every queued/active rumble and zeroes the motors
+        // Disconnected/removed pads: their device objects can linger as Gamepad.current, where
+        // every motor write becomes a silent no-op — clear the queues so rumble neither hums on a
+        // dead device nor "transfers" wholesale to whichever pad becomes current next. The next
+        // write re-targets through ActivePad, so the new pad picks up from the following event.
+        private void OnDeviceChange(InputDevice device, InputDeviceChange change)
+        {
+            if (device is Gamepad
+                && (change == InputDeviceChange.Disconnected || change == InputDeviceChange.Removed))
+                StopRumble();
+        }
+
+        // Clears every queued/active rumble and zeroes the motors. Also stops the drive loop: a
+        // stopped session must not leave a running coroutine that EnsureLoop would refuse to restart
         private void StopRumble()
         {
             scheduled.Clear();
             active.Clear();
-            Gamepad.current?.SetMotorSpeeds(0f, 0f);
+            if (driveLoop != null)
+            {
+                StopCoroutine(driveLoop);
+                driveLoop = null;
+            }
+            ActivePad?.SetMotorSpeeds(0f, 0f);
+        }
+
+        // The rumble target: the pad the player is on right now. Gamepad.current can linger on a
+        // disconnected device after a mid-session swap (writes become silent no-ops), so fall back
+        // to the first still-connected pad — a newly plugged-in pad receives rumble immediately,
+        // without having to wait until it produces input and becomes "current"
+        private static Gamepad ActivePad
+        {
+            get
+            {
+                Gamepad current = Gamepad.current;
+                if (current != null && current.added) return current;
+
+                var pads = Gamepad.all;
+                for (int i = 0; i < pads.Count; i++)
+                    if (pads[i].added) return pads[i];
+                return null;
+            }
         }
 
         private void OnPlayerState(PlayerState state)
@@ -270,20 +304,18 @@ namespace Inkform.Fx
 
         private void OnUiToggled(bool on) => AddNow(uiStrength, uiStrength, uiToggleDuration);
 
-        // Immediate rumble with explicit per-motor strengths (directionless events split evenly).
-        // The settings scale lands here and in AddAfter — the two funnels every rumble passes through
+        // Immediate rumble with explicit per-motor strengths (directionless events split evenly)
         private void AddNow(float low, float high, float duration)
         {
-            float scale = SettingsScale;
-            if (!enableRumble || scale <= 0f || Gamepad.current == null || duration <= 0f) return;
-            active.Add(new ActiveRumble { remainingDuration = duration, low = low * scale, high = high * scale });
+            if (!enableRumble || ActivePad == null || duration <= 0f) return;
+            active.Add(new ActiveRumble { remainingDuration = duration, low = low, high = high });
             EnsureLoop();
         }
 
         // Immediate rumble from a direction: split the strength by the horizontal component
         private void AddNow(Vector2 dir, float strength, float duration)
         {
-            if (!enableRumble || Gamepad.current == null || strength <= 0f || duration <= 0f) return;
+            if (!enableRumble || ActivePad == null || strength <= 0f || duration <= 0f) return;
             float x = dir.sqrMagnitude > 0.0001f ? dir.normalized.x : 0f;
             AddNow(strength * (0.5f - 0.5f * x), strength * (0.5f + 0.5f * x), duration);
         }
@@ -291,11 +323,10 @@ namespace Inkform.Fx
         // Delayed rumble: the shockwave's left/right trigger ordering
         private void AddAfter(float delay, float low, float high, float duration)
         {
-            float scale = SettingsScale;
-            if (!enableRumble || scale <= 0f || Gamepad.current == null || duration <= 0f) return;
+            if (!enableRumble || ActivePad == null || duration <= 0f) return;
             scheduled.Add(new ScheduledRumble
             {
-                remainingDelay = Mathf.Max(0f, delay), low = low * scale, high = high * scale, duration = duration
+                remainingDelay = Mathf.Max(0f, delay), low = low, high = high, duration = duration
             });
             EnsureLoop();
         }
@@ -341,7 +372,7 @@ namespace Inkform.Fx
 
                 if (scheduled.Count == 0 && active.Count == 0)
                 {
-                    Gamepad.current?.SetMotorSpeeds(0f, 0f);
+                    ActivePad?.SetMotorSpeeds(0f, 0f);
                     driveLoop = null;
                     yield break;
                 }
@@ -349,7 +380,7 @@ namespace Inkform.Fx
                 // Pause / hitstop: zero the motors but keep the remaining durations
                 if (frozen)
                 {
-                    Gamepad.current?.SetMotorSpeeds(0f, 0f);
+                    ActivePad?.SetMotorSpeeds(0f, 0f);
                 }
                 else
                 {
@@ -359,7 +390,7 @@ namespace Inkform.Fx
                         low = Mathf.Max(low, r.low);
                         high = Mathf.Max(high, r.high);
                     }
-                    Gamepad.current?.SetMotorSpeeds(low, high);
+                    ActivePad?.SetMotorSpeeds(low, high);
                 }
 
                 yield return null;
