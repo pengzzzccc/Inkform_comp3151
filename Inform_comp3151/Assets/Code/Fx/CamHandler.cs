@@ -51,6 +51,10 @@ namespace Inkform.Fx
         private float shakeClock;
 
         private float lookAheadNow, lookAheadVel;
+        private bool followHeld;
+
+        /// <summary>True while a cutscene owns the camera's base position.</summary>
+        public bool IsFollowHeld => followHeld;
 
         // Follow target = the current scene's live player, resolved from the bus at use time so
         // follow/snap survive scene switches; the serialized field only serves as a fallback for
@@ -112,7 +116,36 @@ namespace Inkform.Fx
         void Start()
         {
             // Snap into place at startup rather than sliding over from (0,0)
-            SnapToTarget();
+            if (!followHeld) SnapToTarget();
+        }
+
+        /// <summary>
+        /// Holds the follow base at a staged world-space anchor without disabling this component.
+        /// Keeping the component alive avoids a delayed Start/Snap when the cutscene releases it and
+        /// lets presentation effects continue to tick while normal following is suspended.
+        /// </summary>
+        public void HoldAt(Transform anchor)
+        {
+            followHeld = true;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
+            cursorGunCache = null;
+
+            Vector2 hold = anchor != null ? (Vector2)anchor.position : (Vector2)transform.position;
+            followBasePosition = hold;
+            transform.position = new Vector3(hold.x, hold.y, baseZ);
+        }
+
+        /// <summary>Returns control to normal following. With snap=false SmoothDamp starts at the
+        /// staged position; with snap=true the camera cuts directly to its live target.</summary>
+        public void ResumeFollow(bool snap)
+        {
+            followHeld = false;
+            cursorGunCache = null;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
+            followBasePosition = transform.position;
+            if (snap) SnapToTarget();
         }
 
         /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
@@ -135,7 +168,7 @@ namespace Inkform.Fx
         // LateUpdate: the player has finished moving in Update, so following this frame avoids a one-frame lag jitter
         void LateUpdate()
         {
-            Vector2 basePos = FollowStep();
+            Vector2 basePos = followHeld ? followBasePosition : FollowStep();
             Vector2 shakeOffset = ShakeStep();
             ZoomStep();
 

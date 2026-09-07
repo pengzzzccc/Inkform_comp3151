@@ -16,6 +16,12 @@ namespace Inkform.Bus
         public static event Action<FaceDirection> FaceChanged;
         public static event Action<Vector2, bool> DashAttempted;
 
+        /// <summary>Raised by RegisterPlayer: a live player came into existence (scene instance
+        /// Awake, or a runtime spawn appearing long after sceneLoaded). Systems that bind once per
+        /// player — the animation driver, for one — refresh here, because a newcomer matching the
+        /// deduped snapshot (Idle onto Idle) fires no state event to refresh them.</summary>
+        public static event Action<PlayerHandler> PlayerRegistered;
+
         /// <summary>One confirm press (E / gamepad north) — consumed by world parts that are currently
         /// in range (e.g. AbilityPickupPart), not by PlayerHandler.</summary>
         public static event Action InteractPressed;
@@ -30,7 +36,11 @@ namespace Inkform.Bus
         // so a reference to the spawning scene's player goes stale the moment the scene changes.
         public static PlayerHandler Player { get; private set; }
 
-        public static void RegisterPlayer(PlayerHandler player) => Player = player;
+        public static void RegisterPlayer(PlayerHandler player)
+        {
+            Player = player;
+            PlayerRegistered?.Invoke(player);
+        }
 
         // The new scene's player registers (Awake) before the old one is destroyed, so the guard
         // keeps the live player in place during a scene switch
@@ -68,6 +78,7 @@ namespace Inkform.Bus
             FaceChanged = null;
             DashAttempted = null;
             InteractPressed = null;
+            PlayerRegistered = null;
             // Match PlayerHandler's field defaults (Idle / R) to avoid an extra broadcast at startup
             State = PlayerState.Idle;
             Face = FaceDirection.R;
