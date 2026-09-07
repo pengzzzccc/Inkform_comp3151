@@ -18,8 +18,8 @@ namespace Inkform.UI
 {
     /// <summary>
     /// UI manager: the single gatekeeper for the menu layer. Lives on GameManager (which persists
-    /// across scenes via PersistentGameRoot's DontDestroyOnLoad), owns the one UI Canvas, instantiates all
-    /// panel prefabs under it, and routes the pause state machine + cursor + Escape key.
+    /// across scenes via PersistentGameRoot's DontDestroyOnLoad), owns the menu Canvas and gameplay HUD,
+    /// instantiates all UI prefabs, and routes the pause state machine + cursor + Escape key.
     ///
     /// Panels never talk to each other or to the game: MainMenuPanel asks this class to load a scene,
     /// PausePanel asks it to resume, etc. The game never knows a menu exists.
@@ -40,6 +40,9 @@ namespace Inkform.UI
         [SerializeField] private BasePanel saveMenuPrefab;
         [SerializeField] private BasePanel settingsPrefab;
         [SerializeField] private BasePanel tutorialPrefab;
+
+        [Header("Gameplay HUD prefab")]
+        [SerializeField] private HudRoot hudPrefab;
 
         // Menu sounds. Same "event -> cue" mapping AudioDirector does for gameplay, kept here rather
         // than there because these are the menu layer's own feedback and this class already is the
@@ -86,9 +89,8 @@ namespace Inkform.UI
 
             EnsureEventSystem();
             CreateCanvas();
+            InstantiateHud();
             EnsureGamepadCursor();
-            EnsureInventoryHud();
-            EnsureSaveIndicator();
             InstantiatePanels();
             // No "close them all" pass here: BasePanel.Awake lands its own hidden state on instantiate.
             // A pass here could never have worked anyway — Close() early-returns while IsOpen is still
@@ -168,6 +170,9 @@ namespace Inkform.UI
                              || (gamepad && Gamepad.current.startButton.wasPressedThisFrame);
             if (!pausePressed) return;
 
+            // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
+            if (sceneDirector != null && sceneDirector.IsTransitioning) return;
+
             // Innermost sheet first, then outwards — Escape always backs out one level
             if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
@@ -242,8 +247,10 @@ namespace Inkform.UI
             // the only flow transition this class owns. Unpausing returns to whichever side of the
             // menu/gameplay divide the player is on, and ApplySceneState always re-runs SetPaused
             // after assigning IsInMainMenu, so a scene landing settles the state too.
+            bool transitioning = sceneDirector != null && sceneDirector.IsTransitioning;
             GameStateStore.Set(value
                 ? GameStateStore.GameState.Paused
+                : transitioning ? GameStateStore.GameState.Transition
                 : IsInMainMenu ? GameStateStore.GameState.MainMenu
                 : GameStateStore.GameState.Playing);
             gameTime?.SetUserPaused(value);
@@ -285,7 +292,9 @@ namespace Inkform.UI
                 SetCursor(false);
             }
 
-            GetComponent<InventoryHud>()?.RefreshVisibility();
+            bool gameplay = !IsInMainMenu;
+            if (gameplay) hudInstance?.ResetLevelTimer();
+            hudInstance?.SetGameplayVisible(gameplay);
         }
 
         /// <summary>
@@ -475,6 +484,19 @@ namespace Inkform.UI
         // ---- Infrastructure ----
 
         private Canvas uiCanvas;
+        private HudRoot hudInstance;
+
+        private void InstantiateHud()
+        {
+            if (hudPrefab == null)
+            {
+                Debug.LogWarning("UIManager: gameplay HUD prefab is not assigned", this);
+                return;
+            }
+
+            hudInstance = Instantiate(hudPrefab, transform);
+            hudInstance.name = hudPrefab.name;
+        }
 
         private void CreateCanvas()
         {
@@ -545,16 +567,5 @@ namespace Inkform.UI
                 gameObject.AddComponent<GamepadCursor>();
         }
 
-        private void EnsureInventoryHud()
-        {
-            if (GetComponent<InventoryHud>() == null)
-                gameObject.AddComponent<InventoryHud>();
-        }
-
-        private void EnsureSaveIndicator()
-        {
-            if (GetComponent<SaveIndicator>() == null)
-                gameObject.AddComponent<SaveIndicator>();
-        }
     }
 }

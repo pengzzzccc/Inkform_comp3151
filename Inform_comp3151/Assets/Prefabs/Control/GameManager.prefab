@@ -20,7 +20,6 @@ GameObject:
   - component: {fileID: 9903000002}
   - component: {fileID: 6555678966854058408}
   - component: {fileID: 7645394820213847150}
-  - component: {fileID: 1503010808642312737}
   - component: {fileID: 8368835806917013791}
   - component: {fileID: 9903000014}
   m_Layer: 0
@@ -210,6 +209,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RespawnDirector
   fallbackDelay: 0.9
+  playerPrefab: {fileID: 7099724744160094467, guid: d6929e4f63ab05947a6dd26b09d70548, type: 3}
 --- !u!114 &9903000001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -256,6 +256,7 @@ MonoBehaviour:
   saveMenuPrefab: {fileID: 2164662438562936563, guid: 42ddecc13d608e347be1ef0e1a630189, type: 3}
   settingsPrefab: {fileID: 3616246168738148539, guid: d6e5aa6a422c35d4b87b61d0842b2095, type: 3}
   tutorialPrefab: {fileID: 2288663264479354303, guid: 3322bbcececc0924eb246c1a0540e841, type: 3}
+  hudPrefab: {fileID: 2194734477307357503, guid: d73551b20014e644589f3e15b957b6ec, type: 3}
   hoverCue: {fileID: 11400000, guid: e1d0cd899ff18644fbf944f4c7170bc6, type: 2}
   clickCue: {fileID: 11400000, guid: 390adebeb5deeed4aa95918eee10f655, type: 2}
   toggleOnCue: {fileID: 11400000, guid: 63f54ceb8946dba4eaf667dd184541ce, type: 2}
@@ -275,19 +276,6 @@ MonoBehaviour:
   world: {fileID: 11400000, guid: 2d7897771e2b41845b1712f21fccd9fe, type: 2}
   fadeOutSeconds: 0.25
   fadeInSeconds: 0.4
---- !u!114 &1503010808642312737
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3174349163457537239}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9374f13196cacc742a83e196d3aad1ae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.UI.FpsDisplay
-  font: {fileID: 12800000, guid: e23bd45cfc6b5f24595a7754fc30a14b, type: 3}
 --- !u!114 &8368835806917013791
 MonoBehaviour:
   m_ObjectHideFlags: 0
