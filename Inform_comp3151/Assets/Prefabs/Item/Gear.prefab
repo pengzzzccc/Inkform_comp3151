@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4112392604274808311}
   - component: {fileID: 8654766724467786088}
   - component: {fileID: 704323470483767124}
+  - component: {fileID: 5224861143223374553}
   - component: {fileID: 6834432591589035977}
   - component: {fileID: 8424653451575930235}
   m_Layer: 0
@@ -148,6 +149,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.HarmOnTouch
   cause: 0
   targetTag: Player
+--- !u!114 &5224861143223374553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329345059329511731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 234c0e44edde44d98774b4077fa9b07d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.AmbientSource
+  cue: {fileID: 11400000, guid: eeab8574a7a365440a71971f9622bb6f, type: 2}
+  offset: {x: 0, y: 0, z: 0}
 --- !u!58 &6834432591589035977
 CircleCollider2D:
   m_ObjectHideFlags: 0

@@ -4,6 +4,8 @@ using System.IO;
 using System.Reflection;
 using Inkform.Ability;
 using Inkform.Bus;
+using Inkform.Fx;
+using Inkform.Input;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
 using Inkform.Level;
@@ -327,6 +329,53 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void TutorialPanel_OpenHoldsScopedLocks_AndEveryClosePathReleases()
+        {
+            GameObject host = new GameObject("tutorial lock host");
+            InputHandler input = host.AddComponent<InputHandler>();
+            GameTimeController time = host.AddComponent<GameTimeController>();
+
+            GameObject sheet = new GameObject("Tutorial lock sheet");
+            sheet.SetActive(false);
+            TutorialPanel panel = sheet.AddComponent<TutorialPanel>();   // CanvasGroup comes via RequireComponent
+            sheet.transform.SetParent(host.transform, false);
+            AddTutorialButton(sheet, "Btn_Prev");
+            AddTutorialButton(sheet, "Btn_Next");
+            AddTutorialButton(sheet, "Btn_Close");
+            InvokeInstance(panel, "Awake");     // edit mode never runs Unity's magic methods
+            try
+            {
+                input.SetPlaying(true);
+                Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "baseline: gameplay input is live");
+
+                panel.Open();
+                Assert.IsFalse(ReadField<bool>(input, "actionsEnabled"), "opening the sheet locks gameplay input");
+                Assert.IsTrue(time.IsWorldFrozen, "opening the sheet freezes the world");
+
+                // A pause-menu resume must not clear a scoped lock (same guarantee MapView relies on)
+                input.SetPlaying(true);
+                Assert.IsFalse(ReadField<bool>(input, "actionsEnabled"));
+
+                panel.Close();
+                Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "closing releases the input lock");
+                Assert.IsFalse(time.IsWorldFrozen, "closing releases the world freeze");
+
+                // Destroyed while open: an owner lock outliving its owner would leave gameplay input
+                // dead for the rest of the session, so OnDestroy must release
+                panel.Open();
+                UnityEngine.Object.DestroyImmediate(sheet);
+                Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "OnDestroy releases the input lock");
+                Assert.IsFalse(time.IsWorldFrozen, "OnDestroy releases the world freeze");
+            }
+            finally
+            {
+                Time.timeScale = 1f;
+                if (sheet != null) UnityEngine.Object.DestroyImmediate(sheet);
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
         public void AbilityPickup_ConfirmGrantsOnlyWhilePlayerIsInRange()
         {
             AbilityStore.ClearWithoutSaving();
@@ -457,6 +506,9 @@ namespace Inkform.Tests
         private static void SetPickupSwitch(TutorialPanel panel, bool value) =>
             panel.GetType().GetField("showOnPickup", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .SetValue(panel, value);
+
+        private static T ReadField<T>(object target, string name) =>
+            (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);

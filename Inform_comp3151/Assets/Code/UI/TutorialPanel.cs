@@ -1,4 +1,6 @@
 using Inkform.Ability;
+using Inkform.Fx;
+using Inkform.Input;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +11,11 @@ namespace Inkform.UI
     /// UIManager.OpenTutorial): one page per Sprite in the set matching the ability, "&lt;" / "&gt;" step
     /// through them, Close (or Escape) leaves. Pages are plain images — no text layout — so authoring
     /// a tutorial is just dragging screenshots into the page arrays on this component.
+    ///
+    /// While the sheet is up the game is held still: gameplay input is locked and the world is frozen
+    /// (see OnOpen). Only the UI layer keeps working, so the buttons stay clickable — and the click
+    /// that flips a page can no longer fire the rope gun or jump, nor can a hazard kill the player
+    /// mid-read. Both are scoped owner locks, released on every close path.
     ///
     /// Two page sets, keyed by the granted ability id (AbilityIds.Checkpoint from the timecard,
     /// AbilityIds.RopeGun from the rope gun card). Controls are found by name like every built
@@ -36,6 +43,11 @@ namespace Inkform.UI
         private Button closeButton;
         private Text pageLabel;
         private Image pageImage;
+
+        // Resolved once when the sheet opens, from the persistent GameManager above the panel
+        // (UI Canvas -> GameManager); released through the same cached references.
+        private InputHandler input;
+        private GameTimeController gameTime;
 
         public bool ShowOnPickup => showOnPickup;
 
@@ -81,6 +93,33 @@ namespace Inkform.UI
             if (abilityId == AbilityIds.Checkpoint) return checkpointPages;
             if (abilityId == AbilityIds.RopeGun) return ropeGunPages;
             return null;
+        }
+
+        // ---- Stage hold: gameplay input off, world frozen while the sheet is up ----
+
+        // Scoped owner locks rather than UIManager.SetPaused: resuming a pause menu cannot clear
+        // them, and the world freeze keeps the music and ambience playing (only a real user pause
+        // silences the AudioListener). Opening here rather than in UIManager.OpenTutorial covers
+        // every close path — the sheet is also closed directly by ApplySceneState on a scene load.
+        protected override void OnOpen()
+        {
+            if (input == null) input = GetComponentInParent<InputHandler>();
+            if (gameTime == null) gameTime = GetComponentInParent<GameTimeController>();
+            SetStageHeld(true);
+        }
+
+        protected override void OnClose() => SetStageHeld(false);
+
+        // A destroyed sheet must not keep the gate shut: an owner lock is keyed by reference, so a
+        // lock outliving its owner would disable gameplay input forever.
+        private void OnDestroy() => SetStageHeld(false);
+
+        private void SetStageHeld(bool held)
+        {
+            // Explicit null checks, never `?.`: a destroyed Unity object reads non-null to C#'s
+            // null-conditional operator and the call would reach a dead component
+            if (input != null) input.SetGameplayInputLocked(this, held);
+            if (gameTime != null) gameTime.SetWorldFrozen(this, held);
         }
 
         private void OnPrev()

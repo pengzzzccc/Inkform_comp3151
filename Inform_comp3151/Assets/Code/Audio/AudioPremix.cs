@@ -64,6 +64,23 @@ namespace Inkform.Audio
             return linear * linear;
         }
 
+        /// <summary>
+        /// Stereo pan, -1 (hard left) .. +1 (hard right), from the emitter's X offset relative to the
+        /// listener, saturating at the Cue's falloffRange: at the edge of audibility the sound is fully
+        /// panned, right at the ear it is centred. Only X matters — this is a 2D stereo field, vertical
+        /// position carries no stereo information. Non-spatial Cues, missing positions or a missing
+        /// listener return 0 (centred), the same degradation DistanceT uses.
+        /// One saturation width for the whole project on purpose: pan and attenuation share the same
+        /// spatial extent, so a sound that is barely audible is also barely panned.
+        /// (WebGL ignores AudioSource.panStereo entirely — spatial sound there keeps volume and
+        /// low-pass falloff but stays centred.)
+        /// </summary>
+        public static float Pan(bool spatial, float falloffRange, Vector2 listenerPos, Vector2? emitterPos)
+        {
+            if (!spatial || !emitterPos.HasValue || falloffRange <= 0f) return 0f;
+            return Mathf.Clamp((emitterPos.Value.x - listenerPos.x) / falloffRange, -1f, 1f);
+        }
+
         /// <summary>Cue volume × distance falloff × settings tracks × zone scale. Zone scale is the
         /// stricter (smaller) of listener and emitter zones.</summary>
         public static float Volume(SoundCue cue, float t, float master, float track,

@@ -84,6 +84,26 @@ Key architecture pieces in `Assets/Code/`:
 - **LevelMemento** — captures and restores the state of every restorable object on checkpoint/death,
   which is what makes shattered walls come back after respawn.
 
+## Audio spatial model
+
+Positional audio is **premixed in code, not delegated to Unity's 3D pipeline**: every pooled
+`AudioSource` runs at `spatialBlend = 0` and `AudioManager` writes the numbers itself each play
+(and every frame for looping emitters), so the engine's rolloff can never fight the designed curve.
+
+- A `SoundCue` with **Spatial** on gets all three effects from the same distance, saturating at
+  `falloffRange` (= its audible radius): **volume** falls to `minVolume`, the **low-pass cutoff**
+  drops to `minCutoff`, and the emitter's **X offset pans** the sound left/right (hard pan at the
+  edge of the radius). Vertical position carries no stereo information.
+- The **AudioListener sits on the camera** — the listener is what you see from, so panning and
+  falloff follow the view, not the player.
+- **Audio zones** (`AudioZone` + profile) cap volume and cutoff for everything heard inside them
+  (strictest wins) and drive one global reverb filter on the listener; they do not pan.
+- Looping world sounds are one component: **`AmbientSource`** (cue + position + optional offset).
+  It can be gated by a `TimedVisibility` hazard, which drives its enabled state so the loop is
+  audible exactly while the hazard is visible.
+- **WebGL caveat:** the browser backend ignores `AudioSource.panStereo`, so a WebGL build keeps
+  volume and low-pass falloff but stays centred. Desktop standalone pans normally.
+
 ## Scenes
 
 | Scene | Purpose |

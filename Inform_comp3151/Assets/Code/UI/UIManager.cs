@@ -113,8 +113,8 @@ namespace Inkform.UI
             // other panel; this class is the one place gameplay meets menus.
             ItemBus.AbilityUnlocked += OnAbilityUnlocked;
 
-            // The tutorial is a non-blocking overlay, so the player can take a hit while it is up:
-            // a death under the sheet just closes it, and respawn owns the screen from there.
+            // The tutorial freezes the world while it is up, so a death under the sheet should not
+            // happen — kept as a safety net for any damage path that ignores the freeze
             LifeBus.Died += OnPlayerDied;
         }
 
@@ -206,15 +206,13 @@ namespace Inkform.UI
         private void OnAbilityUnlocked(Vector2 position, string abilityId) => OpenTutorial(abilityId);
 
         /// <summary>
-        /// A pickup just granted an ability: show that ability's tutorial as a NON-BLOCKING overlay.
-        /// The game keeps running — no pause, no input change; the only thing released is the cursor,
-        /// so the sheet's buttons are clickable (it is re-locked on close). Fires only when the
-        /// Tutorial panel is wired, its Show On Pickup checkbox is on, and it carries pages for this
-        /// ability — any of those missing, the unlock simply happens silently.
-        ///
-        /// Known trade-off of leaving gameplay input untouched: the click on a tutorial button is
-        /// also a gameplay press (left mouse fires the rope gun, gamepad A jumps). One stray shot or
-        /// hop per click is the price of the game never stopping.
+        /// A pickup just granted an ability: show that ability's tutorial sheet and release the cursor
+        /// so its buttons are clickable (re-locked on close). The sheet itself holds gameplay still
+        /// while it is up — TutorialPanel.OnOpen takes a scoped gameplay-input lock and freezes the
+        /// world, both released on every close path — so the click that flips a page no longer fires
+        /// the rope gun or jumps, and nothing can hit the player mid-read.
+        /// Fires only when the Tutorial panel is wired, its Show On Pickup checkbox is on, and it
+        /// carries pages for this ability — any of those missing, the unlock simply happens silently.
         /// </summary>
         public void OpenTutorial(string abilityId)
         {

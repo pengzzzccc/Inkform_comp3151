@@ -15,16 +15,16 @@ MonoBehaviour:
   clips:
   - {fileID: 8300000, guid: 45c8c15a8c0990f4a82ea26aa5236c16, type: 3}
   output: {fileID: 0}
-  volume: 0.483
+  volume: 0.131
   category: 0
   pitchRange: {x: 0.95, y: 1.05}
   loop: 0
   ignoreListenerPause: 0
   cooldown: 0.05
-  maxConcurrent: 3
+  maxConcurrent: 2
   priority: 128
+  preferNearestWhenLimited: 0
   spatial: 1
-  falloffRange: 20
+  falloffRange: 12
   minVolume: 0
-  reverbAmount: 0
   minCutoff: 800

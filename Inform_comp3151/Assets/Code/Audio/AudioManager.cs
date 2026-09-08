@@ -328,6 +328,7 @@ namespace Inkform.Audio
                 * SettingsStore.MasterVolume
                 * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
             s.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
+            src.panStereo = PanOf(cue, position);
             src.outputAudioMixerGroup = cue.output;
 
             src.Play();
@@ -441,6 +442,17 @@ namespace Inkform.Audio
             return AudioPremix.DistanceT(true, cue.falloffRange, ear.position, position.Value);
         }
 
+        /// <summary>Stereo pan of an emitter relative to the listener, saturating at the Cue's
+        /// falloffRange. Same guards as Falloff: 0 (centred) for non-spatial Cues, missing positions
+        /// or a scene without an AudioListener.</summary>
+        private float PanOf(SoundCue cue, Vector3? position)
+        {
+            if (!cue.spatial || !position.HasValue || cue.falloffRange <= 0f) return 0f;
+            Transform ear = Listener;
+            if (ear == null) return 0f;
+            return AudioPremix.Pan(true, cue.falloffRange, ear.position, position.Value);
+        }
+
         // ---- Zone access points: the listener's blended mix, and the strictest mix of every
         // registered zone containing an emitter position ----
 
@@ -493,6 +505,17 @@ namespace Inkform.Audio
             ReleaseAt(i);
         }
 
+        /// <summary>True while this source still carries a voice this pool owns. AmbientSource polls
+        /// it because a loop can lose its voice without being told: stolen under pool pressure, or
+        /// released by teardown. The emitter re-registers instead of staying silent for the scene.</summary>
+        public bool IsVoiceActive(AudioSource src)
+        {
+            if (src == null) return false;
+            for (int i = 0; i < active.Count; i++)
+                if (active[i].source.src == src) return true;
+            return false;
+        }
+
         private void ReleaseAt(int i)
         {
             Voice v = active[i];
@@ -511,8 +534,10 @@ namespace Inkform.Audio
             // Must restore: the source is recycled, and after a distant explosion crushed the cutoff to
             // a few hundred Hz, the next nearby sound borrowing this source (e.g. the player's jump)
             // would mysteriously go dull. outputAudioMixerGroup needs no restore — every
-            // Play sets it explicitly
+            // Play sets it explicitly. Same reasoning for the pan: a hard-left emitter must not leave
+            // the next sound stuck on the left channel
             v.source.lpf.cutoffFrequency = AudioPremix.FullBandwidth;
+            v.source.src.panStereo = 0f;
 
             if (v.cue != null) v.cue.activeCount = Mathf.Max(0, v.cue.activeCount - 1);
             pool.Enqueue(v.source);
@@ -524,6 +549,9 @@ namespace Inkform.Audio
             go.transform.SetParent(transform);
             AudioSource src = go.AddComponent<AudioSource>();
             src.playOnAwake = false;
+            // Deliberately 2D: attenuation and panning are computed by AudioPremix and written here,
+            // so the engine's own 3D rolloff can never fight the designed t² curve. Panning rides
+            // panStereo instead (see PanOf)
             src.spatialBlend = 0f;
             AudioLowPassFilter lpf = go.AddComponent<AudioLowPassFilter>();
             lpf.cutoffFrequency = AudioPremix.FullBandwidth;
@@ -624,6 +652,9 @@ namespace Inkform.Audio
                 * SettingsStore.MasterVolume
                 * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
             voice.source.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
+            // Re-panned every frame too: walking past a campfire or a gear moves the sound across
+            // the stereo field exactly as it moves across the screen
+            voice.source.src.panStereo = PanOf(cue, pos);
         }
 
         // Settings changed: re-scale every live voice through its stored baseGain. Persistent

@@ -19,14 +19,32 @@ namespace Inkform.Audio
         [SerializeField] private Vector3 offset;
 
         private AudioSource voice;
+        private float retryAt;
 
         // Guarded like every other audio caller: a missing Cue slot or a scene without the
         // manager must never throw — silence is the degradation, not an error
         void OnEnable()
         {
             voice = null;
+            retryAt = 0f;
             if (cue == null || AudioManager.Instance == null) return;
             voice = AudioManager.Instance.RegisterAmbient(cue, transform.position + offset);
+        }
+
+        // A loop can lose its voice without anyone telling this component: the arbiter steals it
+        // under pool pressure, and teardown can recycle it. Without this poll the emitter stays
+        // silent for the rest of the scene — with several lasers in a room that is the normal case,
+        // not the exception. The retry cooldown keeps a full pool from being hammered every frame.
+        void Update()
+        {
+            if (cue == null) return;
+            AudioManager manager = AudioManager.Instance;
+            if (manager == null) return;
+            if (voice != null && manager.IsVoiceActive(voice)) return;
+            if (Time.unscaledTime < retryAt) return;
+
+            voice = manager.RegisterAmbient(cue, transform.position + offset);
+            retryAt = Time.unscaledTime + 0.5f;
         }
 
         // Explicit release, not isPlaying-based recycling: loops never finish "naturally", and the

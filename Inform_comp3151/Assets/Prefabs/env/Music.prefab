@@ -46,5 +46,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.SceneMusic
   music: {fileID: 11400000, guid: de3875f5075702542971393bc645aa40, type: 2}
   fade: 10
+  silenceWhenNoMusic: 0
   ambient: {fileID: 11400000, guid: 5039a0cecfa93504993f20ae3f31a509, type: 2}
-  ambientInterval: {x: 4, y: 9}
+  ambientInterval: {x: 0.5, y: 3}
