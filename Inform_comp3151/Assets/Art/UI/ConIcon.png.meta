@@ -1,0 +1,1027 @@
+fileFormatVersion: 2
+guid: c761534b32dabc84c8329223cd9343f1
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8289287195854025685
+    second: ConIcon_0
+  - first:
+      213: -2784076504478251383
+    second: ConIcon_1
+  - first:
+      213: -7361144099263506892
+    second: ConIcon_2
+  - first:
+      213: 2743142303401280629
+    second: ConIcon_3
+  - first:
+      213: 7648980015805897073
+    second: ConIcon_4
+  - first:
+      213: 7192174033887211493
+    second: ConIcon_5
+  - first:
+      213: 5263054887591772365
+    second: ConIcon_6
+  - first:
+      213: 4125173676758339424
+    second: ConIcon_7
+  - first:
+      213: -2781936336183695522
+    second: ConIcon_8
+  - first:
+      213: -3216917607447616878
+    second: ConIcon_9
+  - first:
+      213: -2347275551008867600
+    second: ConIcon_10
+  - first:
+      213: -7417389665078950120
+    second: ConIcon_11
+  - first:
+      213: 7616088950052447714
+    second: ConIcon_12
+  - first:
+      213: -5116473699205974890
+    second: ConIcon_13
+  - first:
+      213: -5885788509505131755
+    second: ConIcon_14
+  - first:
+      213: -1868008699069229116
+    second: ConIcon_15
+  - first:
+      213: -3690499634644089408
+    second: ConIcon_16
+  - first:
+      213: -182262112508196817
+    second: ConIcon_17
+  - first:
+      213: -3590465558699726043
+    second: ConIcon_18
+  - first:
+      213: -1713804193176393279
+    second: ConIcon_19
+  - first:
+      213: 231661756267960845
+    second: ConIcon_20
+  - first:
+      213: -8921676595550929678
+    second: ConIcon_21
+  - first:
+      213: -4950828665438870588
+    second: ConIcon_22
+  - first:
+      213: 2626814760823055227
+    second: ConIcon_23
+  - first:
+      213: -5222186991267956642
+    second: ConIcon_24
+  - first:
+      213: -8550385889474657520
+    second: ConIcon_25
+  - first:
+      213: -6022824027667891715
+    second: ConIcon_26
+  - first:
+      213: -4438881351418836831
+    second: ConIcon_27
+  - first:
+      213: 8286020162446692931
+    second: ConIcon_28
+  - first:
+      213: 6190820297653565540
+    second: ConIcon_29
+  - first:
+      213: -6947931172881701973
+    second: ConIcon_30
+  - first:
+      213: 2790511405579997441
+    second: ConIcon_31
+  - first:
+      213: -1543895117682266636
+    second: ConIcon_32
+  - first:
+      213: -8589205210176932790
+    second: ConIcon_33
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: ConIcon_0
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 87
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2c4de1c63986fc80800000000000000
+      internalID: -8289287195854025685
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_1
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 87
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 986001b7b29fc59d0800000000000000
+      internalID: -2784076504478251383
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_2
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 87
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4369fe65176f7d990800000000000000
+      internalID: -7361144099263506892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_3
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 87
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57484922469911620800000000000000
+      internalID: 2743142303401280629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_4
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 82
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1791c206cc2a62a60800000000000000
+      internalID: 7648980015805897073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_5
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 82
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5efa2a49d2cbfc360800000000000000
+      internalID: 7192174033887211493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_6
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 70
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc08a4019802a0940800000000000000
+      internalID: 5263054887591772365
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_7
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 70
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06f09f75a9f8f3930800000000000000
+      internalID: 4125173676758339424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_8
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 70
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e57e40e34a39469d0800000000000000
+      internalID: -2781936336183695522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_9
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 70
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 292a260ea763b53d0800000000000000
+      internalID: -3216917607447616878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_10
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 66
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0fa3820a25dcc6fd0800000000000000
+      internalID: -2347275551008867600
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_11
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 66
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 817c05c0663201990800000000000000
+      internalID: -7417389665078950120
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_12
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 48
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e567ad5c88c1b960800000000000000
+      internalID: 7616088950052447714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_13
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 48
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 694f2306742aef8b0800000000000000
+      internalID: -5116473699205974890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_14
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 48
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51beedbe88a715ea0800000000000000
+      internalID: -5885788509505131755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_15
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 48
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c793ae3cff7316e0800000000000000
+      internalID: -1868008699069229116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_16
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 48
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c58459a226b8ccc0800000000000000
+      internalID: -3690499634644089408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_17
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 49
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f28cfe70399787df0800000000000000
+      internalID: -182262112508196817
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_18
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 49
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52bad63f89a1c2ec0800000000000000
+      internalID: -3590465558699726043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_19
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 28
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c9652b9a285738e0800000000000000
+      internalID: -1713804193176393279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_20
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 28
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0a1562d327073300800000000000000
+      internalID: 231661756267960845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_21
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 28
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fc3549c766df2480800000000000000
+      internalID: -8921676595550929678
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_22
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 28
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c3e1b43f8f1b4bb0800000000000000
+      internalID: -4950828665438870588
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_23
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 28
+        width: 17
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b736c958b12547420800000000000000
+      internalID: 2626814760823055227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_24
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 37
+        width: 16
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e58beca89901787b0800000000000000
+      internalID: -5222186991267956642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_25
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 37
+        width: 16
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 013c95dd55de65980800000000000000
+      internalID: -8550385889474657520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_26
+      rect:
+        serializedVersion: 2
+        x: 152
+        y: 16
+        width: 9
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df9fa260571aa6ca0800000000000000
+      internalID: -6022824027667891715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_27
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 16
+        width: 8
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a80398ddece562c0800000000000000
+      internalID: -4438881351418836831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_28
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 7
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3421c50cf6bddf270800000000000000
+      internalID: 8286020162446692931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_29
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 7
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4683be5a2463ae550800000000000000
+      internalID: 6190820297653565540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_30
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 7
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba3e584f86df39f90800000000000000
+      internalID: -6947931172881701973
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_31
+      rect:
+        serializedVersion: 2
+        x: 65
+        y: 7
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 101954fa653e9b620800000000000000
+      internalID: 2790511405579997441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_32
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 19
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fda614029bf29ae0800000000000000
+      internalID: -1543895117682266636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: ConIcon_33
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 19
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4438707e530dc880800000000000000
+      internalID: -8589205210176932790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      ConIcon_0: -8289287195854025685
+      ConIcon_1: -2784076504478251383
+      ConIcon_10: -2347275551008867600
+      ConIcon_11: -7417389665078950120
+      ConIcon_12: 7616088950052447714
+      ConIcon_13: -5116473699205974890
+      ConIcon_14: -5885788509505131755
+      ConIcon_15: -1868008699069229116
+      ConIcon_16: -3690499634644089408
+      ConIcon_17: -182262112508196817
+      ConIcon_18: -3590465558699726043
+      ConIcon_19: -1713804193176393279
+      ConIcon_2: -7361144099263506892
+      ConIcon_20: 231661756267960845
+      ConIcon_21: -8921676595550929678
+      ConIcon_22: -4950828665438870588
+      ConIcon_23: 2626814760823055227
+      ConIcon_24: -5222186991267956642
+      ConIcon_25: -8550385889474657520
+      ConIcon_26: -6022824027667891715
+      ConIcon_27: -4438881351418836831
+      ConIcon_28: 8286020162446692931
+      ConIcon_29: 6190820297653565540
+      ConIcon_3: 2743142303401280629
+      ConIcon_30: -6947931172881701973
+      ConIcon_31: 2790511405579997441
+      ConIcon_32: -1543895117682266636
+      ConIcon_33: -8589205210176932790
+      ConIcon_4: 7648980015805897073
+      ConIcon_5: 7192174033887211493
+      ConIcon_6: 5263054887591772365
+      ConIcon_7: 4125173676758339424
+      ConIcon_8: -2781936336183695522
+      ConIcon_9: -3216917607447616878
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

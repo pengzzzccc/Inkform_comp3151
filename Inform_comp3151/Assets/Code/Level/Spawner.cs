@@ -26,18 +26,12 @@ namespace Inkform.Level
 
         void Update()
         {
-            if (current != null)
-            {
-                Debug.Log("is me");
-                return;
-            }
-                // return;        // Unity overloads ==, so a destroyed instance reads as null here
+            if (current != null) return;        // Unity overloads ==, so a destroyed instance reads as null here
 
             if (!cooling)                       // just noticed the instance is gone; cooldown starts from this moment
             {
                 cooling = true;
                 timer.Set(spawnTimer);
-                Debug.Log("in cooling");
                 return;
             }
 
@@ -51,7 +45,6 @@ namespace Inkform.Level
             // saved localPosition (the legacy bomb prefab stored -4.07, 0.45) instead of moving to this node
             current = Instantiate(spawnObject, transform.position, Quaternion.identity);
             cooling = false;
-            Debug.Log("spawn");
         }
     }
 }

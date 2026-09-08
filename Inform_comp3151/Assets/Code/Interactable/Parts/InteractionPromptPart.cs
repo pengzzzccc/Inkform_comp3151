@@ -23,8 +23,10 @@ namespace Inkform.Interactable.Parts
     public sealed class InteractionPromptPart : MonoBehaviour, IInteractablePart
     {
         [Header("Outline glow")]
-        [Tooltip("Material with the Inkform/SpriteOutline shader. Fade is driven per frame by this component; colour and width live in the material.")]
+        [Tooltip("Material with the Inkform/SpriteOutline shader. Fade and width are driven per renderer; colour and intensity live in the material.")]
         [SerializeField] private Material outlineMaterial;
+        [Tooltip("Outline thickness in local world units. It is converted to source texels so sprites with different Pixels Per Unit have the same visible thickness.")]
+        [SerializeField, Min(0f)] private float outlineWorldWidth = 0.0625f;
         [Tooltip("Glow drawing space around the sprite, as a fraction of the sprite size. A sprite mesh has no pixels outside its silhouette, so the outline quad is scaled up by this and the shader remaps its UVs — raise it together with the material's Outline Width.")]
         [SerializeField, Min(0f)] private float outlinePadding = 0.25f;
         [Tooltip("Breaths per second of the glow while visible; 0 = steady.")]
@@ -55,8 +57,10 @@ namespace Inkform.Interactable.Parts
         private readonly HashSet<Collider2D> players = new HashSet<Collider2D>();
 
         private static readonly int FadeId = Shader.PropertyToID("_Fade");
+        private static readonly int OutlineWidthId = Shader.PropertyToID("_OutlineWidth");
         private static readonly int SpriteRectId = Shader.PropertyToID("_SpriteRect");
         private static readonly int SpriteScaleId = Shader.PropertyToID("_SpriteScale");
+        private static readonly int SpriteUvStepId = Shader.PropertyToID("_SpriteUvStep");
 
         private SpriteRenderer baseRenderer;
         private SpriteRenderer outlineRenderer;
@@ -68,10 +72,12 @@ namespace Inkform.Interactable.Parts
         private PromptScheme scheme;
 
         private float fade;
+        private bool suppressed;
 
         /// <summary>Whether any player collider currently overlaps this node's trigger. Other parts
         /// may query it, but the pickup part tracks its own set — the two modules stay standalone.</summary>
         public bool PlayerInRange => players.Count > 0;
+        public bool IsSuppressed => suppressed;
 
         public void Attach(Interactable interactable)
         {
@@ -79,8 +85,20 @@ namespace Inkform.Interactable.Parts
             baseRenderer = root.GetComponentInChildren<SpriteRenderer>();
             if (baseRenderer == null)
                 Debug.LogWarning($"{root.name} interaction prompt found no SpriteRenderer; glow disabled", this);
+            else if (baseRenderer.sprite == null)
+                Debug.LogWarning($"{root.name} interaction prompt has no sprite on its SpriteRenderer; the glow and icon stay hidden until one is assigned", this);
             if (outlineMaterial == null)
                 Debug.LogWarning($"{root.name} interaction prompt has no outline material; glow disabled", this);
+        }
+
+        void Start()
+        {
+            // Build before the first proximity frame. Creating a SpriteRenderer lazily in Update can
+            // leave its initial 2D-renderer bounds/material state stale until a Transform changes.
+            if (baseRenderer == null || baseRenderer.sprite == null) return;
+            EnsureVisualsBuilt();
+            if (outlineRenderer != null) outlineRenderer.enabled = false;
+            if (promptRoot != null) promptRoot.gameObject.SetActive(false);
         }
 
         public bool HandleContact(ContactPhase phase, Collider2D other)
@@ -92,15 +110,39 @@ namespace Inkform.Interactable.Parts
             return false;   // presentation only — never claims the contact
         }
 
+        /// <summary>Temporarily hides this prompt while another presentation owns the object.</summary>
+        public void SetSuppressed(bool value)
+        {
+            if (suppressed == value) return;
+            suppressed = value;
+            if (!suppressed) return;
+
+            // Map inspection freezes scaled time, so waiting for the normal fade would leave the
+            // key icon over the focused artwork forever. Suppression is intentionally immediate.
+            fade = 0f;
+            if (outlineRenderer != null) outlineRenderer.enabled = false;
+            if (promptRoot != null) promptRoot.gameObject.SetActive(false);
+        }
+
         void Update()
         {
             // Destroyed colliders must not keep the prompt stuck open (player GO torn down mid-contact)
             if (players.Count > 0) players.RemoveWhere(collider => collider == null);
 
+            if (suppressed)
+            {
+                if (outlineRenderer != null) outlineRenderer.enabled = false;
+                if (promptRoot != null) promptRoot.gameObject.SetActive(false);
+                return;
+            }
+
             float target = PlayerInRange ? 1f : 0f;
             fade = Mathf.MoveTowards(fade, target, Time.deltaTime / fadeDuration);
 
-            bool visible = fade > 0.001f;
+            // No sprite means nothing to outline and nowhere to anchor the icon — stay hidden
+            // (checked per frame, so assigning the sprite later just starts the prompt working)
+            bool hasArt = baseRenderer != null && baseRenderer.sprite != null;
+            bool visible = fade > 0.001f && hasArt;
             if (outlineRenderer != null) outlineRenderer.enabled = visible;
             if (promptRoot != null) promptRoot.gameObject.SetActive(visible);
             if (!visible) return;
@@ -126,35 +168,59 @@ namespace Inkform.Interactable.Parts
         {
             if (promptRoot != null) return;
 
-            if (baseRenderer != null && outlineMaterial != null)
+            Sprite outlineSprite = baseRenderer != null ? baseRenderer.sprite : null;
+            if (baseRenderer != null && outlineMaterial != null
+                && TrySpriteUvRect(outlineSprite, out Vector4 spriteRect))
             {
                 var outlineObject = new GameObject("Outline");
-                outlineObject.transform.SetParent(root.transform, false);
-                outlineRenderer = outlineObject.AddComponent<SpriteRenderer>();
-                outlineRenderer.sprite = baseRenderer.sprite;
-                outlineRenderer.sharedMaterial = outlineMaterial;
-                outlineRenderer.sortingLayerID = baseRenderer.sortingLayerID;
-                outlineRenderer.sortingOrder = baseRenderer.sortingOrder + 1;
+                outlineObject.layer = baseRenderer.gameObject.layer;
+                // Parent to the renderer itself so all of its position, rotation and scale are
+                // inherited exactly once. Parenting to root and then adding the renderer's local
+                // position displaced root-level renderers by the object's world placement.
+                outlineObject.transform.SetParent(baseRenderer.transform, false);
 
                 // A sprite mesh has no pixels outside the silhouette, so the glow quad is scaled up
                 // by the padding and the shader remaps its UVs back into sprite space (_SpriteRect /
                 // _SpriteScale): the silhouette still renders at its original size and the ring
                 // around it becomes drawable band
                 float outlineScale = 1f + 2f * outlinePadding;
-                outlineRenderer.transform.localScale = Vector3.one * outlineScale;
+                outlineObject.transform.localScale = Vector3.one * outlineScale;
 
-                // Scaling about the pivot would shove an off-centre pivot's sprite aside — anchor the
-                // outline's sprite centre on the base sprite's centre instead (upright, unscaled roots)
-                Vector2 baseCenter = (Vector2)baseRenderer.transform.localPosition +
-                    (Vector2)baseRenderer.localBounds.center;
-                outlineObject.transform.localPosition =
-                    baseCenter - outlineScale * (Vector2)outlineRenderer.localBounds.center;
+                // Sprite.bounds is available synchronously, unlike a newly-created renderer's
+                // localBounds. Account for SpriteRenderer flip when keeping an off-centre pivot fixed.
+                Vector2 spriteCenter = outlineSprite.bounds.center;
+                if (baseRenderer.flipX) spriteCenter.x = -spriteCenter.x;
+                if (baseRenderer.flipY) spriteCenter.y = -spriteCenter.y;
+                outlineObject.transform.localPosition = spriteCenter - outlineScale * spriteCenter;
 
-                // The per-renderer copy the fade drives; released in OnDestroy
-                outlineMaterialInstance = outlineRenderer.material;
-                outlineMaterialInstance.SetVector(SpriteRectId, SpriteUvRect(baseRenderer.sprite));
+                // Configure the private material completely before the renderer is enabled, so the
+                // first 2D-renderer draw already has valid UV, texel and fade data.
+                Texture2D texture = outlineSprite.texture;
+                outlineMaterialInstance = new Material(outlineMaterial)
+                {
+                    name = $"{outlineMaterial.name} ({name})"
+                };
+                outlineMaterialInstance.SetVector(SpriteRectId, spriteRect);
                 outlineMaterialInstance.SetFloat(SpriteScaleId, outlineScale);
+                outlineMaterialInstance.SetVector(SpriteUvStepId, new Vector4(
+                    1f / texture.width, 1f / texture.height, texture.width, texture.height));
+                outlineMaterialInstance.SetFloat(OutlineWidthId,
+                    outlineWorldWidth * outlineSprite.pixelsPerUnit);
                 outlineMaterialInstance.SetFloat(FadeId, 0f);
+
+                outlineRenderer = outlineObject.AddComponent<SpriteRenderer>();
+                outlineRenderer.enabled = false;
+                outlineRenderer.sprite = outlineSprite;
+                outlineRenderer.sharedMaterial = outlineMaterialInstance;
+                outlineRenderer.sortingLayerID = baseRenderer.sortingLayerID;
+                outlineRenderer.sortingOrder = baseRenderer.sortingOrder + 1;
+                outlineRenderer.flipX = baseRenderer.flipX;
+                outlineRenderer.flipY = baseRenderer.flipY;
+                outlineRenderer.drawMode = baseRenderer.drawMode;
+                outlineRenderer.size = baseRenderer.size;
+                outlineRenderer.tileMode = baseRenderer.tileMode;
+                outlineRenderer.maskInteraction = baseRenderer.maskInteraction;
+                outlineRenderer.spriteSortPoint = baseRenderer.spriteSortPoint;
             }
 
             var canvasObject = new GameObject("Prompt Canvas", typeof(RectTransform));
@@ -244,15 +310,21 @@ namespace Inkform.Interactable.Parts
 
         /// <summary>The sprite's slice rectangle in texture UV space (x0, y0, x1, y1) — the region the
         /// outline shader treats as "the sprite", masking everything outside it.</summary>
-        private static Vector4 SpriteUvRect(Sprite sprite)
+        private static bool TrySpriteUvRect(Sprite sprite, out Vector4 uvRect)
         {
+            uvRect = default;
+            if (sprite == null) return false;
+
             Texture2D texture = sprite.texture;
+            if (texture == null || texture.width <= 0 || texture.height <= 0) return false;
+
             Rect pixelRect = sprite.textureRect;
-            return new Vector4(
+            uvRect = new Vector4(
                 pixelRect.x / texture.width,
                 pixelRect.y / texture.height,
                 (pixelRect.x + pixelRect.width) / texture.width,
                 (pixelRect.y + pixelRect.height) / texture.height);
+            return true;
         }
 
         void OnDestroy()
@@ -265,6 +337,30 @@ namespace Inkform.Interactable.Parts
             else
 #endif
                 Destroy(outlineMaterialInstance);
+        }
+
+        // ---- Scene-view gizmo ----
+
+        // Shows where the prompt icon will float, using the same placement formula as
+        // EnsureVisualsBuilt (root-local: x = offset.x, y = sprite top + offset.y) — resolved the
+        // same way for the edit mode, where Attach has not run yet
+        private void OnDrawGizmosSelected()
+        {
+            SpriteRenderer spriteRenderer = baseRenderer != null ? baseRenderer : GetComponentInChildren<SpriteRenderer>();
+            if (spriteRenderer == null) return;
+
+            Interactable node = root != null ? root : GetComponentInParent<Interactable>();
+            Transform parent = node != null ? node.transform : transform;
+
+            Bounds bounds = spriteRenderer.localBounds;
+            float top = spriteRenderer.sprite != null ? bounds.extents.y : 0.5f;   // matches the runtime no-sprite fallback
+
+            Vector3 promptWorld = parent.TransformPoint(new Vector3(promptOffset.x, top + promptOffset.y, 0f));
+            Vector3 spriteWorld = parent.TransformPoint(spriteRenderer.transform.localPosition + (Vector3)bounds.center);
+
+            Gizmos.color = new Color(1f, 0.8f, 0.2f, 0.9f);   // the same yellow as the parts overview
+            Gizmos.DrawLine(spriteWorld, promptWorld);
+            Gizmos.DrawWireSphere(promptWorld, iconWorldSize * 0.5f);   // the icon's approximate footprint
         }
     }
 }

@@ -31,6 +31,10 @@ namespace Inkform.Audio
             " and concurrency and may steal lower lanes — reserve for death/game-over feedback." +
             " Existing Cue assets predate this field and deserialize to Gameplay, unchanged behavior")]
         public CuePriority priority = CuePriority.Gameplay;
+        [Tooltip("When cooldown, concurrency or pool pressure would reject this spatial one-shot, " +
+            "allow a nearer post to replace the farthest playing voice from this same Cue. " +
+            "Off preserves the normal first-come behavior")]
+        public bool preferNearestWhenLimited;
 
         [Header("Distance falloff")]
         // Defaulting to off is intentional: existing Cue assets do not store these fields, they take

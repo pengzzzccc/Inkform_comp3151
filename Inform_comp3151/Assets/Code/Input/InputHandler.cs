@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -34,6 +35,7 @@ namespace Inkform.Input
         private InputAction spitBomb;
         private InputAction interact;
         private bool actionsInitialized;
+        private readonly HashSet<Object> gameplayInputLockOwners = new HashSet<Object>();
 
         // Held-button actions feeding the device auto-detection (a held button = deliberate input)
         private InputAction[] pressButtons;
@@ -97,6 +99,7 @@ namespace Inkform.Input
         {
             // No Dispose here: the wrapper is the shared InputActions instance, releasing it would
             // kill the asset under UIManager's UI module too. It is static and ends with play mode.
+            gameplayInputLockOwners.Clear();
         }
 
         // The persistent GameManager survives scene switches (PersistentGameRoot calls DontDestroyOnLoad
@@ -117,6 +120,11 @@ namespace Inkform.Input
 
         void Update()
         {
+            // Scoped presentation owners normally release explicitly. Prune Unity fake-null entries
+            // as a final guard so a destroyed map/cutscene can never lock gameplay permanently.
+            if (gameplayInputLockOwners.RemoveWhere(owner => owner == null) > 0)
+                ApplyActionState();
+
             AutoSwitchDevice();   // before filtering: the active family follows whichever device produced input
 
             // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
@@ -258,7 +266,7 @@ namespace Inkform.Input
             SettingsStore.Changed += OnSettingsChanged;
             PlayerBus.PlayerRegistered += OnPlayerRegistered;
 
-            if (wantsActionsEnabled) EnableActions();
+            ApplyActionState();
         }
 
         void OnDisable()
@@ -287,9 +295,30 @@ namespace Inkform.Input
         public void SetPlaying(bool playing)
         {
             wantsActionsEnabled = playing;
-            if (!isActiveAndEnabled) return;
+            ApplyActionState();
+        }
 
-            if (playing) EnableActions();
+        /// <summary>
+        /// Adds or removes a scoped gameplay-input lock without changing the flow layer's desired
+        /// playing state. Locks stack by owner, so resuming a pause menu cannot unlock an active
+        /// wall-map inspection; removing the final lock reapplies the latest SetPlaying request.
+        /// </summary>
+        public void SetGameplayInputLocked(Object owner, bool locked)
+        {
+            // ReferenceEquals lets an owner's OnDestroy remove its entry even after Unity has begun
+            // reporting that object as fake-null.
+            if (ReferenceEquals(owner, null)) return;
+
+            bool changed = locked
+                ? gameplayInputLockOwners.Add(owner)
+                : gameplayInputLockOwners.Remove(owner);
+            if (changed) ApplyActionState();
+        }
+
+        private void ApplyActionState()
+        {
+            if (!isActiveAndEnabled) return;
+            if (wantsActionsEnabled && gameplayInputLockOwners.Count == 0) EnableActions();
             else DisableActions();
         }
 
