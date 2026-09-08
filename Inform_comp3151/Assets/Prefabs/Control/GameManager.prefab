@@ -190,7 +190,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f2e36c105b2f0a429f9123bd4fb9491, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
-  poolSize: 24
+  poolSize: 64
   hardCap: 48
   growthStep: 4
   logDrops: 0

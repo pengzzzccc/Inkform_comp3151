@@ -54,8 +54,9 @@ namespace Inkform.Settings
         public static bool ShowFps { get; private set; }
 
         /// <summary>Session performance recorder on/off — writes the Docs/PerfLogs (or Log/) CSV
-        /// traces. On by default: it is a development tool and silence would be a behavior change.</summary>
-        public static bool PerfRecording { get; private set; } = true;
+        /// traces. Off by default: it is a development tool, and a player's session should not pay
+        /// for a CSV nobody asked for.</summary>
+        public static bool PerfRecording { get; private set; } = false;
 
         /// <summary>Performance recorder sampling interval in seconds (0.1 = 10 Hz). Values outside
         /// PerfIntervals never get in through the setter.</summary>
@@ -138,7 +139,7 @@ namespace Inkform.Settings
             FpsCap = 60;
             VSync = false;
             ShowFps = false;
-            PerfRecording = true;
+            PerfRecording = false;
             PerfInterval = 1f;
             Rumble = true;
             FxIntensity = 1f;
@@ -171,7 +172,7 @@ namespace Inkform.Settings
             FpsCap = PlayerPrefs.GetInt(KeyFps, 120);
             VSync = PlayerPrefs.GetInt(KeyVSync, 0) != 0;
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
-            PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 1) != 0;
+            PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 0) != 0;
             PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
             Rumble = PlayerPrefs.GetInt(KeyRumble, 1) != 0;
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
@@ -351,7 +352,7 @@ namespace Inkform.Settings
             FpsCap = 120;
             VSync = false;
             ShowFps = false;
-            PerfRecording = true;
+            PerfRecording = false;
             PerfInterval = 1f;
             Rumble = true;
             FxIntensity = 1f;

@@ -326,6 +326,11 @@ namespace Inkform.EditorTools
         /// </summary>
         private static GameObject BuildTutorialPanel()
         {
+            // The page arrays are hand-authored content, not layout: keep whatever the existing
+            // prefab already carries, or every rebuild would reset the tutorial back to the
+            // placeholder card art. First-ever build falls back to the placeholders below.
+            ReadExistingPages(out Sprite[] checkpointPages, out Sprite[] ropeGunPages);
+
             GameObject tutorial = BuildPanelPrefab("Tutorial", typeof(TutorialPanel), panel =>
             {
                 // Same shape as the pause sheet: transparent backdrop over the frozen game frame,
@@ -344,27 +349,78 @@ namespace Inkform.EditorTools
                 AddButton(panel, "Btn_Close", "Close", new Vector2(220f, -300f), new Vector2(160f, 64f));
             }, Palette.None);
 
-            AssignTutorialPages(tutorial);
+            AssignTutorialPages(tutorial, checkpointPages, ropeGunPages);
             return tutorial;
+        }
+
+        /// <summary>Pages already assigned on the prefab at PanelsDir/Tutorial.prefab, or null when
+        /// there is none yet (or it carries none).</summary>
+        private static void ReadExistingPages(out Sprite[] checkpointPages, out Sprite[] ropeGunPages)
+        {
+            checkpointPages = null;
+            ropeGunPages = null;
+
+            GameObject existing = AssetDatabase.LoadAssetAtPath<GameObject>($"{PanelsDir}/Tutorial.prefab");
+            TutorialPanel previous = existing != null ? existing.GetComponent<TutorialPanel>() : null;
+            if (previous == null) return;
+
+            SerializedObject so = new SerializedObject(previous);
+            checkpointPages = ReadPages(so, "checkpointPages");
+            ropeGunPages = ReadPages(so, "ropeGunPages");
+        }
+
+        private static Sprite[] ReadPages(SerializedObject so, string property)
+        {
+            SerializedProperty pages = so.FindProperty(property);
+            if (pages == null || pages.arraySize == 0) return null;
+
+            var result = new Sprite[pages.arraySize];
+            int count = 0;
+            for (int i = 0; i < pages.arraySize; i++)
+            {
+                if (pages.GetArrayElementAtIndex(i).objectReferenceValue is Sprite sprite && sprite != null)
+                    result[count++] = sprite;
+            }
+
+            if (count == 0) return null;
+            System.Array.Resize(ref result, count);
+            return result;
         }
 
         /// <summary>Placeholder pages: the card art itself, one page per pickup. Both pngs import as
         /// Multiple (same as aim_cursor), so the sprite is a sub-asset found by name.</summary>
-        private static void AssignTutorialPages(GameObject tutorial)
+        private static void AssignTutorialPages(GameObject tutorial, Sprite[] checkpointPages, Sprite[] ropeGunPages)
         {
             TutorialPanel panel = tutorial.GetComponent<TutorialPanel>();
             SerializedObject so = new SerializedObject(panel);
-            FillPages(so, "checkpointPages", LoadNamedSprite(TimeCardArtPath, "TimeCard_0"));
-            FillPages(so, "ropeGunPages", LoadNamedSprite(RopeGunArtPath, "ropeGun_0"));
+            FillPages(so, "checkpointPages", checkpointPages ?? PlaceholderPages(TimeCardArtPath, "TimeCard_0"));
+            FillPages(so, "ropeGunPages", ropeGunPages ?? PlaceholderPages(RopeGunArtPath, "ropeGun_0"));
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private static void FillPages(SerializedObject so, string property, Sprite page)
+        private static Sprite[] PlaceholderPages(string path, string spriteName)
         {
-            SerializedProperty pages = so.FindProperty(property);
-            if (pages == null || page == null) return;
-            pages.arraySize = 1;
-            pages.GetArrayElementAtIndex(0).objectReferenceValue = page;
+            Sprite sprite = LoadNamedSprite(path, spriteName);
+            return sprite != null ? new[] { sprite } : null;
+        }
+
+        // Never writes a one-element array holding null: HasPages would report true and the sheet
+        // would open as a blank white page (the Page Image carries no sprite of its own — the page
+        // art is assigned here, at runtime, by TutorialPanel.ShowPage).
+        private static void FillPages(SerializedObject so, string property, Sprite[] pages)
+        {
+            SerializedProperty target = so.FindProperty(property);
+            if (target == null) return;
+
+            if (pages == null || pages.Length == 0)
+            {
+                target.arraySize = 0;
+                return;
+            }
+
+            target.arraySize = pages.Length;
+            for (int i = 0; i < pages.Length; i++)
+                target.GetArrayElementAtIndex(i).objectReferenceValue = pages[i];
         }
 
         private static Sprite LoadNamedSprite(string path, string spriteName)
