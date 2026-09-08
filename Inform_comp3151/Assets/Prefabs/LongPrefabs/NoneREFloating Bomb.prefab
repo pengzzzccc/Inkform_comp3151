@@ -16,9 +16,8 @@ GameObject:
   - component: {fileID: 3816028758277302456}
   - component: {fileID: 7095600481869306254}
   - component: {fileID: 6020701259372670916}
-  - component: {fileID: -7917173674154126597}
   m_Layer: 0
-  m_Name: Floating Bomb
+  m_Name: NoneREFloating Bomb
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -240,15 +239,3 @@ MonoBehaviour:
   homeRadius: 0.05
   knockForce: 8
   pushForce: 4
---- !u!114 &-7917173674154126597
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4026234241155763014}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ba180997b2205c6479539a20dcb5b72d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.RestorablePart

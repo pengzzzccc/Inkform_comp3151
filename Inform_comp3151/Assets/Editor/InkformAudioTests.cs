@@ -359,6 +359,155 @@ namespace Inkform.Tests
             }
         }
 
+        [Test]
+        public void AudioManager_NearestFirst_ReplacesFarVoiceWhenCooldownBlocks()
+        {
+            GameObject go = NewManager(out AudioManager manager, poolSize: 2, hardCap: 4);
+            GameObject ear = NewListenerAt(manager, Vector3.zero);
+            SoundCue cue = NewNearestFirstCue();
+            cue.cooldown = 10f;
+            try
+            {
+                AudioSource far = manager.Play(cue, new Vector3(80f, 0f, 0f));
+                AudioSource near = manager.Play(cue, new Vector3(2f, 0f, 0f));
+
+                Assert.IsNotNull(far);
+                Assert.IsNotNull(near, "a nearer post supersedes the cooldown-blocked far voice");
+                Assert.AreEqual(1, manager.ActiveVoiceCount);
+                Assert.AreEqual(1, cue.activeCount, "replacement releases then reclaims one Cue slot");
+                Assert.AreEqual(1, GetField<int>(manager, "stolenVoices"));
+                Assert.IsNull(far.clip, "the superseded source is stopped and returned to the pool");
+
+                Assert.IsNull(manager.Play(cue, new Vector3(90f, 0f, 0f)),
+                    "a farther post cannot displace the nearer voice during cooldown");
+                Assert.AreEqual(1, manager.ActiveVoiceCount);
+            }
+            finally
+            {
+                DestroyManager(go, manager);
+                UnityEngine.Object.DestroyImmediate(ear);
+                UnityEngine.Object.DestroyImmediate(cue);
+            }
+        }
+
+        [Test]
+        public void AudioManager_NearestFirst_ReplacesFarthestAtCueLimit()
+        {
+            GameObject go = NewManager(out AudioManager manager, poolSize: 2, hardCap: 4);
+            GameObject ear = NewListenerAt(manager, Vector3.zero);
+            SoundCue cue = NewNearestFirstCue();
+            cue.maxConcurrent = 2;
+            try
+            {
+                AudioSource farthest = manager.Play(cue, new Vector3(80f, 0f, 0f));
+                AudioSource middle = manager.Play(cue, new Vector3(60f, 0f, 0f));
+                AudioSource near = manager.Play(cue, new Vector3(5f, 0f, 0f));
+
+                Assert.IsNotNull(farthest);
+                Assert.IsNotNull(middle);
+                Assert.AreSame(farthest, near,
+                    "with no pooled source, the farthest voice's source is recycled for the nearer post");
+                Assert.AreEqual(2, manager.ActiveVoiceCount);
+                Assert.AreEqual(2, cue.activeCount);
+                Assert.AreEqual(1, GetField<int>(manager, "stolenVoices"));
+
+                Assert.IsNull(manager.Play(cue, new Vector3(90f, 0f, 0f)),
+                    "a farther post is still dropped at the per-Cue limit");
+                Assert.AreEqual(2, manager.ActiveVoiceCount);
+            }
+            finally
+            {
+                DestroyManager(go, manager);
+                UnityEngine.Object.DestroyImmediate(ear);
+                UnityEngine.Object.DestroyImmediate(cue);
+            }
+        }
+
+        [Test]
+        public void AudioManager_NearestFirst_BypassesYoungVoiceProtectionAtHardCap()
+        {
+            GameObject go = NewManager(out AudioManager manager, poolSize: 1, hardCap: 1);
+            GameObject ear = NewListenerAt(manager, Vector3.zero);
+            SoundCue cue = NewNearestFirstCue();
+            try
+            {
+                AudioSource far = manager.Play(cue, new Vector3(80f, 0f, 0f));
+                AudioSource near = manager.Play(cue, new Vector3(2f, 0f, 0f));
+
+                Assert.AreSame(far, near,
+                    "nearest-first may recycle its own far voice even before MinStealAge");
+                Assert.AreEqual(1, manager.ActiveVoiceCount);
+                Assert.AreEqual(1, cue.activeCount);
+                Assert.AreEqual(1, GetField<int>(manager, "stolenVoices"));
+                Assert.AreEqual(0, GetField<int>(manager, "droppedPosts"));
+            }
+            finally
+            {
+                DestroyManager(go, manager);
+                UnityEngine.Object.DestroyImmediate(ear);
+                UnityEngine.Object.DestroyImmediate(cue);
+            }
+        }
+
+        [Test]
+        public void AudioManager_NearestFirst_FirstPostAtHardCapKeepsPriorityArbitration()
+        {
+            GameObject go = NewManager(out AudioManager manager, poolSize: 1, hardCap: 1);
+            GameObject ear = NewListenerAt(manager, Vector3.zero);
+            SoundCue ambience = NewPlayableCue();
+            SoundCue blast = NewNearestFirstCue();
+            ambience.priority = CuePriority.Ambience;
+            try
+            {
+                AudioSource ambienceSource = manager.Play(ambience);
+                AudioSource blastSource = manager.Play(blast, new Vector3(2f, 0f, 0f));
+
+                Assert.AreSame(ambienceSource, blastSource,
+                    "with no existing Blast voice, its first post still steals a lower-priority voice");
+                Assert.AreEqual(0, ambience.activeCount);
+                Assert.AreEqual(1, blast.activeCount);
+                Assert.AreEqual(1, GetField<int>(manager, "stolenVoices"));
+            }
+            finally
+            {
+                DestroyManager(go, manager);
+                UnityEngine.Object.DestroyImmediate(ear);
+                UnityEngine.Object.DestroyImmediate(ambience);
+                UnityEngine.Object.DestroyImmediate(blast);
+            }
+        }
+
+        [Test]
+        public void AudioManager_NearestFirst_DoesNotChangeUnsupportedCueBehavior()
+        {
+            GameObject go = NewManager(out AudioManager manager, poolSize: 3, hardCap: 4);
+            GameObject ear = NewListenerAt(manager, Vector3.zero);
+            SoundCue nonSpatial = NewPlayableCue();
+            SoundCue positionless = NewNearestFirstCue();
+            nonSpatial.preferNearestWhenLimited = true;
+            nonSpatial.cooldown = 10f;
+            positionless.cooldown = 10f;
+            try
+            {
+                Assert.IsNotNull(manager.Play(nonSpatial, new Vector3(80f, 0f, 0f)));
+                Assert.IsNull(manager.Play(nonSpatial, new Vector3(2f, 0f, 0f)),
+                    "a non-spatial Cue keeps first-come cooldown behavior");
+
+                Assert.IsNotNull(manager.Play(positionless));
+                Assert.IsNull(manager.Play(positionless),
+                    "a positionless post cannot participate in nearest-first replacement");
+                Assert.AreEqual(2, manager.ActiveVoiceCount);
+                Assert.AreEqual(0, GetField<int>(manager, "stolenVoices"));
+            }
+            finally
+            {
+                DestroyManager(go, manager);
+                UnityEngine.Object.DestroyImmediate(ear);
+                UnityEngine.Object.DestroyImmediate(nonSpatial);
+                UnityEngine.Object.DestroyImmediate(positionless);
+            }
+        }
+
         // ---- helpers, same reflection idiom as InkformRuntimeEdgeTests ----
 
         private static GameObject NewManager(out AudioManager manager, int poolSize, int hardCap)
@@ -388,6 +537,25 @@ namespace Inkform.Tests
             cue.cooldown = 0f;
             cue.maxConcurrent = 8;
             return cue;     // the clip is destroyed with the cue's DestroyImmediate
+        }
+
+        private static SoundCue NewNearestFirstCue()
+        {
+            SoundCue cue = NewPlayableCue();
+            cue.spatial = true;
+            cue.falloffRange = 100f;
+            cue.preferNearestWhenLimited = true;
+            return cue;
+        }
+
+        private static GameObject NewListenerAt(AudioManager manager, Vector3 position)
+        {
+            GameObject ear = new GameObject("AudioManager test listener");
+            ear.transform.position = position;
+            // AudioManager only needs the listener Transform for its XY distance calculation. Injecting
+            // it avoids creating a second real AudioListener when a test scene already carries one.
+            SetField(manager, "listenerCache", ear.transform);
+            return ear;
         }
 
         private static void SetField(object target, string name, object value) =>

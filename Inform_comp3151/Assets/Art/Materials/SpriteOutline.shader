@@ -1,7 +1,7 @@
 // Inkform sprite-outline — URP 2D sprite edge glow for interaction prompts. A second SpriteRenderer
 // (scaled up by the prompt's padding, same sprite) draws with this material: it discards the body
-// and paints only a band hugging the alpha silhouette (8 directions × 2 sample rings in texel
-// space), so the light reads as a rim around the sprite whatever its shape.
+// and paints a soft, additive glow hugging the alpha silhouette (8 directions x 4 weighted
+// sample rings in texel space), so the light fades out away from the sprite's edge.
 //
 // A sprite mesh never has drawable pixels outside its silhouette, so the quad is scaled up around
 // the sprite and the fragment UVs are remapped back into sprite space (_SpriteRect/_SpriteScale):
@@ -20,8 +20,9 @@ Shader "Inkform/SpriteOutline"
         [PerRendererData] _MainTex ("Sprite", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
 
-        _OutlineColor ("Outline Color", Color) = (1, 0.85, 0.35, 1)
+        [HDR] _OutlineColor ("Outline Color", Color) = (1, 0.85, 0.35, 1)
         _OutlineWidth ("Outline Width (texels)", Range(1, 8)) = 4
+        _GlowIntensity ("Glow Intensity", Range(0, 8)) = 2
         _Fade ("Fade", Range(0, 1)) = 0
 
         // Runtime-driven by InteractionPromptPart; defaults cover the whole texture
@@ -43,7 +44,8 @@ Shader "Inkform/SpriteOutline"
 
         Cull Off
         ZWrite Off
-        Blend SrcAlpha OneMinusSrcAlpha
+        // Add light without darkening the background or changing the render target's alpha.
+        Blend SrcAlpha One, Zero One
 
         Pass
         {
@@ -64,6 +66,7 @@ Shader "Inkform/SpriteOutline"
                 float4 _Color;
                 half4  _OutlineColor;
                 float  _OutlineWidth;
+                float  _GlowIntensity;
                 float  _Fade;
                 float4 _SpriteRect;
                 float  _SpriteScale;
@@ -104,7 +107,9 @@ Shader "Inkform/SpriteOutline"
             half MaskedAlpha(float2 uv)
             {
                 float2 inside = step(_SpriteRect.xy, uv) * step(uv, _SpriteRect.zw);
-                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv).a * inside.x * inside.y;
+                float2 halfTexel = _MainTex_TexelSize.xy * 0.5;
+                float2 sampleUV = clamp(uv, _SpriteRect.xy + halfTexel, _SpriteRect.zw - halfTexel);
+                return SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, sampleUV).a * inside.x * inside.y;
             }
 
             half4 Frag(Varyings IN) : SV_Target
@@ -114,25 +119,31 @@ Shader "Inkform/SpriteOutline"
                 float2 rectCenter = (_SpriteRect.xy + _SpriteRect.zw) * 0.5;
                 float2 suv = rectCenter + (IN.uv - rectCenter) * _SpriteScale;
 
-                // Two rings per direction (full width and half) — the half ring fills the diagonal
-                // gaps so the band is solid instead of dotted at the corners
-                float2 stepFull = _MainTex_TexelSize.xy * _OutlineWidth;
-                float2 stepHalf = stepFull * 0.5;
-                half ring = 0;
+                // Nearby samples contribute more light than distant ones. Combining four rings
+                // gives a bright rim that fades outward instead of a solid, hard-edged stroke.
+                float2 stepFull = _MainTex_TexelSize.xy * max(_OutlineWidth, 0.0);
+                half glow = 0;
                 [unroll]
-                for (int i = 0; i < 8; i++)
+                for (int radius = 1; radius <= 4; radius++)
                 {
-                    float2 d = kDirs[i];
-                    ring = max(ring, MaskedAlpha(suv + d * stepFull));
-                    ring = max(ring, MaskedAlpha(suv + d * stepHalf));
+                    half ring = 0;
+                    [unroll]
+                    for (int i = 0; i < 8; i++)
+                    {
+                        float2 offset = kDirs[i] * stepFull * (radius * 0.25);
+                        ring = max(ring, MaskedAlpha(suv + offset));
+                    }
+                    float weight = 1.0 - smoothstep(0.0, 1.0, (radius - 0.5) * 0.25);
+                    glow += ring * weight;
                 }
                 half center = MaskedAlpha(suv);
 
-                // Band strictly outside the silhouette: a pixel with its own alpha keeps none of the glow
-                half band = saturate(ring * (1.0 - saturate(center)));
+                // The four weights sum to two. Keep the glow outside the sprite body.
+                half band = saturate(glow * 0.5) * (1.0 - saturate(center));
 
                 half4 outline = _OutlineColor * IN.color * _Color;
-                outline.a *= band * _Fade;
+                outline.rgb *= _GlowIntensity;
+                outline.a *= band * saturate(_Fade);
                 return outline;
             }
             ENDHLSL
