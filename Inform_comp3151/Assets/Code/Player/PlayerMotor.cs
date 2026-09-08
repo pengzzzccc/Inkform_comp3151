@@ -144,6 +144,16 @@ namespace Inkform.Player
             // Also rejects move input while blasted/dashing, or the next frame would wipe the knockback velocity
             if (MoveLocked) return;
 
+#if UNITY_EDITOR
+            // F2 flight: both axes at full move speed, gravity zeroed in Tick. Rope/dash lockouts
+            // still win (the check above)
+            if (DebugCheats.Flight)
+            {
+                body.linearVelocity = input * movingSpeed;
+                return;
+            }
+#endif
+
             body.linearVelocityX = input.x * movingSpeed;
         }
 
@@ -217,6 +227,15 @@ namespace Inkform.Player
         // Read the comment on ContactSensor.ceilingStickTimer before reordering
         private void ApplyNonLinearGravity()
         {
+#if UNITY_EDITOR
+            // F2 flight: gravity never touches the body — Move drives both axes directly. Toggling
+            // off self-heals: the normal path below assigns gravityScale every frame anyway
+            if (DebugCheats.Flight)
+            {
+                body.gravityScale = 0f;
+                return;
+            }
+#endif
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
             if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        

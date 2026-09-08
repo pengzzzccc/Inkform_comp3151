@@ -76,6 +76,7 @@ namespace Inkform.Audio
             public float startedAt;     // Time.unscaledTime
             public bool persistent;     // loops refreshed per frame; never auto-recycled
             public Vector3 position;    // emitter position for the per-frame refresh
+            public bool hasPosition;    // false means camera-centred playback, never a far spatial victim
         }
 
         // Listener position. This component lives on a DontDestroyOnLoad object and does not follow the
@@ -226,16 +227,35 @@ namespace Inkform.Audio
             // (death stinger) must fire no matter how recently the Cue played — that is the point
             // of the lane, so it skips both gates
             bool critical = post.priority == CuePriority.Critical;
+            int nearestReplacement = -1;
             if (!critical)
             {
-                if (Time.unscaledTime - cue.lastPlayTime < cue.cooldown) return null;
-                if (cue.activeCount >= cue.maxConcurrent) return null;
+                bool cooldownBlocked = Time.unscaledTime - cue.lastPlayTime < cue.cooldown;
+                bool concurrencyBlocked = cue.activeCount >= cue.maxConcurrent;
+                if (cooldownBlocked || concurrencyBlocked)
+                {
+                    TryFindFartherSameCue(cue, post.position, out nearestReplacement);
+                    if (nearestReplacement < 0) return null;
+                }
             }
 
             AudioClip clip = cue.PickClip();
             if (clip == null) return null;      // Cue has no clip, or every slot is empty
 
-            Source s = AcquireSource(post.priority);
+            Source s;
+            if (nearestReplacement >= 0)
+            {
+                stolenVoices++;
+                ReleaseAt(nearestReplacement);
+                s = TakeLiveSource();
+            }
+            else
+            {
+                // Critical posts retain their unconditional priority-based arbitration. Nearest-first
+                // is a congestion policy for ordinary gameplay Cues, not a way to mute death feedback.
+                s = AcquireSource(post.priority, critical ? null : cue,
+                    critical ? null : post.position);
+            }
             if (s.src == null) return null;     // at cap and nothing stealable: already counted + logged
             return StartVoice(s, cue, clip, post.priority, post.position,
                 persistent: false, cue.loop, zoned: !post.ignoreZone && !cue.ignoreListenerPause);
@@ -300,6 +320,7 @@ namespace Inkform.Audio
                 startedAt = Time.unscaledTime,
                 persistent = persistent,
                 position = position.GetValueOrDefault(Vector3.zero),
+                hasPosition = position.HasValue,
                 baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
                     * Mathf.Min(listenerZone.volumeScale, emitterZone.volumeScale),
             };
@@ -319,7 +340,8 @@ namespace Inkform.Audio
 
         /// <summary>Where the next source comes from: pooled, grown, or stolen — VoiceArbiter decides,
         /// this executes and keeps the debug counters honest.</summary>
-        private Source AcquireSource(CuePriority incoming)
+        private Source AcquireSource(CuePriority incoming, SoundCue nearestCue = null,
+            Vector3? nearestPosition = null)
         {
             switch (VoiceArbiter.DecideAcquire(pool.Count, active.Count, hardCap))
             {
@@ -345,6 +367,14 @@ namespace Inkform.Audio
                             persistent = active[i].persistent,
                         });
                     int victim = VoiceArbiter.PickVictim(facts, incoming, Time.unscaledTime);
+                    // When there is already a comparable voice from a nearest-first Cue, distance
+                    // is authoritative under pool pressure: replace only its farthest voice, and
+                    // only if the new post is strictly nearer. With no comparable same-Cue voice,
+                    // retain the normal priority arbitration for this Cue's first post.
+                    bool comparedSameCue = TryFindFartherSameCue(nearestCue, nearestPosition,
+                        out int nearestVictim);
+                    if (comparedSameCue)
+                        victim = nearestVictim;
                     if (victim < 0)
                     {
                         droppedPosts++;
@@ -357,6 +387,48 @@ namespace Inkform.Audio
                     return TakeLiveSource();
                 }
             }
+        }
+
+        /// <summary>
+        /// Finds a playing voice this post may supersede under a Cue's nearest-first policy.
+        /// The return value says whether at least one comparable same-Cue voice exists; victim
+        /// remains -1 when all of them are nearer or tied. Unsupported cases and the first post of
+        /// a Cue keep the existing cooldown/concurrency and generic pool-pressure behavior.
+        /// </summary>
+        private bool TryFindFartherSameCue(SoundCue cue, Vector3? incomingPosition,
+            out int victim)
+        {
+            victim = -1;
+            if (cue == null || !cue.preferNearestWhenLimited || !cue.spatial || cue.loop
+                || !incomingPosition.HasValue)
+                return false;
+
+            Transform ear = Listener;
+            if (ear == null) return false;
+
+            // Compare real XY distance, not the attenuated/clamped falloff value. Two explosions
+            // can both sit beyond falloffRange (and therefore share t == 1) while one is still
+            // materially closer to the player and should win the limited voice.
+            Vector2 earPosition = ear.position;
+            float incomingDistanceSq = ((Vector2)incomingPosition.Value - earPosition).sqrMagnitude;
+            float farthestDistanceSq = incomingDistanceSq;
+            bool foundComparableVoice = false;
+
+            for (int i = 0; i < active.Count; i++)
+            {
+                Voice voice = active[i];
+                if (voice.cue != cue || voice.persistent || !voice.hasPosition) continue;
+                foundComparableVoice = true;
+
+                float voiceDistanceSq = ((Vector2)voice.position - earPosition).sqrMagnitude;
+                // Strict comparison keeps the first voice on ties and prevents replacement churn.
+                if (voiceDistanceSq <= farthestDistanceSq) continue;
+
+                victim = i;
+                farthestDistanceSq = voiceDistanceSq;
+            }
+
+            return foundComparableVoice;
         }
 
         /// <summary>How far from the listener, normalized to [0,1]. Without spatial / no position /

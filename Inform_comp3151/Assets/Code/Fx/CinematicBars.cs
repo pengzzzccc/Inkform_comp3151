@@ -13,15 +13,14 @@ namespace Inkform.Fx
     /// stays as interactive as it was. Driven by unscaled time so an already-controllable player
     /// can pause while the exit animation is finishing without leaving the camera held forever.
     ///
-    /// Self-installed by RoomIntro; any future cutscene can drive the same component.
+    /// Owned by RoomIntro; any future cutscene can drive the same component.
     /// </summary>
     public sealed class CinematicBars : MonoBehaviour
     {
+        [Range(0f, 0.5f)]
         [SerializeField] private float barHeightFraction = 0.1f;   // each bar, as a fraction of screen height
 
         private RectTransform top, bottom;
-
-        private void Awake() => Build();
 
         /// <summary>Slides both bars in from the screen edges; completes when fully in.</summary>
         public IEnumerator Show(float seconds) => Animate(barHeightFraction, seconds);
@@ -29,39 +28,42 @@ namespace Inkform.Fx
         /// <summary>Slides both bars back out; completes when gone.</summary>
         public IEnumerator Hide(float seconds) => Animate(0f, seconds);
 
-        /// <summary>Jumps both bars to a fraction of screen height instantly, no animation — the
-        /// intro uses it to stand fully letterboxed before the transition's fade-in reveals it.</summary>
-        public void Set(float fraction)
+        /// <summary>Jumps to the configured letterbox height instantly. This deliberately has no
+        /// numeric argument: passing 1 as a visibility value used to make each bar one full screen
+        /// tall instead of showing a movie-style letterbox.</summary>
+        public void ShowInstant()
         {
             if (top == null) Build();
-            float height = Screen.height * Mathf.Clamp01(fraction);
-            top.sizeDelta = new Vector2(0f, height);
-            bottom.sizeDelta = new Vector2(0f, height);
+            SetHeight(Screen.height * Mathf.Clamp(barHeightFraction, 0f, 0.5f));
         }
 
         private IEnumerator Animate(float targetFraction, float seconds)
         {
             if (top == null) Build();
 
-            seconds = Mathf.Max(0.01f, seconds);
             float start = top.sizeDelta.y;
-            float target = Screen.height * targetFraction;
+            float target = Screen.height * Mathf.Clamp(targetFraction, 0f, 0.5f);
             if (Mathf.Approximately(start, target)) yield break;
+            if (seconds <= 0f)
+            {
+                SetHeight(target);
+                yield break;
+            }
 
             for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / seconds)
             {
                 float height = Mathf.Lerp(start, target, t);
-                top.sizeDelta = new Vector2(0f, height);
-                bottom.sizeDelta = new Vector2(0f, height);
+                SetHeight(height);
                 yield return null;
             }
 
-            top.sizeDelta = new Vector2(0f, target);
-            bottom.sizeDelta = new Vector2(0f, target);
+            SetHeight(target);
         }
 
         private void Build()
         {
+            if (top != null && bottom != null) return;
+
             GameObject canvasObject = new GameObject("Cinematic Bars", typeof(RectTransform));
             canvasObject.transform.SetParent(transform, false);
 
@@ -91,6 +93,12 @@ namespace Inkform.Fx
             image.color = Color.black;
             image.raycastTarget = false;
             return rect;
+        }
+
+        private void SetHeight(float height)
+        {
+            top.sizeDelta = new Vector2(0f, height);
+            bottom.sizeDelta = new Vector2(0f, height);
         }
     }
 }

@@ -79,6 +79,8 @@ namespace Inkform.Interactable.Parts
             baseRenderer = root.GetComponentInChildren<SpriteRenderer>();
             if (baseRenderer == null)
                 Debug.LogWarning($"{root.name} interaction prompt found no SpriteRenderer; glow disabled", this);
+            else if (baseRenderer.sprite == null)
+                Debug.LogWarning($"{root.name} interaction prompt has no sprite on its SpriteRenderer; the glow and icon stay hidden until one is assigned", this);
             if (outlineMaterial == null)
                 Debug.LogWarning($"{root.name} interaction prompt has no outline material; glow disabled", this);
         }
@@ -100,7 +102,10 @@ namespace Inkform.Interactable.Parts
             float target = PlayerInRange ? 1f : 0f;
             fade = Mathf.MoveTowards(fade, target, Time.deltaTime / fadeDuration);
 
-            bool visible = fade > 0.001f;
+            // No sprite means nothing to outline and nowhere to anchor the icon — stay hidden
+            // (checked per frame, so assigning the sprite later just starts the prompt working)
+            bool hasArt = baseRenderer != null && baseRenderer.sprite != null;
+            bool visible = fade > 0.001f && hasArt;
             if (outlineRenderer != null) outlineRenderer.enabled = visible;
             if (promptRoot != null) promptRoot.gameObject.SetActive(visible);
             if (!visible) return;
@@ -126,7 +131,7 @@ namespace Inkform.Interactable.Parts
         {
             if (promptRoot != null) return;
 
-            if (baseRenderer != null && outlineMaterial != null)
+            if (baseRenderer != null && outlineMaterial != null && baseRenderer.sprite != null)
             {
                 var outlineObject = new GameObject("Outline");
                 outlineObject.transform.SetParent(root.transform, false);

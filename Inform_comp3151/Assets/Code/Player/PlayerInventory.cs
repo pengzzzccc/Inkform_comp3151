@@ -1,6 +1,7 @@
 using Inkform.Bus;
 using Inkform.Interactable;
 using Inkform.Item;
+using Inkform.Tool;
 using UnityEngine;
 
 namespace Inkform.Player
@@ -35,6 +36,15 @@ namespace Inkform.Player
 
         public bool TryReleaseFirst(Vector2 dir)
         {
+#if UNITY_EDITOR
+            // F1 infinite bombs: an empty backpack is topped up with the one bomb item in the
+            // project (Resources/Inventory/AllinoneBomb) so spitting works immediately
+            if (DebugCheats.InfiniteBombs && InventoryStore.Count == 0)
+            {
+                InventoryItemDefinition bomb = Resources.Load<InventoryItemDefinition>("Inventory/AllinoneBomb");
+                if (bomb != null) InventoryStore.TryAdd(bomb);
+            }
+#endif
             if (!InventoryStore.TryPeekFirst(out InventoryItemDefinition definition)) return false;
             if (definition.WorldPrefab == null)
             {
@@ -55,7 +65,11 @@ namespace Inkform.Player
 
             Vector2 velocity = dir * spitSpeed;
             carriable.Release(mouth, velocity);
-            InventoryStore.RemoveFirst();
+#if UNITY_EDITOR
+            // F1 infinite bombs: the item stays in the backpack — one bomb, endless spits
+            if (!DebugCheats.InfiniteBombs)
+#endif
+                InventoryStore.RemoveFirst();
             ItemBus.RaiseItemReleased(definition, mouth, velocity);
             return true;
         }

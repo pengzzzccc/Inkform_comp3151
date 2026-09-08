@@ -22,8 +22,9 @@ MonoBehaviour:
   loop: 0
   ignoreListenerPause: 0
   cooldown: 0.05
-  maxConcurrent: 2
+  maxConcurrent: 8
   priority: 128
+  preferNearestWhenLimited: 1
   spatial: 1
   falloffRange: 20
   minVolume: 0.15

@@ -1,4 +1,5 @@
 using System.Collections;
+using Inkform.Audio;
 using Inkform.Fx;
 using Inkform.Player;
 using UnityEngine;
@@ -16,11 +17,15 @@ namespace Inkform.Level
         [Header("Shot")]
         [SerializeField] private Transform camAnchor;
 
+        [Header("Audio")]
+        [Tooltip("Played when the fade-in has completed and the pre-spawn wait begins")]
+        [SerializeField] private SoundCue introCue;
+
         [Header("Timing")]
         [Min(0f)]
         [SerializeField] private float spawnDelay = 1f;
         [Min(0f)]
-        [SerializeField] private float barsSeconds = 0.3f;
+        [SerializeField] private float barsSeconds = 1f;
 
         private CinematicBars bars;
         private CamHandler cam;
@@ -39,7 +44,7 @@ namespace Inkform.Level
 
             bars = GetComponent<CinematicBars>();
             if (bars == null) bars = gameObject.AddComponent<CinematicBars>();
-            bars.Set(1f);
+            bars.ShowInstant();
 
             cam = FindAnyObjectByType<CamHandler>();
             if (cam == null)
@@ -60,6 +65,10 @@ namespace Inkform.Level
         /// <summary>Starts after SceneFader.FadeIn has fully completed.</summary>
         public IEnumerator WaitAndSpawn(RespawnDirector respawn)
         {
+            // This is a direct presentation post, not a LifeBus respawn: a fresh entrance must not
+            // trigger death-respawn listeners merely to make its authored intro sound audible.
+            AudioManager.Instance?.Play(introCue);
+
             float remaining = Mathf.Max(0f, spawnDelay);
             while (remaining > 0f)
             {
@@ -78,8 +87,10 @@ namespace Inkform.Level
         /// <summary>Runs after SceneDirector has restored gameplay state and player input.</summary>
         public IEnumerator FinishAfterControl()
         {
-            if (bars != null) yield return bars.Hide(barsSeconds);
+            // Both actions start in this frame: the player is already controllable, the camera eases
+            // out of its establishing position while the movie bars retract around the live scene.
             if (cam != null) cam.ResumeFollow(false);
+            if (bars != null) yield return bars.Hide(barsSeconds);
             prepared = false;
         }
 

@@ -1,4 +1,5 @@
 using Inkform.Life;
+using Inkform.Tool;
 using System;
 using UnityEngine;
 
@@ -33,9 +34,14 @@ namespace Inkform.Bus
 
         public static void RaiseDied(in DeathContext ctx)
         {
+#if UNITY_EDITOR
+            // F3 invincibility: the hit, knockback and explosion all still happen — the death
+            // itself never does. Single choke point; no hazard needs to know the cheat exists
+            if (DebugCheats.Invincible) return;
+#endif
             // Dedup: several spikes may hit the player in the same frame; without this, the count
-            // doubles and fragments spawn double (same reason as HazardBus.Exploded — that one guards
-            // against being called twice, this one against multiple sources)
+            // doubles and fragments spawn double (same reason as HazardBus.Exploded — that one
+            // guards against being called twice, this one against multiple sources)
             if (IsDead) return;
             IsDead = true;
             DeathCount++;

@@ -836,11 +836,43 @@ namespace Inkform.Tests
 
             SerializedObject serialized = new SerializedObject(intro);
             AssertSerializedReference(intro, "camAnchor");
+            AssertSerializedReference(intro, "introCue");
             Assert.AreEqual(1f, serialized.FindProperty("spawnDelay").floatValue);
-            Assert.AreEqual(0.3f, serialized.FindProperty("barsSeconds").floatValue);
+            Assert.AreEqual(1f, serialized.FindProperty("barsSeconds").floatValue);
             Assert.IsNull(serialized.FindProperty("fallHeight"));
             Assert.IsNull(serialized.FindProperty("startDelay"));
             Assert.IsNull(serialized.FindProperty("panSeconds"));
+
+            CinematicBars bars = prefab.GetComponent<CinematicBars>();
+            Assert.IsNotNull(bars);
+            Assert.AreEqual(0.1f,
+                new SerializedObject(bars).FindProperty("barHeightFraction").floatValue);
+        }
+
+        [Test]
+        public void CinematicBars_ShowInstantUsesTheConfiguredFilmHeight()
+        {
+            GameObject host = new GameObject("cinematic bars test", typeof(CinematicBars));
+            try
+            {
+                CinematicBars bars = host.GetComponent<CinematicBars>();
+                bars.ShowInstant();
+
+                RectTransform top = GetField<RectTransform>(bars, "top");
+                RectTransform bottom = GetField<RectTransform>(bars, "bottom");
+                Assert.IsNotNull(top);
+                Assert.IsNotNull(bottom);
+                Assert.AreEqual(Screen.height * 0.1f, top.sizeDelta.y, 0.01f);
+                Assert.AreEqual(top.sizeDelta.y, bottom.sizeDelta.y, 0.01f);
+                if (Screen.height > 0) Assert.Less(top.sizeDelta.y, Screen.height);
+
+                foreach (Graphic graphic in host.GetComponentsInChildren<Graphic>(true))
+                    Assert.IsFalse(graphic.raycastTarget);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(host);
+            }
         }
 
         [Test]

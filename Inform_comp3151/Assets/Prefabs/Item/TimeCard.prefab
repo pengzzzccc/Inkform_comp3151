@@ -172,7 +172,7 @@ MonoBehaviour:
   outlineMaterial: {fileID: 2100000, guid: 4fb7dee77d574e7cb75369359b8e6102, type: 2}
   outlinePadding: 0.25
   pulseSpeed: 2.2
-  pulseStrength: 1
+  pulseStrength: 0.35
   fadeDuration: 0.3
   iconWorldSize: 0.5
   promptOffset: {x: 0, y: 0.18}
