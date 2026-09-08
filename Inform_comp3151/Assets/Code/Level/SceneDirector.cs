@@ -141,6 +141,11 @@ namespace Inkform.Level
         public bool IsMenuScene(string sceneName) =>
             world != null && world.MenuSceneName == sceneName;
 
+        /// <summary>The credits/summary scene of a finished run. Classified in the world asset like
+        /// the menu scene, so UIManager can show the end sheet instead of the gameplay HUD.</summary>
+        public bool IsEndScene(string sceneName) =>
+            world != null && world.EndRoom != null && world.EndRoom.SceneName == sceneName;
+
         public string DisplayNameOf(string sceneName)
         {
             RoomDefinition room = world != null ? world.FindBySceneName(sceneName) : null;

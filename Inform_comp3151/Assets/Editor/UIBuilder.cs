@@ -164,9 +164,10 @@ namespace Inkform.EditorTools
             });
 
             GameObject tutorial = BuildTutorialPanel();
+            GameObject endPanel = BuildEndPanel();
             GameObject hud = BuildHudPrefab();
 
-            WireGameManager(mainMenu, pause, saveMenu, settings, tutorial, hud);
+            WireGameManager(mainMenu, pause, saveMenu, settings, tutorial, endPanel, hud);
             RemoveLegacySceneHud();
             BuildMenuScene();
             SetBuildSettings();
@@ -409,6 +410,55 @@ namespace Inkform.EditorTools
             PrefabUtility.UnloadPrefabContents(root);
 
             Debug.Log("Inkform tutorial UI built: Tutorial.prefab + GameManager wiring.");
+        }
+
+        /// <summary>Credits/summary sheet of a finished run: title, the two run readouts (filled at
+        /// runtime by EndPanel from the save slot) and a way back to the main menu.</summary>
+        private static GameObject BuildEndPanel()
+        {
+            return BuildPanelPrefab("EndPanel", typeof(EndPanel), panel =>
+            {
+                AddTitle(panel, "Thanks for playing", 220f, FontSize.Display);
+                AddLabel(panel, "Lbl_Deaths", "Deaths  0", new Vector2(0f, 60f), new Vector2(900f, 64f),
+                    FontSize.Heading, TextAnchor.MiddleCenter, Color.white);
+                AddLabel(panel, "Lbl_Time", "Total time  0:00", new Vector2(0f, -30f), new Vector2(900f, 64f),
+                    FontSize.Heading, TextAnchor.MiddleCenter, Color.white);
+                AddButton(panel, "Btn_Back", "Back to Menu", new Vector2(0f, -180f), new Vector2(360f, 70f));
+            });
+        }
+
+        /// <summary>
+        /// Builds only the end sheet and wires its UIManager slot — the targeted counterpart to
+        /// BuildAll, matching Build Tutorial UI: the other prefabs keep their hand edits.
+        /// </summary>
+        [MenuItem("Tools/Inkform/Build End UI")]
+        public static void BuildEndUI()
+        {
+            if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
+            {
+                Debug.LogError($"UIBuilder: no GameManager prefab at {GameManagerPrefabPath} — cannot wire the end panel slot.");
+                return;
+            }
+
+            EnsureFolders();
+            GameObject endPanel = BuildEndPanel();
+
+            GameObject root = PrefabUtility.LoadPrefabContents(GameManagerPrefabPath);
+            UIManager ui = root.GetComponent<UIManager>();
+            if (ui != null)
+            {
+                SerializedObject so = new SerializedObject(ui);
+                so.FindProperty("endPanelPrefab").objectReferenceValue = endPanel.GetComponent<EndPanel>();
+                so.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(root, GameManagerPrefabPath);
+            }
+            else
+            {
+                Debug.LogWarning("UIBuilder: no UIManager on GameManager.prefab — end panel slot not wired.");
+            }
+            PrefabUtility.UnloadPrefabContents(root);
+
+            Debug.Log("Inkform end UI built: EndPanel.prefab + GameManager wiring.");
         }
 
         // ---- Prefab generation ----
@@ -1159,7 +1209,7 @@ namespace Inkform.EditorTools
         // ---- GameManager wiring ----
 
         private static void WireGameManager(GameObject mainMenu, GameObject pause, GameObject saveMenu,
-            GameObject settings, GameObject tutorial, GameObject hud)
+            GameObject settings, GameObject tutorial, GameObject endPanel, GameObject hud)
         {
             if (AssetDatabase.LoadMainAssetAtPath(GameManagerPrefabPath) == null)
             {
@@ -1182,6 +1232,7 @@ namespace Inkform.EditorTools
             so.FindProperty("saveMenuPrefab").objectReferenceValue = saveMenu.GetComponent<SaveMenuPanel>();
             so.FindProperty("settingsPrefab").objectReferenceValue = settings.GetComponent<SettingsPanel>();
             so.FindProperty("tutorialPrefab").objectReferenceValue = tutorial.GetComponent<TutorialPanel>();
+            so.FindProperty("endPanelPrefab").objectReferenceValue = endPanel.GetComponent<EndPanel>();
             so.FindProperty("hudPrefab").objectReferenceValue = hud.GetComponent<HudRoot>();
 
             // Menu sound slots. Filled only when empty, unlike the panel slots just above: those point

@@ -185,7 +185,9 @@ namespace Inkform.UI
             return $"{head}  -  {level}\n{data.sceneName}   {FormatDuration(data.playSeconds)}   {data.deaths} deaths   {FormatSavedAt(data.savedAtUtc)}";
         }
 
-        private static string FormatDuration(float seconds)
+        /// <summary>Shared with EndPanel: one duration format across every sheet that shows a run's
+        /// elapsed time (H:MM:SS past an hour, M:SS below it).</summary>
+        internal static string FormatDuration(float seconds)
         {
             TimeSpan t = TimeSpan.FromSeconds(Mathf.Max(0f, seconds));
             return t.TotalHours >= 1.0

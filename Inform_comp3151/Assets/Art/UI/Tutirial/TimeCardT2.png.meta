@@ -1,0 +1,3393 @@
+fileFormatVersion: 2
+guid: 65e73a30a3233ef4e8cc44ec95ba8fc5
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5570077792099527440
+    second: TimeCardT2_0
+  - first:
+      213: 6971134094741464930
+    second: TimeCardT2_1
+  - first:
+      213: 5703796620396757815
+    second: TimeCardT2_2
+  - first:
+      213: -531384307296438740
+    second: TimeCardT2_3
+  - first:
+      213: 5262262442055619366
+    second: TimeCardT2_4
+  - first:
+      213: -6750884328619649773
+    second: TimeCardT2_5
+  - first:
+      213: 7399210728728458448
+    second: TimeCardT2_6
+  - first:
+      213: -77068027370389704
+    second: TimeCardT2_7
+  - first:
+      213: 7758274174307689665
+    second: TimeCardT2_8
+  - first:
+      213: -8045045591991603006
+    second: TimeCardT2_9
+  - first:
+      213: -6232255679851869434
+    second: TimeCardT2_10
+  - first:
+      213: 1354235461710441316
+    second: TimeCardT2_11
+  - first:
+      213: 16717834624286728
+    second: TimeCardT2_12
+  - first:
+      213: 2889113544172034955
+    second: TimeCardT2_13
+  - first:
+      213: 1194353788879482795
+    second: TimeCardT2_14
+  - first:
+      213: -3256465255505413350
+    second: TimeCardT2_15
+  - first:
+      213: -4240119854714696845
+    second: TimeCardT2_16
+  - first:
+      213: 7650945424163600032
+    second: TimeCardT2_17
+  - first:
+      213: 8654334291119354947
+    second: TimeCardT2_18
+  - first:
+      213: 2462366168256045698
+    second: TimeCardT2_19
+  - first:
+      213: 3586572520849945093
+    second: TimeCardT2_20
+  - first:
+      213: 5358386768901076660
+    second: TimeCardT2_21
+  - first:
+      213: 1368583201818003416
+    second: TimeCardT2_22
+  - first:
+      213: 3444817493489256947
+    second: TimeCardT2_23
+  - first:
+      213: -8162034534893612608
+    second: TimeCardT2_24
+  - first:
+      213: -3583648991886955400
+    second: TimeCardT2_25
+  - first:
+      213: 5802295497201097800
+    second: TimeCardT2_26
+  - first:
+      213: 6115362062598947517
+    second: TimeCardT2_27
+  - first:
+      213: -9217147117256999340
+    second: TimeCardT2_28
+  - first:
+      213: 4693705113284286789
+    second: TimeCardT2_29
+  - first:
+      213: 1771269671278846258
+    second: TimeCardT2_30
+  - first:
+      213: 2986690512452499187
+    second: TimeCardT2_31
+  - first:
+      213: -7104696504413008279
+    second: TimeCardT2_32
+  - first:
+      213: -3974335315198862002
+    second: TimeCardT2_33
+  - first:
+      213: -4431840728173865668
+    second: TimeCardT2_34
+  - first:
+      213: -3461991967282734342
+    second: TimeCardT2_35
+  - first:
+      213: 251993251833726922
+    second: TimeCardT2_36
+  - first:
+      213: 2475449493587968313
+    second: TimeCardT2_37
+  - first:
+      213: -5347004871079039530
+    second: TimeCardT2_38
+  - first:
+      213: -7312173031478524713
+    second: TimeCardT2_39
+  - first:
+      213: -2280669936741609264
+    second: TimeCardT2_40
+  - first:
+      213: -7302867243634418430
+    second: TimeCardT2_41
+  - first:
+      213: -2470257061819332800
+    second: TimeCardT2_42
+  - first:
+      213: 5015236138807447109
+    second: TimeCardT2_43
+  - first:
+      213: -6923906392068789049
+    second: TimeCardT2_44
+  - first:
+      213: 7630120377967535522
+    second: TimeCardT2_45
+  - first:
+      213: 6596161604279116388
+    second: TimeCardT2_46
+  - first:
+      213: -272943453198847854
+    second: TimeCardT2_47
+  - first:
+      213: 4162616395449530660
+    second: TimeCardT2_48
+  - first:
+      213: 1729087843944258063
+    second: TimeCardT2_49
+  - first:
+      213: 750041706280470981
+    second: TimeCardT2_50
+  - first:
+      213: -4100987738390983103
+    second: TimeCardT2_51
+  - first:
+      213: -5509529176737347970
+    second: TimeCardT2_52
+  - first:
+      213: -5313814109906590843
+    second: TimeCardT2_53
+  - first:
+      213: -2620888251919093797
+    second: TimeCardT2_54
+  - first:
+      213: -760477347650705017
+    second: TimeCardT2_55
+  - first:
+      213: -5296445370859634198
+    second: TimeCardT2_56
+  - first:
+      213: 4110168543711363137
+    second: TimeCardT2_57
+  - first:
+      213: 8474461795306864599
+    second: TimeCardT2_58
+  - first:
+      213: 1716228749572330016
+    second: TimeCardT2_59
+  - first:
+      213: 1799484492257021647
+    second: TimeCardT2_60
+  - first:
+      213: -2266748303560994820
+    second: TimeCardT2_61
+  - first:
+      213: 5337245599426606344
+    second: TimeCardT2_62
+  - first:
+      213: -7943364790210535011
+    second: TimeCardT2_63
+  - first:
+      213: 2402878251192755819
+    second: TimeCardT2_64
+  - first:
+      213: -3988363354134334696
+    second: TimeCardT2_65
+  - first:
+      213: 7809144353569549918
+    second: TimeCardT2_66
+  - first:
+      213: 5997090095715821467
+    second: TimeCardT2_67
+  - first:
+      213: 6044669704619955354
+    second: TimeCardT2_68
+  - first:
+      213: 8407392786602857845
+    second: TimeCardT2_69
+  - first:
+      213: 716692016688980168
+    second: TimeCardT2_70
+  - first:
+      213: 4849417440693304670
+    second: TimeCardT2_71
+  - first:
+      213: -7539501822864674366
+    second: TimeCardT2_72
+  - first:
+      213: 8452661025310860109
+    second: TimeCardT2_73
+  - first:
+      213: -1035813680449940457
+    second: TimeCardT2_74
+  - first:
+      213: 6174921224186580378
+    second: TimeCardT2_75
+  - first:
+      213: -2494630096070491127
+    second: TimeCardT2_76
+  - first:
+      213: -4945008160744301168
+    second: TimeCardT2_77
+  - first:
+      213: -1776048011907695973
+    second: TimeCardT2_78
+  - first:
+      213: -5818933196479646646
+    second: TimeCardT2_79
+  - first:
+      213: 3936991714785332444
+    second: TimeCardT2_80
+  - first:
+      213: -925491931157067334
+    second: TimeCardT2_81
+  - first:
+      213: -8526189261930676505
+    second: TimeCardT2_82
+  - first:
+      213: -4572219535809594999
+    second: TimeCardT2_83
+  - first:
+      213: 8573432898066471302
+    second: TimeCardT2_84
+  - first:
+      213: 4077728858072509627
+    second: TimeCardT2_85
+  - first:
+      213: 5916462765633203022
+    second: TimeCardT2_86
+  - first:
+      213: 8445822337019630461
+    second: TimeCardT2_87
+  - first:
+      213: 1457638836341223300
+    second: TimeCardT2_88
+  - first:
+      213: 8727570184316161500
+    second: TimeCardT2_89
+  - first:
+      213: -4727837726842819149
+    second: TimeCardT2_90
+  - first:
+      213: -6017438108913977975
+    second: TimeCardT2_91
+  - first:
+      213: -6410202009607063495
+    second: TimeCardT2_92
+  - first:
+      213: -4057566880291787107
+    second: TimeCardT2_93
+  - first:
+      213: 4317597716241722034
+    second: TimeCardT2_94
+  - first:
+      213: -3324955494746569443
+    second: TimeCardT2_95
+  - first:
+      213: 5547211713522018240
+    second: TimeCardT2_96
+  - first:
+      213: -7640600423556505795
+    second: TimeCardT2_97
+  - first:
+      213: 5972524121079755348
+    second: TimeCardT2_98
+  - first:
+      213: -1745905650435192271
+    second: TimeCardT2_99
+  - first:
+      213: 4902505828759008303
+    second: TimeCardT2_100
+  - first:
+      213: -8867174821013008613
+    second: TimeCardT2_101
+  - first:
+      213: 2042889076578933495
+    second: TimeCardT2_102
+  - first:
+      213: 598516455753385510
+    second: TimeCardT2_103
+  - first:
+      213: 7306134343948480489
+    second: TimeCardT2_104
+  - first:
+      213: -8420408678675046743
+    second: TimeCardT2_105
+  - first:
+      213: -9181109453763850162
+    second: TimeCardT2_106
+  - first:
+      213: -4259109927940850079
+    second: TimeCardT2_107
+  - first:
+      213: -1955387383518752127
+    second: TimeCardT2_108
+  - first:
+      213: 7443156133870264721
+    second: TimeCardT2_109
+  - first:
+      213: -7080651965355279393
+    second: TimeCardT2_110
+  - first:
+      213: -1334513452589731887
+    second: TimeCardT2_111
+  - first:
+      213: 7155471748248146439
+    second: TimeCardT2_112
+  - first:
+      213: -5619890410672165608
+    second: TimeCardT2_113
+  - first:
+      213: 4050095083153988316
+    second: TimeCardT2_114
+  - first:
+      213: 7278046291023619625
+    second: TimeCardT2_115
+  - first:
+      213: -9210191576866735867
+    second: TimeCardT2_116
+  - first:
+      213: -4373406929487350425
+    second: TimeCardT2_117
+  - first:
+      213: -2259158900985523950
+    second: TimeCardT2_118
+  - first:
+      213: -9180994200357743792
+    second: TimeCardT2_119
+  - first:
+      213: -6723759045532459295
+    second: TimeCardT2_120
+  - first:
+      213: -148635654562902866
+    second: TimeCardT2_121
+  - first:
+      213: 2001514828882397590
+    second: TimeCardT2_122
+  - first:
+      213: 8949361161282437005
+    second: TimeCardT2_123
+  - first:
+      213: 3344846169949120704
+    second: TimeCardT2_124
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: TimeCardT2_0
+      rect:
+        serializedVersion: 2
+        x: 750
+        y: 1002
+        width: 37
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01b62698d34ec4d40800000000000000
+      internalID: 5570077792099527440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_1
+      rect:
+        serializedVersion: 2
+        x: 795
+        y: 1002
+        width: 44
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 267eda646817eb060800000000000000
+      internalID: 6971134094741464930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_2
+      rect:
+        serializedVersion: 2
+        x: 848
+        y: 1002
+        width: 44
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73382d56ec4f72f40800000000000000
+      internalID: 5703796620396757815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_3
+      rect:
+        serializedVersion: 2
+        x: 901
+        y: 1002
+        width: 44
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c26f064b9c420a8f0800000000000000
+      internalID: -531384307296438740
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_4
+      rect:
+        serializedVersion: 2
+        x: 989
+        y: 1002
+        width: 42
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 623da957fcf470940800000000000000
+      internalID: 5262262442055619366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_5
+      rect:
+        serializedVersion: 2
+        x: 1041
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 315dfd8887a0052a0800000000000000
+      internalID: -6750884328619649773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_6
+      rect:
+        serializedVersion: 2
+        x: 1094
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d47e1084f64fa660800000000000000
+      internalID: 7399210728728458448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_7
+      rect:
+        serializedVersion: 2
+        x: 1147
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83f3c0599033eeef0800000000000000
+      internalID: -77068027370389704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_8
+      rect:
+        serializedVersion: 2
+        x: 506
+        y: 450
+        width: 909
+        height: 512
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c462b5a14deaab60800000000000000
+      internalID: 7758274174307689665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_9
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 402
+        width: 273
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c0b48798a14a5090800000000000000
+      internalID: -8045045591991603006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_10
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 411
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60bc405aa749289a0800000000000000
+      internalID: -6232255679851869434
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_11
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 411
+        width: 17
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46bec753af53bc210800000000000000
+      internalID: 1354235461710441316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_12
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 411
+        width: 17
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 800c13238c46b3000800000000000000
+      internalID: 16717834624286728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_13
+      rect:
+        serializedVersion: 2
+        x: 274
+        y: 430
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8bd4241671381820800000000000000
+      internalID: 2889113544172034955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_14
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 411
+        width: 17
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bafad4a6172339010800000000000000
+      internalID: 1194353788879482795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_15
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 325
+        width: 58
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1bb2368a16bec2d0800000000000000
+      internalID: -3256465255505413350
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_16
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 316
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37b46ae05711825c0800000000000000
+      internalID: -4240119854714696845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_17
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 325
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a6fb2ba35e9d2a60800000000000000
+      internalID: 7650945424163600032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_18
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 344b6a56f2f5a1870800000000000000
+      internalID: 8654334291119354947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_19
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 325
+        width: 39
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28267dddbf41c2220800000000000000
+      internalID: 2462366168256045698
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_20
+      rect:
+        serializedVersion: 2
+        x: 302
+        y: 325
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 502307a84b016c130800000000000000
+      internalID: 3586572520849945093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_21
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b670895060dc5a40800000000000000
+      internalID: 5358386768901076660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_22
+      rect:
+        serializedVersion: 2
+        x: 364
+        y: 325
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d7cde5cb2f2ef210800000000000000
+      internalID: 1368583201818003416
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_23
+      rect:
+        serializedVersion: 2
+        x: 386
+        y: 325
+        width: 30
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f98a7742437ecf20800000000000000
+      internalID: 3444817493489256947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_24
+      rect:
+        serializedVersion: 2
+        x: 424
+        y: 325
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c11237b5d0aabe80800000000000000
+      internalID: -8162034534893612608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_25
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87c24e69a32544ec0800000000000000
+      internalID: -3583648991886955400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_26
+      rect:
+        serializedVersion: 2
+        x: 471
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84c15884305e58050800000000000000
+      internalID: 5802295497201097800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_27
+      rect:
+        serializedVersion: 2
+        x: 508
+        y: 325
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db24c1635612ed450800000000000000
+      internalID: 6115362062598947517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_28
+      rect:
+        serializedVersion: 2
+        x: 530
+        y: 325
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45e7169088d161080800000000000000
+      internalID: -9217147117256999340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_29
+      rect:
+        serializedVersion: 2
+        x: 555
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5499eb5aee3632140800000000000000
+      internalID: 4693705113284286789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_30
+      rect:
+        serializedVersion: 2
+        x: 592
+        y: 325
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 231aff5a160d49810800000000000000
+      internalID: 1771269671278846258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_31
+      rect:
+        serializedVersion: 2
+        x: 614
+        y: 325
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f6b2c8623bd27920800000000000000
+      internalID: 2986690512452499187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_32
+      rect:
+        serializedVersion: 2
+        x: 636
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96ec089eb2c076d90800000000000000
+      internalID: -7104696504413008279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_33
+      rect:
+        serializedVersion: 2
+        x: 674
+        y: 316
+        width: 30
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4d1847761358d8c0800000000000000
+      internalID: -3974335315198862002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_34
+      rect:
+        serializedVersion: 2
+        x: 711
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c359610b650fe72c0800000000000000
+      internalID: -4431840728173865668
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_35
+      rect:
+        serializedVersion: 2
+        x: 733
+        y: 316
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: afa5bdee5a884ffc0800000000000000
+      internalID: -3461991967282734342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_36
+      rect:
+        serializedVersion: 2
+        x: 755
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac7485507824f7300800000000000000
+      internalID: 251993251833726922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_37
+      rect:
+        serializedVersion: 2
+        x: 777
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9314bbce2309a5220800000000000000
+      internalID: 2475449493587968313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_38
+      rect:
+        serializedVersion: 2
+        x: 814
+        y: 325
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ddec0f366f9bc5b0800000000000000
+      internalID: -5347004871079039530
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_39
+      rect:
+        serializedVersion: 2
+        x: 836
+        y: 325
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d408829e51f58a90800000000000000
+      internalID: -7312173031478524713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_40
+      rect:
+        serializedVersion: 2
+        x: 877
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d09a9aa6ce6950e0800000000000000
+      internalID: -2280669936741609264
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_41
+      rect:
+        serializedVersion: 2
+        x: 899
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20d95552fe007aa90800000000000000
+      internalID: -7302867243634418430
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_42
+      rect:
+        serializedVersion: 2
+        x: 921
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 047cb5e4a42e7bdd0800000000000000
+      internalID: -2470257061819332800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_43
+      rect:
+        serializedVersion: 2
+        x: 942
+        y: 316
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54ec15642b2b99540800000000000000
+      internalID: 5015236138807447109
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_44
+      rect:
+        serializedVersion: 2
+        x: 967
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7cceea222d759ef90800000000000000
+      internalID: -6923906392068789049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_45
+      rect:
+        serializedVersion: 2
+        x: 989
+        y: 325
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a56932ce02a3e960800000000000000
+      internalID: 7630120377967535522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_46
+      rect:
+        serializedVersion: 2
+        x: 1014
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 462a028f7064a8b50800000000000000
+      internalID: 6596161604279116388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_47
+      rect:
+        serializedVersion: 2
+        x: 1052
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 290705c106f463cf0800000000000000
+      internalID: -272943453198847854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_48
+      rect:
+        serializedVersion: 2
+        x: 1074
+        y: 325
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4297cf2ae8594c930800000000000000
+      internalID: 4162616395449530660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_49
+      rect:
+        serializedVersion: 2
+        x: 1096
+        y: 325
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0a5eb3ab34fef710800000000000000
+      internalID: 1729087843944258063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_50
+      rect:
+        serializedVersion: 2
+        x: 1117
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c9439d35fea86a00800000000000000
+      internalID: 750041706280470981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_51
+      rect:
+        serializedVersion: 2
+        x: 1139
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14e09f0416d5617c0800000000000000
+      internalID: -4100987738390983103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_52
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 325
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e768bec87683a83b0800000000000000
+      internalID: -5509529176737347970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_53
+      rect:
+        serializedVersion: 2
+        x: 1199
+        y: 325
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5832f88883a8146b0800000000000000
+      internalID: -5313814109906590843
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_54
+      rect:
+        serializedVersion: 2
+        x: 1221
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdf2e5c550cb0abd0800000000000000
+      internalID: -2620888251919093797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_55
+      rect:
+        serializedVersion: 2
+        x: 1242
+        y: 316
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7896c89a1ed3275f0800000000000000
+      internalID: -760477347650705017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_56
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 325
+        width: 30
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae146a93ffe3f76b0800000000000000
+      internalID: -5296445370859634198
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_57
+      rect:
+        serializedVersion: 2
+        x: 1317
+        y: 325
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14086ee83804a0930800000000000000
+      internalID: 4110168543711363137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_58
+      rect:
+        serializedVersion: 2
+        x: 1339
+        y: 325
+        width: 30
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7df72eb6a165b9570800000000000000
+      internalID: 8474461795306864599
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_59
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 275
+        width: 58
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 022529b64f441d710800000000000000
+      internalID: 1716228749572330016
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_60
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcecdc39c9d09f810800000000000000
+      internalID: 1799484492257021647
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_61
+      rect:
+        serializedVersion: 2
+        x: 189
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cff070b7d64ea80e0800000000000000
+      internalID: -2266748303560994820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_62
+      rect:
+        serializedVersion: 2
+        x: 227
+        y: 266
+        width: 30
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 805f6d04894b11a40800000000000000
+      internalID: 5337245599426606344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_63
+      rect:
+        serializedVersion: 2
+        x: 264
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d91e72e1fcf73c190800000000000000
+      internalID: -7943364790210535011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_64
+      rect:
+        serializedVersion: 2
+        x: 286
+        y: 266
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b662bd8d90db85120800000000000000
+      internalID: 2402878251192755819
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_65
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81333a129ac76a8c0800000000000000
+      internalID: -3988363354134334696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_66
+      rect:
+        serializedVersion: 2
+        x: 330
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5ea24a3a67af5c60800000000000000
+      internalID: 7809144353569549918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_67
+      rect:
+        serializedVersion: 2
+        x: 367
+        y: 275
+        width: 55
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b97a7290ba1f93350800000000000000
+      internalID: 5997090095715821467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_68
+      rect:
+        serializedVersion: 2
+        x: 446
+        y: 275
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a941070021bf2e350800000000000000
+      internalID: 6044669704619955354
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_69
+      rect:
+        serializedVersion: 2
+        x: 471
+        y: 275
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57515a4f13f0da470800000000000000
+      internalID: 8407392786602857845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_70
+      rect:
+        serializedVersion: 2
+        x: 496
+        y: 275
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c0ea1c879332f900800000000000000
+      internalID: 716692016688980168
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_71
+      rect:
+        serializedVersion: 2
+        x: 521
+        y: 275
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5dbb1018779c4340800000000000000
+      internalID: 4849417440693304670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_72
+      rect:
+        serializedVersion: 2
+        x: 561
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c1bdb0c90f4e5790800000000000000
+      internalID: -7539501822864674366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_73
+      rect:
+        serializedVersion: 2
+        x: 583
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d43617c1b62ed4570800000000000000
+      internalID: 8452661025310860109
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_74
+      rect:
+        serializedVersion: 2
+        x: 605
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7149a4312fc00a1f0800000000000000
+      internalID: -1035813680449940457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_75
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 266
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9d49a3232ab1b550800000000000000
+      internalID: 6174921224186580378
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_76
+      rect:
+        serializedVersion: 2
+        x: 652
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90448bd052b416dd0800000000000000
+      internalID: -2494630096070491127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_77
+      rect:
+        serializedVersion: 2
+        x: 674
+        y: 275
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09d9d6f074dcf5bb0800000000000000
+      internalID: -4945008160744301168
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_78
+      rect:
+        serializedVersion: 2
+        x: 699
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9af33a3eb53a57e0800000000000000
+      internalID: -1776048011907695973
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_79
+      rect:
+        serializedVersion: 2
+        x: 736
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a443a1c761ffe3fa0800000000000000
+      internalID: -5818933196479646646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_80
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdc8f630b1103a630800000000000000
+      internalID: 3936991714785332444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_81
+      rect:
+        serializedVersion: 2
+        x: 796
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab984e8fdfdf723f0800000000000000
+      internalID: -925491931157067334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_82
+      rect:
+        serializedVersion: 2
+        x: 817
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ee3fda3a04eca980800000000000000
+      internalID: -8526189261930676505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_83
+      rect:
+        serializedVersion: 2
+        x: 839
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 989b7fc8e863c80c0800000000000000
+      internalID: -4572219535809594999
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_84
+      rect:
+        serializedVersion: 2
+        x: 877
+        y: 275
+        width: 27
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68956eafbc3faf670800000000000000
+      internalID: 8573432898066471302
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_85
+      rect:
+        serializedVersion: 2
+        x: 911
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbc65cbaac0079830800000000000000
+      internalID: 4077728858072509627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_86
+      rect:
+        serializedVersion: 2
+        x: 933
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4b6460e98f7b1250800000000000000
+      internalID: 5916462765633203022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_87
+      rect:
+        serializedVersion: 2
+        x: 955
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d735d1aeaa6953570800000000000000
+      internalID: 8445822337019630461
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_88
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48faeea7cc29a3410800000000000000
+      internalID: 1457638836341223300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_89
+      rect:
+        serializedVersion: 2
+        x: 1014
+        y: 274
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdd847c87de8e1970800000000000000
+      internalID: 8727570184316161500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_90
+      rect:
+        serializedVersion: 2
+        x: 1041
+        y: 274
+        width: 17
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bde7d7f2a8536eb0800000000000000
+      internalID: -4727837726842819149
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_91
+      rect:
+        serializedVersion: 2
+        x: 1064
+        y: 274
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 985b844fbe3cd7ca0800000000000000
+      internalID: -6017438108913977975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_92
+      rect:
+        serializedVersion: 2
+        x: 1087
+        y: 274
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93830e62c336a07a0800000000000000
+      internalID: -6410202009607063495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_93
+      rect:
+        serializedVersion: 2
+        x: 1110
+        y: 274
+        width: 17
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9e61d79b60a0b7c0800000000000000
+      internalID: -4057566880291787107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_94
+      rect:
+        serializedVersion: 2
+        x: 1134
+        y: 265
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ba20af4f303beb30800000000000000
+      internalID: 4317597716241722034
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_95
+      rect:
+        serializedVersion: 2
+        x: 1160
+        y: 274
+        width: 20
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d15c5a908926bd1d0800000000000000
+      internalID: -3324955494746569443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_96
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 293
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c7ad5eb9a7abfc40800000000000000
+      internalID: 5547211713522018240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_97
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 274
+        width: 7
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3f173b756227f590800000000000000
+      internalID: -7640600423556505795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_98
+      rect:
+        serializedVersion: 2
+        x: 1200
+        y: 274
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45239695b0ba2e250800000000000000
+      internalID: 5972524121079755348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_99
+      rect:
+        serializedVersion: 2
+        x: 1223
+        y: 274
+        width: 17
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13a8676af0c45c7e0800000000000000
+      internalID: -1745905650435192271
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_100
+      rect:
+        serializedVersion: 2
+        x: 1262
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f247670a313390440800000000000000
+      internalID: 4902505828759008303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_101
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1f4b380b7771f480800000000000000
+      internalID: -8867174821013008613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_102
+      rect:
+        serializedVersion: 2
+        x: 1306
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fa530d9accc95c10800000000000000
+      internalID: 2042889076578933495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_103
+      rect:
+        serializedVersion: 2
+        x: 1328
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6260861ab8b5e4800800000000000000
+      internalID: 598516455753385510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_104
+      rect:
+        serializedVersion: 2
+        x: 1365
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9efa45ce97a946560800000000000000
+      internalID: 7306134343948480489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_105
+      rect:
+        serializedVersion: 2
+        x: 1387
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ae15f38be2b42b80800000000000000
+      internalID: -8420408678675046743
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_106
+      rect:
+        serializedVersion: 2
+        x: 1409
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e40dc6c6895269080800000000000000
+      internalID: -9181109453763850162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_107
+      rect:
+        serializedVersion: 2
+        x: 1431
+        y: 266
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16efeb5161a94e4c0800000000000000
+      internalID: -4259109927940850079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_108
+      rect:
+        serializedVersion: 2
+        x: 1468
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1829517e8811dd4e0800000000000000
+      internalID: -1955387383518752127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_109
+      rect:
+        serializedVersion: 2
+        x: 1490
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1916b1771176b4760800000000000000
+      internalID: 7443156133870264721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_110
+      rect:
+        serializedVersion: 2
+        x: 1512
+        y: 275
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdbb3da6d887cbd90800000000000000
+      internalID: -7080651965355279393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_111
+      rect:
+        serializedVersion: 2
+        x: 1537
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dfa86ed51bda7de0800000000000000
+      internalID: -1334513452589731887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_112
+      rect:
+        serializedVersion: 2
+        x: 1575
+        y: 266
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7029caac4a75d4360800000000000000
+      internalID: 7155471748248146439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_113
+      rect:
+        serializedVersion: 2
+        x: 1600
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81de24b62732202b0800000000000000
+      internalID: -5619890410672165608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_114
+      rect:
+        serializedVersion: 2
+        x: 1622
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cda13f11504d43830800000000000000
+      internalID: 4050095083153988316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_115
+      rect:
+        serializedVersion: 2
+        x: 1643
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 926ef4b7a80d00560800000000000000
+      internalID: 7278046291023619625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_116
+      rect:
+        serializedVersion: 2
+        x: 1665
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 509309bfe83de2080800000000000000
+      internalID: -9210191576866735867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_117
+      rect:
+        serializedVersion: 2
+        x: 1687
+        y: 275
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 765bca5a1998e43c0800000000000000
+      internalID: -4373406929487350425
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_118
+      rect:
+        serializedVersion: 2
+        x: 1728
+        y: 275
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2119897f2fad5a0e0800000000000000
+      internalID: -2259158900985523950
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_119
+      rect:
+        serializedVersion: 2
+        x: 1750
+        y: 275
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05351c2fa6e869080800000000000000
+      internalID: -9180994200357743792
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_120
+      rect:
+        serializedVersion: 2
+        x: 1772
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1eed7b7a5c860b2a0800000000000000
+      internalID: -6723759045532459295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_121
+      rect:
+        serializedVersion: 2
+        x: 1793
+        y: 275
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eac02d0e8a0ffedf0800000000000000
+      internalID: -148635654562902866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_122
+      rect:
+        serializedVersion: 2
+        x: 1818
+        y: 275
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6994634e12fc6cb10800000000000000
+      internalID: 2001514828882397590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_123
+      rect:
+        serializedVersion: 2
+        x: 1840
+        y: 266
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d8fbae87f84823c70800000000000000
+      internalID: 8949361161282437005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: TimeCardT2_124
+      rect:
+        serializedVersion: 2
+        x: 1865
+        y: 275
+        width: 27
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c8a42caed74b6e20800000000000000
+      internalID: 3344846169949120704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      TimeCardT2_0: 5570077792099527440
+      TimeCardT2_1: 6971134094741464930
+      TimeCardT2_10: -6232255679851869434
+      TimeCardT2_100: 4902505828759008303
+      TimeCardT2_101: -8867174821013008613
+      TimeCardT2_102: 2042889076578933495
+      TimeCardT2_103: 598516455753385510
+      TimeCardT2_104: 7306134343948480489
+      TimeCardT2_105: -8420408678675046743
+      TimeCardT2_106: -9181109453763850162
+      TimeCardT2_107: -4259109927940850079
+      TimeCardT2_108: -1955387383518752127
+      TimeCardT2_109: 7443156133870264721
+      TimeCardT2_11: 1354235461710441316
+      TimeCardT2_110: -7080651965355279393
+      TimeCardT2_111: -1334513452589731887
+      TimeCardT2_112: 7155471748248146439
+      TimeCardT2_113: -5619890410672165608
+      TimeCardT2_114: 4050095083153988316
+      TimeCardT2_115: 7278046291023619625
+      TimeCardT2_116: -9210191576866735867
+      TimeCardT2_117: -4373406929487350425
+      TimeCardT2_118: -2259158900985523950
+      TimeCardT2_119: -9180994200357743792
+      TimeCardT2_12: 16717834624286728
+      TimeCardT2_120: -6723759045532459295
+      TimeCardT2_121: -148635654562902866
+      TimeCardT2_122: 2001514828882397590
+      TimeCardT2_123: 8949361161282437005
+      TimeCardT2_124: 3344846169949120704
+      TimeCardT2_13: 2889113544172034955
+      TimeCardT2_14: 1194353788879482795
+      TimeCardT2_15: -3256465255505413350
+      TimeCardT2_16: -4240119854714696845
+      TimeCardT2_17: 7650945424163600032
+      TimeCardT2_18: 8654334291119354947
+      TimeCardT2_19: 2462366168256045698
+      TimeCardT2_2: 5703796620396757815
+      TimeCardT2_20: 3586572520849945093
+      TimeCardT2_21: 5358386768901076660
+      TimeCardT2_22: 1368583201818003416
+      TimeCardT2_23: 3444817493489256947
+      TimeCardT2_24: -8162034534893612608
+      TimeCardT2_25: -3583648991886955400
+      TimeCardT2_26: 5802295497201097800
+      TimeCardT2_27: 6115362062598947517
+      TimeCardT2_28: -9217147117256999340
+      TimeCardT2_29: 4693705113284286789
+      TimeCardT2_3: -531384307296438740
+      TimeCardT2_30: 1771269671278846258
+      TimeCardT2_31: 2986690512452499187
+      TimeCardT2_32: -7104696504413008279
+      TimeCardT2_33: -3974335315198862002
+      TimeCardT2_34: -4431840728173865668
+      TimeCardT2_35: -3461991967282734342
+      TimeCardT2_36: 251993251833726922
+      TimeCardT2_37: 2475449493587968313
+      TimeCardT2_38: -5347004871079039530
+      TimeCardT2_39: -7312173031478524713
+      TimeCardT2_4: 5262262442055619366
+      TimeCardT2_40: -2280669936741609264
+      TimeCardT2_41: -7302867243634418430
+      TimeCardT2_42: -2470257061819332800
+      TimeCardT2_43: 5015236138807447109
+      TimeCardT2_44: -6923906392068789049
+      TimeCardT2_45: 7630120377967535522
+      TimeCardT2_46: 6596161604279116388
+      TimeCardT2_47: -272943453198847854
+      TimeCardT2_48: 4162616395449530660
+      TimeCardT2_49: 1729087843944258063
+      TimeCardT2_5: -6750884328619649773
+      TimeCardT2_50: 750041706280470981
+      TimeCardT2_51: -4100987738390983103
+      TimeCardT2_52: -5509529176737347970
+      TimeCardT2_53: -5313814109906590843
+      TimeCardT2_54: -2620888251919093797
+      TimeCardT2_55: -760477347650705017
+      TimeCardT2_56: -5296445370859634198
+      TimeCardT2_57: 4110168543711363137
+      TimeCardT2_58: 8474461795306864599
+      TimeCardT2_59: 1716228749572330016
+      TimeCardT2_6: 7399210728728458448
+      TimeCardT2_60: 1799484492257021647
+      TimeCardT2_61: -2266748303560994820
+      TimeCardT2_62: 5337245599426606344
+      TimeCardT2_63: -7943364790210535011
+      TimeCardT2_64: 2402878251192755819
+      TimeCardT2_65: -3988363354134334696
+      TimeCardT2_66: 7809144353569549918
+      TimeCardT2_67: 5997090095715821467
+      TimeCardT2_68: 6044669704619955354
+      TimeCardT2_69: 8407392786602857845
+      TimeCardT2_7: -77068027370389704
+      TimeCardT2_70: 716692016688980168
+      TimeCardT2_71: 4849417440693304670
+      TimeCardT2_72: -7539501822864674366
+      TimeCardT2_73: 8452661025310860109
+      TimeCardT2_74: -1035813680449940457
+      TimeCardT2_75: 6174921224186580378
+      TimeCardT2_76: -2494630096070491127
+      TimeCardT2_77: -4945008160744301168
+      TimeCardT2_78: -1776048011907695973
+      TimeCardT2_79: -5818933196479646646
+      TimeCardT2_8: 7758274174307689665
+      TimeCardT2_80: 3936991714785332444
+      TimeCardT2_81: -925491931157067334
+      TimeCardT2_82: -8526189261930676505
+      TimeCardT2_83: -4572219535809594999
+      TimeCardT2_84: 8573432898066471302
+      TimeCardT2_85: 4077728858072509627
+      TimeCardT2_86: 5916462765633203022
+      TimeCardT2_87: 8445822337019630461
+      TimeCardT2_88: 1457638836341223300
+      TimeCardT2_89: 8727570184316161500
+      TimeCardT2_9: -8045045591991603006
+      TimeCardT2_90: -4727837726842819149
+      TimeCardT2_91: -6017438108913977975
+      TimeCardT2_92: -6410202009607063495
+      TimeCardT2_93: -4057566880291787107
+      TimeCardT2_94: 4317597716241722034
+      TimeCardT2_95: -3324955494746569443
+      TimeCardT2_96: 5547211713522018240
+      TimeCardT2_97: -7640600423556505795
+      TimeCardT2_98: 5972524121079755348
+      TimeCardT2_99: -1745905650435192271
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

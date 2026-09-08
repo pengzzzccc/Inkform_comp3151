@@ -805,6 +805,35 @@ namespace Inkform.Tests
         }
 
         [Test]
+        public void EndPanelPrefab_HasBackButtonAndBothRunReadouts()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/EndPanel.prefab");
+            Assert.IsNotNull(prefab, "run Tools > Inkform > Build End UI to generate the end sheet");
+
+            Assert.IsNotNull(prefab.GetComponent<EndPanel>());
+            Assert.IsNotNull(prefab.GetComponent<CanvasGroup>(), "BasePanel requires one");
+
+            // EndPanel finds every control by name (BasePanel.Find*), so the names are the contract
+            // with UIBuilder — a rename here silently leaves the sheet empty at runtime.
+            Assert.IsNotNull(prefab.transform.Find("Title"));
+            Assert.IsNotNull(prefab.transform.Find("Btn_Back"));
+            Assert.IsNotNull(prefab.transform.Find("Lbl_Deaths"));
+            Assert.IsNotNull(prefab.transform.Find("Lbl_Time"));
+        }
+
+        [Test]
+        public void GameManager_WiresEndPanelPrefab()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/Control/GameManager.prefab");
+            Assert.IsNotNull(prefab);
+
+            UIManager manager = prefab.GetComponent<UIManager>();
+            Assert.IsNotNull(manager);
+            AssertSerializedReference(manager, "endPanelPrefab");
+        }
+
+        [Test]
         public void GameManager_RuntimeSpawnerReferencesThePlayerHandlerRoot()
         {
             GameObject managerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(

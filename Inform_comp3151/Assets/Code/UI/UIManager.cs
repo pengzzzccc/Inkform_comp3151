@@ -40,6 +40,8 @@ namespace Inkform.UI
         [SerializeField] private BasePanel saveMenuPrefab;
         [SerializeField] private BasePanel settingsPrefab;
         [SerializeField] private BasePanel tutorialPrefab;
+        // Credits/summary sheet: shown in the end scene (WorldDefinition.endRoom), never in gameplay
+        [SerializeField] private BasePanel endPanelPrefab;
 
         [Header("Gameplay HUD prefab")]
         [SerializeField] private HudRoot hudPrefab;
@@ -177,6 +179,8 @@ namespace Inkform.UI
             if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { Close<SaveMenuPanel>(); return; }
+            // The end sheet has no inner level: Escape leaves the finished run for the main menu
+            if (IsOpen<EndPanel>()) { ReturnToMainMenu(); return; }
 
             if (IsInMainMenu) return;   // menu root: nothing left to back out of
             if (paused) Resume();
@@ -233,6 +237,15 @@ namespace Inkform.UI
             SetCursor(false);
         }
 
+        /// <summary>End sheet's Back button and Escape: leaves the finished run and returns to the
+        /// main menu. SceneDirector owns the transition (and ends the run on the way out).</summary>
+        public void ReturnToMainMenu()
+        {
+            Close<EndPanel>();
+            SetCursor(false);
+            sceneDirector?.ReturnToMainMenu();
+        }
+
         private void OnPlayerDied(DeathContext ctx)
         {
             if (IsOpen<TutorialPanel>()) CloseTutorial();
@@ -272,6 +285,7 @@ namespace Inkform.UI
         {
             // Panels live under the persistent UI Canvas, so scene switches never need rebuilding.
             IsInMainMenu = sceneDirector != null && sceneDirector.IsMenuScene(scene.name);
+            bool isEnd = sceneDirector != null && sceneDirector.IsEndScene(scene.name);
 
             SetPaused(false);
             Close<PausePanel>();
@@ -279,18 +293,27 @@ namespace Inkform.UI
             Close<SaveMenuPanel>();
             Close<TutorialPanel>();
 
-            if (IsInMainMenu)
+            if (isEnd)
             {
+                // The summary sheet replaces both the menu and the HUD: the end scene has no gameplay
+                Close<MainMenuPanel>();
+                Open<EndPanel>();
+                SetCursor(true);
+            }
+            else if (IsInMainMenu)
+            {
+                Close<EndPanel>();
                 Open<MainMenuPanel>();
                 SetCursor(true);
             }
             else
             {
+                Close<EndPanel>();
                 Close<MainMenuPanel>();
                 SetCursor(false);
             }
 
-            bool gameplay = !IsInMainMenu;
+            bool gameplay = !IsInMainMenu && !isEnd;
             if (gameplay) hudInstance?.ResetLevelTimer();
             hudInstance?.SetGameplayVisible(gameplay);
         }
@@ -418,6 +441,7 @@ namespace Inkform.UI
             AddPanel(saveMenuPrefab);
             AddPanel(settingsPrefab);
             AddPanel(tutorialPrefab);
+            AddPanel(endPanelPrefab);
         }
 
         private void AddPanel(BasePanel prefab)

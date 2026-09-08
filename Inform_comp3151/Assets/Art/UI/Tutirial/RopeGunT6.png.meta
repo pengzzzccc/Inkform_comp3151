@@ -1,0 +1,2041 @@
+fileFormatVersion: 2
+guid: eb72b0bdfeb88044f9a3f13847dd6606
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -2055587523965093031
+    second: RopeGunT6_0
+  - first:
+      213: 8723101214725066568
+    second: RopeGunT6_1
+  - first:
+      213: -8765655968165308599
+    second: RopeGunT6_2
+  - first:
+      213: 637443281876637957
+    second: RopeGunT6_3
+  - first:
+      213: 9040618597745306105
+    second: RopeGunT6_4
+  - first:
+      213: -3713848552216877742
+    second: RopeGunT6_5
+  - first:
+      213: -3989517435065519914
+    second: RopeGunT6_6
+  - first:
+      213: 7915227463904868252
+    second: RopeGunT6_7
+  - first:
+      213: -2229899526757983155
+    second: RopeGunT6_8
+  - first:
+      213: 2611768677688046351
+    second: RopeGunT6_9
+  - first:
+      213: 6568025413642045748
+    second: RopeGunT6_10
+  - first:
+      213: -1089396338105159896
+    second: RopeGunT6_11
+  - first:
+      213: 5640699225740255286
+    second: RopeGunT6_12
+  - first:
+      213: -8923589953395137635
+    second: RopeGunT6_13
+  - first:
+      213: 5101961456254356263
+    second: RopeGunT6_14
+  - first:
+      213: 1679037710781080891
+    second: RopeGunT6_15
+  - first:
+      213: 3860891365876721478
+    second: RopeGunT6_16
+  - first:
+      213: -6123048272870361827
+    second: RopeGunT6_17
+  - first:
+      213: 8952288935931215837
+    second: RopeGunT6_18
+  - first:
+      213: 8017539319106321697
+    second: RopeGunT6_19
+  - first:
+      213: 8050905760896486353
+    second: RopeGunT6_20
+  - first:
+      213: 4245108054655038288
+    second: RopeGunT6_21
+  - first:
+      213: -3202585618726022980
+    second: RopeGunT6_22
+  - first:
+      213: -487865122984603073
+    second: RopeGunT6_23
+  - first:
+      213: 787254676995777301
+    second: RopeGunT6_24
+  - first:
+      213: 1661229781845878212
+    second: RopeGunT6_25
+  - first:
+      213: -2311229571770186040
+    second: RopeGunT6_26
+  - first:
+      213: 5247070270042566008
+    second: RopeGunT6_27
+  - first:
+      213: -6957260671886317460
+    second: RopeGunT6_28
+  - first:
+      213: -1886951888570536388
+    second: RopeGunT6_29
+  - first:
+      213: -4752958714887007777
+    second: RopeGunT6_30
+  - first:
+      213: -1494129329005281184
+    second: RopeGunT6_31
+  - first:
+      213: -3334072324172414012
+    second: RopeGunT6_32
+  - first:
+      213: -2550213962586322433
+    second: RopeGunT6_33
+  - first:
+      213: 2231764887742484308
+    second: RopeGunT6_34
+  - first:
+      213: -5779047819181526160
+    second: RopeGunT6_35
+  - first:
+      213: 6892068051197924479
+    second: RopeGunT6_36
+  - first:
+      213: 5348352402312822448
+    second: RopeGunT6_37
+  - first:
+      213: -4346103873671002887
+    second: RopeGunT6_38
+  - first:
+      213: -760234520558182557
+    second: RopeGunT6_39
+  - first:
+      213: -5217342749658114354
+    second: RopeGunT6_40
+  - first:
+      213: -6434150534207485199
+    second: RopeGunT6_41
+  - first:
+      213: 5670064230645580497
+    second: RopeGunT6_42
+  - first:
+      213: -3337965139172440574
+    second: RopeGunT6_43
+  - first:
+      213: -7583589409461789997
+    second: RopeGunT6_44
+  - first:
+      213: -203660384611135293
+    second: RopeGunT6_45
+  - first:
+      213: -4734268887260339458
+    second: RopeGunT6_46
+  - first:
+      213: -4956511122407559508
+    second: RopeGunT6_47
+  - first:
+      213: -4873903325734990600
+    second: RopeGunT6_48
+  - first:
+      213: 8578594997019937188
+    second: RopeGunT6_49
+  - first:
+      213: 5530332251671118015
+    second: RopeGunT6_50
+  - first:
+      213: -8321746298606283028
+    second: RopeGunT6_51
+  - first:
+      213: -6656557995891869831
+    second: RopeGunT6_52
+  - first:
+      213: -6539417641985554321
+    second: RopeGunT6_53
+  - first:
+      213: -1505919950742984771
+    second: RopeGunT6_54
+  - first:
+      213: 3207787827589825202
+    second: RopeGunT6_55
+  - first:
+      213: 7256957243170171656
+    second: RopeGunT6_56
+  - first:
+      213: 4405409102598836999
+    second: RopeGunT6_57
+  - first:
+      213: 6247306172645033675
+    second: RopeGunT6_58
+  - first:
+      213: -193939344605084918
+    second: RopeGunT6_59
+  - first:
+      213: -8079158318124336926
+    second: RopeGunT6_60
+  - first:
+      213: 8622163179154226072
+    second: RopeGunT6_61
+  - first:
+      213: -7032596099007026203
+    second: RopeGunT6_62
+  - first:
+      213: -9123375216765751184
+    second: RopeGunT6_63
+  - first:
+      213: 5007746008353658270
+    second: RopeGunT6_64
+  - first:
+      213: -7538764047897498437
+    second: RopeGunT6_65
+  - first:
+      213: -2145408883408386572
+    second: RopeGunT6_66
+  - first:
+      213: -2502455154623666408
+    second: RopeGunT6_67
+  - first:
+      213: -2228067868012758990
+    second: RopeGunT6_68
+  - first:
+      213: -1090290121689798597
+    second: RopeGunT6_69
+  - first:
+      213: 5532195067287293192
+    second: RopeGunT6_70
+  - first:
+      213: 560708855216108629
+    second: RopeGunT6_71
+  - first:
+      213: -8833405407165465171
+    second: RopeGunT6_72
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: RopeGunT6_0
+      rect:
+        serializedVersion: 2
+        x: 784
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95bf555b9061973e0800000000000000
+      internalID: -2055587523965093031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_1
+      rect:
+        serializedVersion: 2
+        x: 838
+        y: 1002
+        width: 42
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84f477b765eae0970800000000000000
+      internalID: 8723101214725066568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_2
+      rect:
+        serializedVersion: 2
+        x: 890
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9475932e6522a5680800000000000000
+      internalID: -8765655968165308599
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_3
+      rect:
+        serializedVersion: 2
+        x: 943
+        y: 1002
+        width: 44
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50957bc9947a8d800800000000000000
+      internalID: 637443281876637957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_4
+      rect:
+        serializedVersion: 2
+        x: 1031
+        y: 1002
+        width: 42
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f9266427bab67d70800000000000000
+      internalID: 9040618597745306105
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_5
+      rect:
+        serializedVersion: 2
+        x: 1084
+        y: 1002
+        width: 43
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 255a3872b62c57cc0800000000000000
+      internalID: -3713848552216877742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_6
+      rect:
+        serializedVersion: 2
+        x: 1135
+        y: 1002
+        width: 44
+        height: 54
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d031b9b70362a8c0800000000000000
+      internalID: -3989517435065519914
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_7
+      rect:
+        serializedVersion: 2
+        x: 506
+        y: 450
+        width: 909
+        height: 512
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c973776117988dd60800000000000000
+      internalID: 7915227463904868252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_8
+      rect:
+        serializedVersion: 2
+        x: 827
+        y: 348
+        width: 28
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4c57c6e13ecd01e0800000000000000
+      internalID: -2229899526757983155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_9
+      rect:
+        serializedVersion: 2
+        x: 866
+        y: 348
+        width: 23
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f03761d46cdde3420800000000000000
+      internalID: 2611768677688046351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_10
+      rect:
+        serializedVersion: 2
+        x: 901
+        y: 348
+        width: 23
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4394fd79050562b50800000000000000
+      internalID: 6568025413642045748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_11
+      rect:
+        serializedVersion: 2
+        x: 936
+        y: 348
+        width: 23
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82f61a76dcfa1e0f0800000000000000
+      internalID: -1089396338105159896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_12
+      rect:
+        serializedVersion: 2
+        x: 970
+        y: 348
+        width: 23
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 630a1136f0ac74e40800000000000000
+      internalID: 5640699225740255286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_13
+      rect:
+        serializedVersion: 2
+        x: 1014
+        y: 314
+        width: 133
+        height: 102
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9363a2773a092480800000000000000
+      internalID: -8923589953395137635
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_14
+      rect:
+        serializedVersion: 2
+        x: 107
+        y: 306
+        width: 393
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72b86c1c9eecdc640800000000000000
+      internalID: 5101961456254356263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_15
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 313
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b35679be6e32d4710800000000000000
+      internalID: 1679037710781080891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_16
+      rect:
+        serializedVersion: 2
+        x: 197
+        y: 313
+        width: 20
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 647647bcd34a49530800000000000000
+      internalID: 3860891365876721478
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_17
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 313
+        width: 20
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d153ef08900960ba0800000000000000
+      internalID: -6123048272870361827
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_18
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 313
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddff6d02b5bec3c70800000000000000
+      internalID: 8952288935931215837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_19
+      rect:
+        serializedVersion: 2
+        x: 293
+        y: 313
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12d3f003885044f60800000000000000
+      internalID: 8017539319106321697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_20
+      rect:
+        serializedVersion: 2
+        x: 320
+        y: 313
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1db816e42209abf60800000000000000
+      internalID: 8050905760896486353
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_21
+      rect:
+        serializedVersion: 2
+        x: 343
+        y: 313
+        width: 17
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 053fcdeb847a9ea30800000000000000
+      internalID: 4245108054655038288
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_22
+      rect:
+        serializedVersion: 2
+        x: 366
+        y: 313
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb09f0909512e83d0800000000000000
+      internalID: -3202585618726022980
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_23
+      rect:
+        serializedVersion: 2
+        x: 389
+        y: 332
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3253366141ca39f0800000000000000
+      internalID: -487865122984603073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_24
+      rect:
+        serializedVersion: 2
+        x: 389
+        y: 313
+        width: 7
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 513291a25f3ecea00800000000000000
+      internalID: 787254676995777301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_25
+      rect:
+        serializedVersion: 2
+        x: 403
+        y: 313
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c5293d5fafdd0710800000000000000
+      internalID: 1661229781845878212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_26
+      rect:
+        serializedVersion: 2
+        x: 426
+        y: 313
+        width: 20
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c6824c23fcdcefd0800000000000000
+      internalID: -2311229571770186040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_27
+      rect:
+        serializedVersion: 2
+        x: 453
+        y: 313
+        width: 17
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87d66654c9651d840800000000000000
+      internalID: 5247070270042566008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_28
+      rect:
+        serializedVersion: 2
+        x: 476
+        y: 313
+        width: 7
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c68ab62b748d27f90800000000000000
+      internalID: -6957260671886317460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_29
+      rect:
+        serializedVersion: 2
+        x: 140
+        y: 313
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3e208d314330d5e0800000000000000
+      internalID: -1886951888570536388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_30
+      rect:
+        serializedVersion: 2
+        x: 490
+        y: 319
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd110172b391a0eb0800000000000000
+      internalID: -4752958714887007777
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_31
+      rect:
+        serializedVersion: 2
+        x: 490
+        y: 313
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 060c520aa49c34be0800000000000000
+      internalID: -1494129329005281184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_32
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 227
+        width: 58
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c30e36c2eefab1d0800000000000000
+      internalID: -3334072324172414012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_33
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 227
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff90dc2a9e1db9cd0800000000000000
+      internalID: -2550213962586322433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_34
+      rect:
+        serializedVersion: 2
+        x: 201
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45f841c4752d8fe10800000000000000
+      internalID: 2231764887742484308
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_35
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 218
+        width: 30
+        height: 36
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07370bd80a2bccfa0800000000000000
+      internalID: -5779047819181526160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_36
+      rect:
+        serializedVersion: 2
+        x: 276
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f749877706b85af50800000000000000
+      internalID: 6892068051197924479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_37
+      rect:
+        serializedVersion: 2
+        x: 298
+        y: 218
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0be76715c2a293a40800000000000000
+      internalID: 5348352402312822448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_38
+      rect:
+        serializedVersion: 2
+        x: 320
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f404e4bd898fa3c0800000000000000
+      internalID: -4346103873671002887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_39
+      rect:
+        serializedVersion: 2
+        x: 342
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36fd3204bba1375f0800000000000000
+      internalID: -760234520558182557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_40
+      rect:
+        serializedVersion: 2
+        x: 379
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec61b2f69664897b0800000000000000
+      internalID: -5217342749658114354
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_41
+      rect:
+        serializedVersion: 2
+        x: 401
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fa4c21cd2e45b6a0800000000000000
+      internalID: -6434150534207485199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_42
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d24741606d10be40800000000000000
+      internalID: 5670064230645580497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_43
+      rect:
+        serializedVersion: 2
+        x: 461
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2064df6246a2da1d0800000000000000
+      internalID: -3337965139172440574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_44
+      rect:
+        serializedVersion: 2
+        x: 483
+        y: 218
+        width: 18
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3da9d969c9da1c690800000000000000
+      internalID: -7583589409461789997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_45
+      rect:
+        serializedVersion: 2
+        x: 508
+        y: 227
+        width: 27
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c01f6095f37c2df0800000000000000
+      internalID: -203660384611135293
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_46
+      rect:
+        serializedVersion: 2
+        x: 558
+        y: 226
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef2e9afb78f7c4eb0800000000000000
+      internalID: -4734268887260339458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_47
+      rect:
+        serializedVersion: 2
+        x: 584
+        y: 226
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: caeef97156fe63bb0800000000000000
+      internalID: -4956511122407559508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_48
+      rect:
+        serializedVersion: 2
+        x: 610
+        y: 226
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fc88ff8fba6c5cb0800000000000000
+      internalID: -4873903325734990600
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_49
+      rect:
+        serializedVersion: 2
+        x: 637
+        y: 226
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a9015dc2ba4d0770800000000000000
+      internalID: 8578594997019937188
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_50
+      rect:
+        serializedVersion: 2
+        x: 663
+        y: 226
+        width: 20
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb04eb6c1efafbc40800000000000000
+      internalID: 5530332251671118015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_51
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 227
+        width: 27
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce696a8f4d7338c80800000000000000
+      internalID: -8321746298606283028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_52
+      rect:
+        serializedVersion: 2
+        x: 755
+        y: 227
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 977341c45c72f93a0800000000000000
+      internalID: -6656557995891869831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_53
+      rect:
+        serializedVersion: 2
+        x: 777
+        y: 227
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f68478b4d425f35a0800000000000000
+      internalID: -6539417641985554321
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_54
+      rect:
+        serializedVersion: 2
+        x: 799
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db76ac398c5e91be0800000000000000
+      internalID: -1505919950742984771
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_55
+      rect:
+        serializedVersion: 2
+        x: 836
+        y: 227
+        width: 30
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b2405a980a548c20800000000000000
+      internalID: 3207787827589825202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_56
+      rect:
+        serializedVersion: 2
+        x: 874
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80b2b55e924e5b460800000000000000
+      internalID: 7256957243170171656
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_57
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7031daaec38232d30800000000000000
+      internalID: 4405409102598836999
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_58
+      rect:
+        serializedVersion: 2
+        x: 917
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc6cc974dd3e2b650800000000000000
+      internalID: 6247306172645033675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_59
+      rect:
+        serializedVersion: 2
+        x: 939
+        y: 227
+        width: 27
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0387d0913dfe4df0800000000000000
+      internalID: -193939344605084918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_60
+      rect:
+        serializedVersion: 2
+        x: 974
+        y: 227
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e87e0c905011ef80800000000000000
+      internalID: -8079158318124336926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_61
+      rect:
+        serializedVersion: 2
+        x: 999
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89bb0f0bab318a770800000000000000
+      internalID: 8622163179154226072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_62
+      rect:
+        serializedVersion: 2
+        x: 1036
+        y: 227
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5eb63e5bb13376e90800000000000000
+      internalID: -7032596099007026203
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_63
+      rect:
+        serializedVersion: 2
+        x: 1061
+        y: 227
+        width: 15
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 070331cf392436180800000000000000
+      internalID: -9123375216765751184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_64
+      rect:
+        serializedVersion: 2
+        x: 1099
+        y: 227
+        width: 15
+        height: 24
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e95dc4166761f7540800000000000000
+      internalID: 5007746008353658270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_65
+      rect:
+        serializedVersion: 2
+        x: 1121
+        y: 227
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbc659f5a0ee06790800000000000000
+      internalID: -7538764047897498437
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_66
+      rect:
+        serializedVersion: 2
+        x: 1142
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f5c976ccf9f932e0800000000000000
+      internalID: -2145408883408386572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_67
+      rect:
+        serializedVersion: 2
+        x: 1180
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 817af42ab4e754dd0800000000000000
+      internalID: -2502455154623666408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_68
+      rect:
+        serializedVersion: 2
+        x: 1202
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23833af24105411e0800000000000000
+      internalID: -2228067868012758990
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_69
+      rect:
+        serializedVersion: 2
+        x: 1224
+        y: 227
+        width: 15
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b38ef8239e28ed0f0800000000000000
+      internalID: -1090290121689798597
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_70
+      rect:
+        serializedVersion: 2
+        x: 1246
+        y: 227
+        width: 15
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80dc3d55a1e46cc40800000000000000
+      internalID: 5532195067287293192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_71
+      rect:
+        serializedVersion: 2
+        x: 1267
+        y: 227
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5547299abb908c700800000000000000
+      internalID: 560708855216108629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RopeGunT6_72
+      rect:
+        serializedVersion: 2
+        x: 1292
+        y: 227
+        width: 27
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dad33e46590796580800000000000000
+      internalID: -8833405407165465171
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      RopeGunT6_0: -2055587523965093031
+      RopeGunT6_1: 8723101214725066568
+      RopeGunT6_10: 6568025413642045748
+      RopeGunT6_11: -1089396338105159896
+      RopeGunT6_12: 5640699225740255286
+      RopeGunT6_13: -8923589953395137635
+      RopeGunT6_14: 5101961456254356263
+      RopeGunT6_15: 1679037710781080891
+      RopeGunT6_16: 3860891365876721478
+      RopeGunT6_17: -6123048272870361827
+      RopeGunT6_18: 8952288935931215837
+      RopeGunT6_19: 8017539319106321697
+      RopeGunT6_2: -8765655968165308599
+      RopeGunT6_20: 8050905760896486353
+      RopeGunT6_21: 4245108054655038288
+      RopeGunT6_22: -3202585618726022980
+      RopeGunT6_23: -487865122984603073
+      RopeGunT6_24: 787254676995777301
+      RopeGunT6_25: 1661229781845878212
+      RopeGunT6_26: -2311229571770186040
+      RopeGunT6_27: 5247070270042566008
+      RopeGunT6_28: -6957260671886317460
+      RopeGunT6_29: -1886951888570536388
+      RopeGunT6_3: 637443281876637957
+      RopeGunT6_30: -4752958714887007777
+      RopeGunT6_31: -1494129329005281184
+      RopeGunT6_32: -3334072324172414012
+      RopeGunT6_33: -2550213962586322433
+      RopeGunT6_34: 2231764887742484308
+      RopeGunT6_35: -5779047819181526160
+      RopeGunT6_36: 6892068051197924479
+      RopeGunT6_37: 5348352402312822448
+      RopeGunT6_38: -4346103873671002887
+      RopeGunT6_39: -760234520558182557
+      RopeGunT6_4: 9040618597745306105
+      RopeGunT6_40: -5217342749658114354
+      RopeGunT6_41: -6434150534207485199
+      RopeGunT6_42: 5670064230645580497
+      RopeGunT6_43: -3337965139172440574
+      RopeGunT6_44: -7583589409461789997
+      RopeGunT6_45: -203660384611135293
+      RopeGunT6_46: -4734268887260339458
+      RopeGunT6_47: -4956511122407559508
+      RopeGunT6_48: -4873903325734990600
+      RopeGunT6_49: 8578594997019937188
+      RopeGunT6_5: -3713848552216877742
+      RopeGunT6_50: 5530332251671118015
+      RopeGunT6_51: -8321746298606283028
+      RopeGunT6_52: -6656557995891869831
+      RopeGunT6_53: -6539417641985554321
+      RopeGunT6_54: -1505919950742984771
+      RopeGunT6_55: 3207787827589825202
+      RopeGunT6_56: 7256957243170171656
+      RopeGunT6_57: 4405409102598836999
+      RopeGunT6_58: 6247306172645033675
+      RopeGunT6_59: -193939344605084918
+      RopeGunT6_6: -3989517435065519914
+      RopeGunT6_60: -8079158318124336926
+      RopeGunT6_61: 8622163179154226072
+      RopeGunT6_62: -7032596099007026203
+      RopeGunT6_63: -9123375216765751184
+      RopeGunT6_64: 5007746008353658270
+      RopeGunT6_65: -7538764047897498437
+      RopeGunT6_66: -2145408883408386572
+      RopeGunT6_67: -2502455154623666408
+      RopeGunT6_68: -2228067868012758990
+      RopeGunT6_69: -1090290121689798597
+      RopeGunT6_7: 7915227463904868252
+      RopeGunT6_70: 5532195067287293192
+      RopeGunT6_71: 560708855216108629
+      RopeGunT6_72: -8833405407165465171
+      RopeGunT6_8: -2229899526757983155
+      RopeGunT6_9: 2611768677688046351
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
