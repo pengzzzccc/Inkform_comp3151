@@ -1,8 +1,11 @@
+using System.Collections;
+using System.Collections.Generic;
 using Inkform.Bus;
 using Inkform.Player;
 using Inkform.Settings;
 using Inkform.Tool;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Inkform.Fx
 {
@@ -40,6 +43,7 @@ namespace Inkform.Fx
         private Camera cam;
         private float baseZ;
         private float baseOrthoSize;
+        private float viewOrthoSize;
 
         private Vector2 followVel;
         private Vector2 followBasePosition;
@@ -52,6 +56,12 @@ namespace Inkform.Fx
 
         private float lookAheadNow, lookAheadVel;
         private bool followHeld;
+
+        // One-directional limit walls of the current scene (CameraLimit). Resolved once per scene
+        // load and cached — a scene without walls costs zero per-frame scans, and the deathCache's
+        // fake-null re-resolve trick does not fit a list
+        private readonly List<CameraLimit> limits = new List<CameraLimit>();
+        private bool limitsResolved;
 
         /// <summary>True while a cutscene owns the camera's base position.</summary>
         public bool IsFollowHeld => followHeld;
@@ -92,6 +102,7 @@ namespace Inkform.Fx
             cam = GetComponent<Camera>();
             baseZ = transform.position.z;
             baseOrthoSize = cam.orthographicSize;
+            viewOrthoSize = baseOrthoSize;
             followBasePosition = transform.position;
 
             // Different noise seeds per axis, or x/y would be perfectly in phase and shake in a line
@@ -104,6 +115,7 @@ namespace Inkform.Fx
             FxBus.ShakeRequested += OnShake;
             FxBus.ZoomRequested += OnZoom;
             FxBus.SnapRequested += SnapToTarget;
+            SceneManager.sceneLoaded += OnSceneLoaded;   // limit walls are per-scene: re-resolve on every load
         }
 
         void OnDisable()
@@ -111,7 +123,10 @@ namespace Inkform.Fx
             FxBus.ShakeRequested -= OnShake;
             FxBus.ZoomRequested -= OnZoom;
             FxBus.SnapRequested -= SnapToTarget;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
         }
+
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => limitsResolved = false;
 
         void Start()
         {
@@ -130,10 +145,87 @@ namespace Inkform.Fx
             followVel = Vector2.zero;
             lookAheadVel = 0f;
             cursorGunCache = null;
+            viewOrthoSize = baseOrthoSize;
 
             Vector2 hold = anchor != null ? (Vector2)anchor.position : (Vector2)transform.position;
             followBasePosition = hold;
             transform.position = new Vector3(hold.x, hold.y, baseZ);
+        }
+
+        /// <summary>
+        /// Smoothly takes presentation ownership of the camera, moving its follow base to a world
+        /// anchor and changing its orthographic size without disabling this component. Shake and
+        /// zoom punches keep layering over the held shot. The transition advances during a scoped
+        /// world freeze, but stops while the real pause menu owns presentation time.
+        /// </summary>
+        public IEnumerator FocusAt(Transform anchor, float orthographicSize, float duration)
+        {
+            if (anchor == null) yield break;
+
+            followHeld = true;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
+            cursorGunCache = null;
+
+            Vector2 startPosition = followBasePosition;
+            Vector2 targetPosition = anchor.position;
+            float startSize = viewOrthoSize;
+            float targetSize = Mathf.Max(0.01f, orthographicSize);
+            float seconds = Mathf.Max(0f, duration);
+
+            if (seconds <= 0f)
+            {
+                followBasePosition = targetPosition;
+                viewOrthoSize = targetSize;
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                float dt = GameTimeController.PresentationDeltaTime;
+                if (dt > 0f) elapsed = Mathf.Min(seconds, elapsed + dt);
+
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / seconds);
+                followBasePosition = Vector2.LerpUnclamped(startPosition, targetPosition, t);
+                viewOrthoSize = Mathf.LerpUnclamped(startSize, targetSize, t);
+                yield return null;
+            }
+        }
+
+        /// <summary>
+        /// Smoothly returns a held shot to the current live follow target and restores the camera's
+        /// authored orthographic size. The target is resolved every frame so a teleport during the
+        /// presentation cannot return the camera to stale coordinates.
+        /// </summary>
+        public IEnumerator ReturnToFollow(float duration)
+        {
+            Vector2 startPosition = followBasePosition;
+            float startSize = viewOrthoSize;
+            float seconds = Mathf.Max(0f, duration);
+
+            if (seconds <= 0f)
+            {
+                SnapHeldBaseToTarget();
+                ReleaseHeldFollow();
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                float dt = GameTimeController.PresentationDeltaTime;
+                if (dt > 0f) elapsed = Mathf.Min(seconds, elapsed + dt);
+
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / seconds);
+                followBasePosition = Vector2.LerpUnclamped(startPosition,
+                    CurrentFollowPosition(), t);
+                viewOrthoSize = Mathf.LerpUnclamped(startSize, baseOrthoSize, t);
+                yield return null;
+            }
+
+            SnapHeldBaseToTarget();
+            ReleaseHeldFollow();
         }
 
         /// <summary>Returns control to normal following. With snap=false SmoothDamp starts at the
@@ -145,7 +237,30 @@ namespace Inkform.Fx
             followVel = Vector2.zero;
             lookAheadVel = 0f;
             followBasePosition = transform.position;
+            viewOrthoSize = baseOrthoSize;
             if (snap) SnapToTarget();
+        }
+
+        private Vector2 CurrentFollowPosition()
+        {
+            Transform followTarget = Target;
+            if (followTarget == null) return followBasePosition;
+            return AnchorOf(followTarget) + followOffset + new Vector2(lookAheadNow, 0f);
+        }
+
+        private void SnapHeldBaseToTarget()
+        {
+            Transform followTarget = Target;
+            if (followTarget != null) followBasePosition = CurrentFollowPosition();
+            viewOrthoSize = baseOrthoSize;
+        }
+
+        private void ReleaseHeldFollow()
+        {
+            followHeld = false;
+            cursorGunCache = null;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
         }
 
         /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
@@ -161,6 +276,7 @@ namespace Inkform.Fx
             lookAheadNow = lookAhead * (PlayerBus.Face == FaceDirection.R ? 1f : -1f);
 
             Vector2 want = AnchorOf(target) + followOffset + new Vector2(lookAheadNow, 0f);
+            want = ClampToLimits(want);   // a teleport must not land the view past a limit wall
             followBasePosition = want;
             transform.position = new Vector3(want.x, want.y, baseZ);
         }
@@ -168,12 +284,58 @@ namespace Inkform.Fx
         // LateUpdate: the player has finished moving in Update, so following this frame avoids a one-frame lag jitter
         void LateUpdate()
         {
-            Vector2 basePos = followHeld ? followBasePosition : FollowStep();
+            // Held shots are designer-authored (FocusAt anchors) — limits clamp only live following
+            Vector2 basePos = followHeld ? followBasePosition : ClampToLimits(FollowStep());
             Vector2 shakeOffset = ShakeStep();
             ZoomStep();
 
             // z must stay constant, otherwise 2D render sorting breaks
             transform.position = new Vector3(basePos.x + shakeOffset.x, basePos.y + shakeOffset.y, baseZ);
+        }
+
+        /// <summary>
+        /// Keeps the view rect on the allowed side of every limit wall. Each wall is the owning
+        /// transform's own segment (up axis, `length` reach, centre at its position) and blocks one
+        /// side along its right axis; the view's half-size projected onto the wall normal is the
+        /// standoff distance, so the SCREEN edge stops on the wall line. Walls apply only while the
+        /// camera centre projects inside the segment's span. SmoothDamp's internal state stays
+        /// unclamped — the camera presses against the wall while the target lies beyond it and
+        /// resumes the instant the target comes back, no snap either way.
+        /// </summary>
+        private Vector2 ClampToLimits(Vector2 position)
+        {
+            if (!limitsResolved)
+            {
+                limits.Clear();
+                limits.AddRange(FindObjectsByType<CameraLimit>(FindObjectsSortMode.None));
+                limitsResolved = true;
+            }
+            if (limits.Count == 0) return position;
+
+            float halfHeight = cam.orthographicSize;
+            float halfWidth = halfHeight * cam.aspect;
+
+            for (int i = 0; i < limits.Count; i++)
+            {
+                CameraLimit wall = limits[i];
+                if (wall == null) continue;
+
+                Transform wallTransform = wall.transform;
+                Vector2 centre = wallTransform.position;
+                Vector2 wallDir = wallTransform.up;
+                Vector2 normal = (Vector2)wallTransform.right * (wall.BlockPositive ? 1f : -1f);
+
+                // Past either end of the segment the wall does not exist — follow freely there
+                Vector2 offset = position - centre;
+                if (Mathf.Abs(Vector2.Dot(offset, wallDir)) > wall.Length * 0.5f) continue;
+
+                // Support of the view rectangle along the wall normal: the standoff that keeps the
+                // whole view rect on the allowed side of the wall line
+                float standoff = Mathf.Abs(halfWidth * normal.x) + Mathf.Abs(halfHeight * normal.y);
+                float distance = Vector2.Dot(offset, normal);
+                if (distance < standoff) position += normal * (standoff - distance);
+            }
+            return position;
         }
 
         private Vector2 FollowStep()
@@ -212,11 +374,11 @@ namespace Inkform.Fx
             zoomRemaining = Mathf.Max(0f, zoomRemaining - GameTimeController.PresentationDeltaTime);
             if (zoomDuration <= 0f || zoomRemaining <= 0f)
             {
-                cam.orthographicSize = baseOrthoSize;
+                cam.orthographicSize = viewOrthoSize;
                 return;
             }
 
-            cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
+            cam.orthographicSize = viewOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
         }
 
         // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.

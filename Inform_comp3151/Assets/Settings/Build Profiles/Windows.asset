@@ -38,6 +38,12 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Level1/Mine Cave 1.unity
     m_guid: 742e3b7aacdf8d74bac3cd030b491f51
+  - m_enabled: 1
+    m_path: Assets/Scenes/Level1/Mine Cave 2.unity
+    m_guid: 11d05b725ce885d4e980d0c77e8d679c
+  - m_enabled: 1
+    m_path: Assets/Scenes/Level1/Mine Cave 3.unity
+    m_guid: 49a6807fcb1271b409efc4f30dc7529f
   m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:

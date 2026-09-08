@@ -183,6 +183,56 @@ namespace Inkform.Tests
             }
         }
 
+        [TestCase("Assets/Prefabs/Item/TimeCard.prefab", 2f)]
+        [TestCase("Assets/Prefabs/Item/RopeGunCard.prefab", 4f)]
+        public void PromptOutline_IsPrebuiltAlignedAndUsesWorldConsistentWidth(
+            string prefabPath, float expectedTexelWidth)
+        {
+            GameObject instance = UnityEngine.Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath));
+            instance.transform.position = new Vector3(13f, -7f, 0f);
+            try
+            {
+                Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
+                Assert.IsTrue(node.TryGetPart(out InteractionPromptPart prompt));
+
+                // Edit-mode tests do not invoke Start automatically; this mirrors the runtime prebuild.
+                InvokeInstance(prompt, "Start");
+
+                SpriteRenderer source = instance.GetComponent<SpriteRenderer>();
+                Transform outlineTransform = source.transform.Find("Outline");
+                Assert.IsNotNull(outlineTransform, "the outline must exist before the first contact");
+
+                SpriteRenderer outline = outlineTransform.GetComponent<SpriteRenderer>();
+                Assert.IsNotNull(outline);
+                Assert.IsFalse(outline.enabled, "the prebuilt outline waits disabled for first contact");
+                Assert.AreSame(source.sprite, outline.sprite);
+                Assert.AreEqual(source.gameObject.layer, outline.gameObject.layer);
+                Assert.AreEqual(source.sortingLayerID, outline.sortingLayerID);
+                Assert.AreEqual(source.sortingOrder + 1, outline.sortingOrder);
+
+                Vector2 spriteCenter = source.sprite.bounds.center;
+                if (source.flipX) spriteCenter.x = -spriteCenter.x;
+                if (source.flipY) spriteCenter.y = -spriteCenter.y;
+                Vector2 renderedOutlineCenter = (Vector2)outlineTransform.localPosition +
+                    Vector2.Scale((Vector2)outlineTransform.localScale, spriteCenter);
+                Assert.That(Vector2.Distance(spriteCenter, renderedOutlineCenter), Is.LessThan(0.0001f),
+                    "outline scaling must preserve the source sprite centre");
+
+                Material runtimeMaterial = outline.sharedMaterial;
+                Assert.IsNotNull(runtimeMaterial);
+                Assert.That(runtimeMaterial.GetFloat("_OutlineWidth"), Is.EqualTo(expectedTexelWidth).Within(0.0001f));
+                Vector4 texelSize = runtimeMaterial.GetVector("_SpriteUvStep");
+                Assert.That(texelSize.x, Is.EqualTo(1f / source.sprite.texture.width).Within(0.000001f));
+                Assert.That(texelSize.y, Is.EqualTo(1f / source.sprite.texture.height).Within(0.000001f));
+                Assert.That(runtimeMaterial.GetFloat("_Fade"), Is.Zero.Within(0.0001f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
         [Test]
         public void RopeGun_FireIsDeniedWithoutTheAbility()
         {
