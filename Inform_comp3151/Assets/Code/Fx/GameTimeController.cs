@@ -1,9 +1,11 @@
+using System.Collections.Generic;
 using Inkform.Bus;
 using UnityEngine;
 
 namespace Inkform.Fx
 {
-    /// <summary>Single authority for gameplay time. Pause and hitstop are independent freeze reasons.</summary>
+    /// <summary>Single authority for gameplay time. User pause, scoped world freezes and hitstop
+    /// are independent reasons; only a user pause also pauses the AudioListener.</summary>
     [DefaultExecutionOrder(-9000)]
     public sealed class GameTimeController : MonoBehaviour
     {
@@ -13,12 +15,15 @@ namespace Inkform.Fx
 
         private bool userPaused;
         private float hitStopRemaining;
+        private readonly HashSet<Object> worldFreezeOwners = new HashSet<Object>();
 
         public bool IsUserPaused => userPaused;
+        public bool IsWorldFrozen => worldFreezeOwners.Count > 0;
         public bool IsHitStopped => hitStopRemaining > 0f;
-        public bool IsFrozen => userPaused || IsHitStopped;
+        public bool IsFrozen => userPaused || IsWorldFrozen || IsHitStopped;
 
-        /// <summary>Unscaled effect time that freezes for a real pause, but advances through hitstop.</summary>
+        /// <summary>Unscaled effect time that freezes for a real pause, but advances through hitstop
+        /// and scoped world freezes so presentation transitions can still complete.</summary>
         public static float PresentationDeltaTime =>
             Instance != null && Instance.userPaused ? 0f : Time.unscaledDeltaTime;
 
@@ -38,6 +43,7 @@ namespace Inkform.Fx
 
             userPaused = false;
             hitStopRemaining = 0f;
+            worldFreezeOwners.Clear();
             AudioListener.pause = false;
             Time.timeScale = 1f;
             Instance = null;
@@ -45,6 +51,10 @@ namespace Inkform.Fx
 
         void Update()
         {
+            // A scene unload may destroy an owner before its OnDestroy cleanup reaches us. Unity's
+            // fake-null objects must not leave gameplay frozen forever.
+            worldFreezeOwners.RemoveWhere(owner => owner == null);
+
             if (!userPaused && hitStopRemaining > 0f)
                 hitStopRemaining = Mathf.Max(0f, hitStopRemaining - Time.unscaledDeltaTime);
             Apply();
@@ -56,6 +66,23 @@ namespace Inkform.Fx
             userPaused = value;
             AudioListener.pause = value;
             Apply();
+        }
+
+        /// <summary>
+        /// Adds or removes a scoped world freeze without pausing the AudioListener. This is for
+        /// presentation modes such as a wall-map inspection: physics/gameplay time stops while
+        /// music and unscaled camera motion continue. Multiple owners stack independently.
+        /// </summary>
+        public void SetWorldFrozen(Object owner, bool frozen)
+        {
+            // ReferenceEquals lets an owner's OnDestroy remove its entry even after Unity has begun
+            // reporting that object as fake-null.
+            if (ReferenceEquals(owner, null)) return;
+
+            bool changed = frozen
+                ? worldFreezeOwners.Add(owner)
+                : worldFreezeOwners.Remove(owner);
+            if (changed) Apply();
         }
 
         public void RequestHitStop(float seconds)

@@ -7,6 +7,7 @@ using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
+using Inkform.Input;
 using Inkform.Item;
 using Inkform.Level;
 using Inkform.Player;
@@ -898,6 +899,152 @@ namespace Inkform.Tests
             {
                 UnityEngine.Object.DestroyImmediate(anchorGo);
                 UnityEngine.Object.DestroyImmediate(cameraGo);
+            }
+        }
+
+        [Test]
+        public void CamHandler_MapFocusMovesAndZoomsWithoutDisablingFollowComponent()
+        {
+            InvokeStatic(typeof(PlayerBus), "ResetStatics");
+            GameObject cameraGo = new GameObject("map focus camera", typeof(Camera), typeof(CamHandler));
+            GameObject anchorGo = new GameObject("map focus anchor");
+            GameObject targetGo = new GameObject("map return target");
+            anchorGo.transform.position = new Vector3(12f, 8f, 0f);
+            targetGo.transform.position = new Vector3(3f, 2f, 0f);
+            try
+            {
+                Camera camera = cameraGo.GetComponent<Camera>();
+                camera.orthographic = true;
+                CamHandler handler = cameraGo.GetComponent<CamHandler>();
+                SetField(handler, "target", targetGo.transform);
+                SetField(handler, "lookAhead", 0f);
+
+                System.Collections.IEnumerator focus = handler.FocusAt(anchorGo.transform, 2.5f, 0f);
+                while (focus.MoveNext()) { }
+                Invoke(handler, "LateUpdate");
+
+                Assert.IsTrue(handler.enabled, "focus keeps CamHandler alive for shake and lens presentation");
+                Assert.IsTrue(handler.IsFollowHeld);
+                Assert.AreEqual(new Vector3(12f, 8f, cameraGo.transform.position.z), cameraGo.transform.position);
+                Assert.AreEqual(2.5f, camera.orthographicSize, 0.001f);
+
+                System.Collections.IEnumerator back = handler.ReturnToFollow(0f);
+                while (back.MoveNext()) { }
+                Invoke(handler, "LateUpdate");
+
+                Assert.IsFalse(handler.IsFollowHeld);
+                Assert.AreEqual(5f, camera.orthographicSize, 0.001f);
+                Assert.AreEqual(new Vector3(3f, 2f, cameraGo.transform.position.z), cameraGo.transform.position);
+            }
+            finally
+            {
+                InvokeStatic(typeof(PlayerBus), "ResetStatics");
+                UnityEngine.Object.DestroyImmediate(targetGo);
+                UnityEngine.Object.DestroyImmediate(anchorGo);
+                UnityEngine.Object.DestroyImmediate(cameraGo);
+            }
+        }
+
+        [Test]
+        public void GameTimeController_WorldFreezeStacksAndLeavesAudioUnpaused()
+        {
+            GameObject host = new GameObject("world-freeze controller");
+            GameObject ownerA = new GameObject("freeze owner A");
+            GameObject ownerB = new GameObject("freeze owner B");
+            GameTimeController controller = host.AddComponent<GameTimeController>();
+            try
+            {
+                controller.SetWorldFrozen(ownerA, true);
+                controller.SetWorldFrozen(ownerB, true);
+                Assert.IsTrue(controller.IsWorldFrozen);
+                Assert.AreEqual(0f, Time.timeScale);
+                Assert.IsFalse(AudioListener.pause, "wall-map freeze must not pause music");
+
+                controller.SetUserPaused(true);
+                controller.SetUserPaused(false);
+                Assert.AreEqual(0f, Time.timeScale,
+                    "resuming the pause menu must not release another owner's world freeze");
+                Assert.IsFalse(AudioListener.pause);
+
+                controller.SetWorldFrozen(ownerA, false);
+                Assert.AreEqual(0f, Time.timeScale, "the second owner still holds the freeze");
+                controller.SetWorldFrozen(ownerB, false);
+                Assert.IsFalse(controller.IsWorldFrozen);
+                Assert.AreEqual(1f, Time.timeScale);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(ownerB);
+                UnityEngine.Object.DestroyImmediate(ownerA);
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void InputHandler_ScopedLockSurvivesPauseResumeRequests()
+        {
+            GameObject host = new GameObject("input-lock handler");
+            GameObject owner = new GameObject("input-lock owner");
+            InputHandler input = host.AddComponent<InputHandler>();
+            try
+            {
+                input.SetPlaying(true);
+                Assert.IsTrue(GetField<bool>(input, "actionsEnabled"));
+
+                input.SetGameplayInputLocked(owner, true);
+                Assert.IsFalse(GetField<bool>(input, "actionsEnabled"));
+
+                input.SetPlaying(false);
+                input.SetPlaying(true);
+                Assert.IsFalse(GetField<bool>(input, "actionsEnabled"),
+                    "flow resume cannot bypass a live presentation lock");
+
+                input.SetGameplayInputLocked(owner, false);
+                Assert.IsTrue(GetField<bool>(input, "actionsEnabled"));
+            }
+            finally
+            {
+                input.SetPlaying(false);
+                UnityEngine.Object.DestroyImmediate(owner);
+                UnityEngine.Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void MapViewPrefab_HasWallContentAnchorAndFocusConfiguration()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/env/MapView.prefab");
+            Assert.IsNotNull(prefab);
+
+            MapViewPart map = prefab.GetComponent<MapViewPart>();
+            Assert.IsNotNull(map);
+            SpriteRenderer content = GetField<SpriteRenderer>(map, "mapContent");
+            Assert.IsNotNull(content);
+            Assert.IsNotNull(content.sprite, "the prefab retains a visible placeholder until final map art is assigned");
+            Assert.IsNotNull(GetField<Transform>(map, "viewAnchor"));
+            Assert.AreEqual(2.5f, GetField<float>(map, "focusOrthoSize"), 0.001f);
+            Assert.AreEqual(0.6f, GetField<float>(map, "glideSeconds"), 0.001f);
+            Assert.IsTrue(prefab.GetComponent<Collider2D>().isTrigger);
+            Assert.IsNotNull(prefab.GetComponent<InteractionPromptPart>());
+        }
+
+        [Test]
+        public void MapViewPrompt_CanBeSuppressedDuringTheFrozenInspection()
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/env/MapView.prefab");
+            GameObject instance = UnityEngine.Object.Instantiate(prefab);
+            try
+            {
+                InteractionPromptPart prompt = instance.GetComponent<InteractionPromptPart>();
+                Assert.IsNotNull(prompt);
+                prompt.SetSuppressed(true);
+                Assert.IsTrue(prompt.IsSuppressed);
+                prompt.SetSuppressed(false);
+                Assert.IsFalse(prompt.IsSuppressed);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
             }
         }
 

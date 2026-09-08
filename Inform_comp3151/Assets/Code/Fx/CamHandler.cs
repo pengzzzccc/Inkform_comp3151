@@ -1,3 +1,4 @@
+using System.Collections;
 using Inkform.Bus;
 using Inkform.Player;
 using Inkform.Settings;
@@ -40,6 +41,7 @@ namespace Inkform.Fx
         private Camera cam;
         private float baseZ;
         private float baseOrthoSize;
+        private float viewOrthoSize;
 
         private Vector2 followVel;
         private Vector2 followBasePosition;
@@ -92,6 +94,7 @@ namespace Inkform.Fx
             cam = GetComponent<Camera>();
             baseZ = transform.position.z;
             baseOrthoSize = cam.orthographicSize;
+            viewOrthoSize = baseOrthoSize;
             followBasePosition = transform.position;
 
             // Different noise seeds per axis, or x/y would be perfectly in phase and shake in a line
@@ -130,10 +133,87 @@ namespace Inkform.Fx
             followVel = Vector2.zero;
             lookAheadVel = 0f;
             cursorGunCache = null;
+            viewOrthoSize = baseOrthoSize;
 
             Vector2 hold = anchor != null ? (Vector2)anchor.position : (Vector2)transform.position;
             followBasePosition = hold;
             transform.position = new Vector3(hold.x, hold.y, baseZ);
+        }
+
+        /// <summary>
+        /// Smoothly takes presentation ownership of the camera, moving its follow base to a world
+        /// anchor and changing its orthographic size without disabling this component. Shake and
+        /// zoom punches keep layering over the held shot. The transition advances during a scoped
+        /// world freeze, but stops while the real pause menu owns presentation time.
+        /// </summary>
+        public IEnumerator FocusAt(Transform anchor, float orthographicSize, float duration)
+        {
+            if (anchor == null) yield break;
+
+            followHeld = true;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
+            cursorGunCache = null;
+
+            Vector2 startPosition = followBasePosition;
+            Vector2 targetPosition = anchor.position;
+            float startSize = viewOrthoSize;
+            float targetSize = Mathf.Max(0.01f, orthographicSize);
+            float seconds = Mathf.Max(0f, duration);
+
+            if (seconds <= 0f)
+            {
+                followBasePosition = targetPosition;
+                viewOrthoSize = targetSize;
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                float dt = GameTimeController.PresentationDeltaTime;
+                if (dt > 0f) elapsed = Mathf.Min(seconds, elapsed + dt);
+
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / seconds);
+                followBasePosition = Vector2.LerpUnclamped(startPosition, targetPosition, t);
+                viewOrthoSize = Mathf.LerpUnclamped(startSize, targetSize, t);
+                yield return null;
+            }
+        }
+
+        /// <summary>
+        /// Smoothly returns a held shot to the current live follow target and restores the camera's
+        /// authored orthographic size. The target is resolved every frame so a teleport during the
+        /// presentation cannot return the camera to stale coordinates.
+        /// </summary>
+        public IEnumerator ReturnToFollow(float duration)
+        {
+            Vector2 startPosition = followBasePosition;
+            float startSize = viewOrthoSize;
+            float seconds = Mathf.Max(0f, duration);
+
+            if (seconds <= 0f)
+            {
+                SnapHeldBaseToTarget();
+                ReleaseHeldFollow();
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                float dt = GameTimeController.PresentationDeltaTime;
+                if (dt > 0f) elapsed = Mathf.Min(seconds, elapsed + dt);
+
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / seconds);
+                followBasePosition = Vector2.LerpUnclamped(startPosition,
+                    CurrentFollowPosition(), t);
+                viewOrthoSize = Mathf.LerpUnclamped(startSize, baseOrthoSize, t);
+                yield return null;
+            }
+
+            SnapHeldBaseToTarget();
+            ReleaseHeldFollow();
         }
 
         /// <summary>Returns control to normal following. With snap=false SmoothDamp starts at the
@@ -145,7 +225,30 @@ namespace Inkform.Fx
             followVel = Vector2.zero;
             lookAheadVel = 0f;
             followBasePosition = transform.position;
+            viewOrthoSize = baseOrthoSize;
             if (snap) SnapToTarget();
+        }
+
+        private Vector2 CurrentFollowPosition()
+        {
+            Transform followTarget = Target;
+            if (followTarget == null) return followBasePosition;
+            return AnchorOf(followTarget) + followOffset + new Vector2(lookAheadNow, 0f);
+        }
+
+        private void SnapHeldBaseToTarget()
+        {
+            Transform followTarget = Target;
+            if (followTarget != null) followBasePosition = CurrentFollowPosition();
+            viewOrthoSize = baseOrthoSize;
+        }
+
+        private void ReleaseHeldFollow()
+        {
+            followHeld = false;
+            cursorGunCache = null;
+            followVel = Vector2.zero;
+            lookAheadVel = 0f;
         }
 
         /// <summary>Snaps onto the target immediately. Shared path for startup and player teleports (respawn).</summary>
@@ -212,11 +315,11 @@ namespace Inkform.Fx
             zoomRemaining = Mathf.Max(0f, zoomRemaining - GameTimeController.PresentationDeltaTime);
             if (zoomDuration <= 0f || zoomRemaining <= 0f)
             {
-                cam.orthographicSize = baseOrthoSize;
+                cam.orthographicSize = viewOrthoSize;
                 return;
             }
 
-            cam.orthographicSize = baseOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
+            cam.orthographicSize = viewOrthoSize + zoomAmount * (zoomRemaining / zoomDuration);
         }
 
         // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
