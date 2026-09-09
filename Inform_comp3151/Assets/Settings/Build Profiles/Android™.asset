@@ -1,5 +1,25 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-6609112828526587870
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 15010, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: Quality Settings
+  m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.Build.Profile.BuildProfileQualitySettings
+  m_DefaultQualityLevel: Ultra
+  m_QualityLevels:
+  - Very Low
+  - Low
+  - Medium
+  - High
+  - Very High
+  - Ultra
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10,31 +30,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 15003, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: Windows
+  m_Name: "Android\u2122"
   m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.Build.Profile.BuildProfile
   m_AssetVersion: 1
-  m_BuildTarget: 19
-  m_Subtarget: 2
-  m_PlatformId: 4e3c793746204150860bf175a9a41a05
+  m_BuildTarget: 13
+  m_Subtarget: 0
+  m_PlatformId: b9b35072a6f44c2e863f17467ea3dc13
   m_PlatformBuildProfile:
-    rid: 5155127639012802627
+    rid: 6616807304840871936
   m_OverrideGlobalSceneList: 1
   m_Scenes:
   - m_enabled: 1
     m_path: Assets/Scenes/Menu/MainMenu.unity
     m_guid: 37631e5845af32445b0a05c4cfa3a1a1
-  - m_enabled: 0
-    m_path: Assets/Scenes/Level1/L1_B1.unity
-    m_guid: 872cc82b6e188a04a88a96448d41875e
-  - m_enabled: 0
-    m_path: Assets/Scenes/Level1/L1_B2.unity
-    m_guid: ebd79b34ceae0d14daf8895d7fa20e6c
-  - m_enabled: 0
-    m_path: Assets/Scenes/Level1/L1_B3.unity
-    m_guid: 8e86c152b693822479aa95649eb85236
-  - m_enabled: 0
-    m_path: Assets/Scenes/Test/PlayerTest.unity
-    m_guid: 7f80c46cb978389418099080bbd56749
   - m_enabled: 1
     m_path: Assets/Scenes/Level1/Mine Cave 1.unity
     m_guid: 742e3b7aacdf8d74bac3cd030b491f51
@@ -47,7 +55,7 @@ MonoBehaviour:
   - m_enabled: 1
     m_path: Assets/Scenes/Menu/End.unity
     m_guid: 6af981f88ec3d944192dfde0ff18c9ed
-  m_HasScriptingDefines: 1
+  m_HasScriptingDefines: 0
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:
     m_Settings:
@@ -447,6 +455,9 @@ MonoBehaviour:
     - line: '|       m_SubKind: '
     - line: '|   m_BuildTargetBatching:'
     - line: '|   - m_BuildTarget: Standalone'
+    - line: '|     m_StaticBatching: 1'
+    - line: '|     m_DynamicBatching: 0'
+    - line: '|   - m_BuildTarget: Android'
     - line: '|     m_StaticBatching: 1'
     - line: '|     m_DynamicBatching: 0'
     - line: '|   m_BuildTargetShaderSettings: []'
@@ -857,8 +868,8 @@ MonoBehaviour:
   references:
     version: 2
     RefIds:
-    - rid: 5155127639012802627
-      type: {class: WindowsPlatformSettings, ns: UnityEditor.WindowsStandalone, asm: UnityEditor.WindowsStandalone.Extensions}
+    - rid: 6616807304840871936
+      type: {class: AndroidPlatformBuildSettings, ns: UnityEditor.Android, asm: UnityEditor.Android.Extensions}
       data:
         m_Development: 0
         m_ConnectProfiler: 0
@@ -869,34 +880,19 @@ MonoBehaviour:
         m_ExplicitNullChecks: 0
         m_ExplicitDivideByZeroChecks: 0
         m_ExplicitArrayBoundsChecks: 0
-        m_CompressionType: 0
+        m_CompressionType: 2
         m_InstallInBuildFolder: 0
         m_InsightsSettingsContainer:
           m_BuildProfileEngineDiagnosticsState: 2
         m_AdaptivePerformanceEnabled: 0
-        m_WindowsBuildAndRunDeployTarget: 0
-        m_Architecture: 0
-        m_CreateSolution: 0
-        m_CopyPDBFiles: 0
-        m_WindowsDevicePortalAddress: 
-        m_WindowsDevicePortalUsername: 
---- !u!114 &4596119646823800060
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 15010, guid: 0000000000000000e000000000000000, type: 0}
-  m_Name: Quality Settings
-  m_EditorClassIdentifier: UnityEditor.dll::UnityEditor.Build.Profile.BuildProfileQualitySettings
-  m_DefaultQualityLevel: Ultra
-  m_QualityLevels:
-  - Very Low
-  - Low
-  - Medium
-  - High
-  - Very High
-  - Ultra
+        m_BuildSubtarget: 0
+        m_BuildSystem: 1
+        m_ExportAsGoogleAndroidProject: 0
+        m_DebugSymbolLevel: 1
+        m_DebugSymbolFormat: 5
+        m_CurrentDeploymentTargetId: __builtin__target_default
+        m_BuildType: 2
+        m_LinkTimeOptimization: 0
+        m_BuildAppBundle: 0
+        m_IPAddressToConnect: 
+        m_SymlinkSources: 0
