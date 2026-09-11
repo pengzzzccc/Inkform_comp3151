@@ -121,7 +121,10 @@ namespace Inkform.Player
             motor.CutJump();
         }
 
-        /// <summary>Dash action (LeftShift / X).</summary>
+        /// <summary>Dash action (LeftShift / RB). Direction = the aim direction (the rope gun's
+        /// reticle; on a pad that is the right stick's last pushed direction), free angle, falling
+        /// back to the 8-way move input, then to the facing — the same chain as SpitBomb. The dash
+        /// itself is fixed-direction and gravity-free for its whole duration (see PlayerMotor).</summary>
         public void Dash()
         {
             if (LifeBus.IsDead) return;
@@ -129,8 +132,20 @@ namespace Inkform.Player
             bool succeeded = inventory != null && inventory.TryConsumeDashFuel();
             if (succeeded)
             {
-                float dir = PlayerBus.Face == FaceDirection.R ? 1f : -1f;
+                Vector2 dir;
+                if (ropeGun != null)
+                    dir = ropeGun.EffectiveFireDir;
+                else if (lastMoveInput.sqrMagnitude > 0.0001f)
+                    dir = Dir8.Snap(lastMoveInput);
+                else
+                    dir = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
+
+                // The dash takes over motion: release any active rope (flying hook or mid-pull)
+                // first, or the pull's per-physics-step velocity writes would fight the dash
+                if (ropeGun != null) ropeGun.Cancel();
+
                 motor.Dash(dir);
+                anim.SetFace(dir.x >= 0f ? FaceDirection.R : FaceDirection.L);
             }
 
             PlayerBus.RaiseDashAttempted(transform.position, succeeded);
@@ -141,14 +156,14 @@ namespace Inkform.Player
         /// <summary>Aim action (mouse delta / right stick): drives the rope gun's reticle.</summary>
         public void Aim(Vector2 delta, bool pixelDelta) => ropeGun?.Aim(delta, pixelDelta);
 
-        /// <summary>RopeFire action (left mouse / RB): fire the rope; pressing again cancels.</summary>
+        /// <summary>RopeFire action (left mouse / right trigger): fire the rope; pressing again cancels.</summary>
         public void RopeFire()
         {
             if (LifeBus.IsDead) return;
             ropeGun?.TryFire();
         }
 
-        /// <summary>SpitBomb action (Q / right trigger): spits the bomb, direction = the rope gun's
+        /// <summary>SpitBomb action (Q / right shoulder): spits the bomb, direction = the rope gun's
         /// effective fire direction (always exactly toward the reticle); without a rope gun falls back
         /// to the 8-way move input, then to the facing.</summary>
         public void SpitBomb()

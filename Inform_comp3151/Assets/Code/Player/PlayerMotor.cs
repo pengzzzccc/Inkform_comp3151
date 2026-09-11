@@ -51,6 +51,10 @@ namespace Inkform.Player
         private float requestTime = -999f;
         private bool jumpCutQueued;
 
+        // Dash direction captured at Dash() (unit vector, free angle). StepDash rewrites it into the
+        // rigidbody every frame of the dash, so the trajectory stays fixed for the whole duration
+        private Vector2 attackDir = Vector2.right;
+
         // Platform follow state: standing on a moving platform carries the player along. Zero
         // "platform awareness" on the player side — it only reads physical facts (how far the contacted
         // rigidbody moved this frame); static platforms move zero, naturally unaffected
@@ -97,8 +101,19 @@ namespace Inkform.Player
         public void Tick()
         {
             ApplyNonLinearGravity();
+            StepDash();
             StepJump();
             StepPlatform();
+        }
+
+        // Fixed-trajectory dash: while the dash timer runs, velocity is rewritten every frame so
+        // nothing accumulates on top of it — gravity is zeroed in ApplyNonLinearGravity, and any
+        // external velocity write only survives until the next frame. Update-chain, not
+        // FixedUpdate: hitstop freezes physics steps, and the dash must keep asserting through them
+        private void StepDash()
+        {
+            if (!attackTimer.IsRunning) return;
+            body.linearVelocity = attackDir * movingSpeed * attackMultiplier;
         }
 
         // Platform follow: adds the contacted rigidbody's movement this frame to the player, carrying
@@ -173,10 +188,13 @@ namespace Inkform.Player
         /// <summary>Jump released: cuts a chunk of the upward velocity, holding longer jumps higher.</summary>
         public void CutJump() => jumpCutQueued = true;
 
-        /// <summary>Attack dash: gives a horizontal velocity in dir and locks move input.</summary>
-        public void Dash(float dir)
+        /// <summary>Attack dash: locks velocity to dir (a unit vector, free angle) for attackTime
+        /// seconds — fixed direction, fixed speed, gravity-free — and locks move input for the
+        /// duration.</summary>
+        public void Dash(Vector2 dir)
         {
-            body.linearVelocity = new Vector2(dir * movingSpeed * attackMultiplier, body.linearVelocityY);
+            attackDir = dir.sqrMagnitude > 0.0001f ? dir.normalized : Vector2.right;
+            body.linearVelocity = attackDir * movingSpeed * attackMultiplier;
             attackTimer.Set(attackTime);
         }
 
@@ -236,6 +254,15 @@ namespace Inkform.Player
                 return;
             }
 #endif
+            // Attack dash: gravity-free for its whole duration. Must return here — the branches below
+            // assign gravityScale every frame (ceiling stick's -5 would yank an upward dash onto the
+            // ceiling); expiry self-heals like the Flight branch above
+            if (attackTimer.IsRunning)
+            {
+                body.gravityScale = 0f;
+                return;
+            }
+
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
             if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
@@ -257,8 +284,10 @@ namespace Inkform.Player
                 jumpCutQueued = false;
             }
 
-            bool canJump = (Time.time - requestTime) < jumpBuffer;
-            if (canJump && jumpLeft > 0)
+            // A jump requested during a dash stays buffered (requestTime) and fires right after the
+            // dash ends — the dash owns the velocity until its timer expires
+            bool buffered = (Time.time - requestTime) < jumpBuffer;
+            if (buffered && jumpLeft > 0 && !attackTimer.IsRunning)
             {
                 if (contact.OnLeftWall && !contact.OnGround)
                 {

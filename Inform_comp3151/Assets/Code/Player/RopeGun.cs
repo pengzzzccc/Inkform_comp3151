@@ -331,7 +331,11 @@ namespace Inkform.Player
 
         // ---- Internal flow ----
 
-        private void Cancel()
+        /// <summary>Releases whatever the rope gun is doing: a flying hook turns into a miss
+        /// recovery, an active pull finishes outright. Invoked by re-pressing fire, and by
+        /// PlayerHandler.Dash — the dash takes over motion and must not fight the pull's
+        /// per-physics-step velocity writes.</summary>
+        public void Cancel()
         {
             switch (phase)
             {

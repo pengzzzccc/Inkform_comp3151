@@ -25,14 +25,14 @@ COMP3151 course project.
 |---|---|---|
 | Move | WASD / Arrow keys | Left stick |
 | Aim | Mouse | Right stick |
-| Jump | Space | Right trigger |
-| Dash | Left Shift | X (west button) |
-| Rope fire | Left mouse button | Left trigger |
-| Spit bomb | Q | Right stick press |
+| Jump | Space | A (south button) |
+| Dash | Left Shift | RB (right shoulder) — dashes along the aim direction, gravity-free |
+| Rope fire | Left mouse button | Right trigger |
+| Spit bomb | Q | X (west button) |
 | Pause / menu | Esc | — |
 
 All bindings can be remapped in-game from the pause menu → **Settings → Controls**.
-With a gamepad, menus are driven by a virtual cursor — the left stick moves it and the X (west)
+With a gamepad, menus are driven by a virtual cursor — the left stick moves it and the A (south)
 button clicks.
 
 ## Requirements

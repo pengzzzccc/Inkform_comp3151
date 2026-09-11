@@ -1180,6 +1180,21 @@ namespace Inkform.Tests
                 Assert.AreEqual(2, attempts);
                 Assert.IsFalse(lastSucceeded);
 
+                // Free-angle dash, fixed trajectory, gravity-free (motor-level — this rig has no rope
+                // gun): direction is captured as given, StepDash reasserts it every Tick, and
+                // ApplyNonLinearGravity yields while the dash timer runs. movingSpeed/attackMultiplier
+                // are the code defaults here (10 / 1), so a straight-up dash asserts as exactly (0, 10)
+                motor.Dash(Vector2.up);
+                Assert.AreEqual(0f, body.linearVelocityX);
+                Assert.Greater(body.linearVelocityY, 0f);
+                Invoke(motor, "ApplyNonLinearGravity");
+                Assert.AreEqual(0f, body.gravityScale, "a dash must be gravity-free");
+
+                body.linearVelocity = new Vector2(5f, -3f);   // e.g. a knockback landed mid-dash
+                motor.Tick();   // public — Invoke()'s reflection only resolves NonPublic members
+                Assert.AreEqual(new Vector2(0f, 10f), body.linearVelocity,
+                    "StepDash must reassert the captured direction and speed every frame");
+
             }
             finally
             {

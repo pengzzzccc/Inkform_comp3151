@@ -333,8 +333,8 @@ MonoBehaviour:
   onWallGravityMultiplier: 0.1
   wallJumpTime: 0.15
   wallKickMultiplier: 0.3
-  attackMultiplier: 3.19
-  attackTime: 0.22
+  attackMultiplier: 2.5
+  attackTime: 0.15
   knockbackTime: 0.35
 --- !u!114 &4511968466877940253
 MonoBehaviour:
