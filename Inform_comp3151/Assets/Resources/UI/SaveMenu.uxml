@@ -30,9 +30,11 @@
                 </ui:VisualElement>
             </ui:Button>
         </ui:VisualElement>
-        <ui:VisualElement class="confirm-hint" picking-mode="Ignore">
+        <ui:VisualElement class="confirm-hint">
+            <ui:Label text="Overwrite - Hold Ctrl / Y" class="corner outline" picking-mode="Ignore" />
             <ui:Label text="Confirm - Enter" class="corner outline" picking-mode="Ignore" />
             <ui:Label text="Back - Esc" class="corner outline" picking-mode="Ignore" />
+            <ui:Button name="Btn_Back" text="BACK" class="menu-item floaty outline" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

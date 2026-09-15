@@ -50,6 +50,7 @@ namespace Inkform.UI
         [SerializeField] private SoundCue toggleOffCue;
 
         private readonly Dictionary<Type, ToolkitPanel> panels = new Dictionary<Type, ToolkitPanel>();
+        private ToolkitPanel activePanel;   // the one sheet on stage: opening a panel closes the previous one
         private InputHandler inputHandler;
         private GameTimeController gameTime;
         private Inkform.Level.SceneDirector sceneDirector;   // sibling on GameManager; owns the scene policy
@@ -151,8 +152,8 @@ namespace Inkform.UI
 
             // Pause is read directly rather than via an action in the input asset: adding a Pause
             // action would require regenerating the generated wrapper (the project treats it as
-            // hand-off). Esc (keyboard) and Start (gamepad) both back out one sheet; neither is
-            // bound to gameplay (the Player map binds no Escape or Start).
+            // hand-off). Esc (keyboard) and Start (gamepad) toggle pause at the stack's bottom;
+            // gamepad B backs out of open sheets only — from gameplay it does nothing.
             bool keyboard = Keyboard.current != null;
             bool gamepad = Gamepad.current != null;
             if (!keyboard && !gamepad) return;
@@ -162,20 +163,23 @@ namespace Inkform.UI
             if (gamepad && Gamepad.current.startButton.wasPressedThisFrame)
                 SettingsStore.SetDevice(SettingsStore.InputDevice.Gamepad);
 
+            bool backPressed = (keyboard && Keyboard.current.escapeKey.wasPressedThisFrame)
+                            || (gamepad && Gamepad.current.buttonEast.wasPressedThisFrame);
             bool pausePressed = (keyboard && Keyboard.current.escapeKey.wasPressedThisFrame)
                              || (gamepad && Gamepad.current.startButton.wasPressedThisFrame);
-            if (!pausePressed) return;
+            if (!backPressed && !pausePressed) return;
 
             // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
 
-            // Innermost sheet first, then outwards — Escape always backs out one level
+            // Innermost sheet first, then outwards — Esc/B always back out one level
             if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
-            if (IsOpen<SaveMenuPanel>()) { Close<SaveMenuPanel>(); return; }
+            if (IsOpen<SaveMenuPanel>()) { BackFromSaveMenu(); return; }
             // The end sheet has no inner level: Escape leaves the finished run for the main menu
             if (IsOpen<EndPanel>()) { ReturnToMainMenu(); return; }
 
+            if (!pausePressed) return;   // pad B with no sheet open: nothing to back out of
             if (IsInMainMenu) return;   // menu root: nothing left to back out of
             if (paused) Resume();
             else OpenPause();
@@ -248,6 +252,13 @@ namespace Inkform.UI
             TutorialPanel panel = GetPanel<TutorialPanel>();
             if (panel == null || !panel.ShowOnPickup || !panel.HasPages(abilityId)) return;
 
+            // Single-panel bookkeeping (OpenWith carries its own setup + Open, so OpenCore does
+            // not apply): retire whatever sheet is on stage before the tutorial slides in.
+            if (activePanel != panel)
+            {
+                activePanel?.Close();
+                activePanel = panel;
+            }
             panel.OpenWith(abilityId);
             SetCursor(true);
         }
@@ -338,6 +349,14 @@ namespace Inkform.UI
             bool gameplay = !IsInMainMenu && !isEnd;
             if (gameplay) hud?.ResetLevelTimer();
             hud?.SetGameplayVisible(gameplay);
+        }
+
+        /// <summary>Save menu's Back (BACK button / Esc / gamepad B): return to the main menu
+        /// sheet. Shared by the button and the Escape stack so both behave identically.</summary>
+        public void BackFromSaveMenu()
+        {
+            Close<SaveMenuPanel>();
+            Open<MainMenuPanel>();
         }
 
         /// <summary>
@@ -449,11 +468,14 @@ namespace Inkform.UI
             Resume();
         }
 
-        /// <summary>Settings' Back: close it and restore the sheet underneath (pause or main menu).</summary>
+        /// <summary>Settings' Back: close it and bring back the sheet it replaced — pause if the
+        /// run is paused, otherwise the main menu (single-panel navigation: the sheet beneath was
+        /// closed when settings opened, so "back" means reopening it).</summary>
         public void CloseSettings()
         {
             Close<SettingsPanel>();
             if (!IsInMainMenu && paused) Open<PausePanel>();
+            else Open<MainMenuPanel>();
         }
 
         // ---- Panel plumbing ----
@@ -502,12 +524,31 @@ namespace Inkform.UI
             return panel as T;
         }
 
-        /// <summary>Opens a panel: it raises itself above every other sheet and focuses its first
-        /// control (ToolkitPanel.Open), standing in for the old SetAsLastSibling +
-        /// SelectFirstControl pair.</summary>
-        public void Open<T>() where T : ToolkitPanel => GetPanel<T>()?.Open();
+        /// <summary>Opens a panel: it stands in for the old SetAsLastSibling + SelectFirstControl
+        /// pair, and enforces single-panel navigation — the sheet currently on stage slides out
+        /// to the left while the new one slides in from the right, so at most one sheet ever
+        /// rests on screen. Panels that need a way back (settings, save menu) reopen their
+        /// return target explicitly on close.</summary>
+        public void Open<T>() where T : ToolkitPanel => OpenCore(GetPanel<T>());
 
-        public void Close<T>() where T : ToolkitPanel => GetPanel<T>()?.Close();
+        public void Close<T>() where T : ToolkitPanel
+        {
+            ToolkitPanel panel = GetPanel<T>();
+            if (panel == null) return;
+            panel.Close();
+            if (activePanel == panel) activePanel = null;
+        }
+
+        private void OpenCore(ToolkitPanel panel)
+        {
+            if (panel == null) return;
+            if (activePanel != panel)
+            {
+                activePanel?.Close();
+                activePanel = panel;
+            }
+            panel.Open();
+        }
 
         public bool IsOpen<T>() where T : ToolkitPanel => GetPanel<T>()?.IsOpen ?? false;
 

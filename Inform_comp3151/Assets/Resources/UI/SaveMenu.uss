@@ -23,5 +23,8 @@
 .card-title { font-size: var(--fs-value); color: var(--c-ink-soft); -unity-text-align: middle-center; }
 .card-info { font-size: var(--fs-corner); color: var(--c-ink); -unity-text-align: middle-center; margin-top: 8px; white-space: normal; }
 
+/* The BACK button rides the bottom-right hint row (hints are picking Ignore, the button is not). */
+.confirm-hint > .menu-item { font-size: var(--fs-value); margin-left: 20px; }
+
 /* Overwrite-hold fill; width is driven by SaveMenuPanel each tick. */
 .hold-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background-color: rgba(132, 255, 84, 0.22); }

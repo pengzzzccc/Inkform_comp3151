@@ -32,10 +32,13 @@ namespace Inkform.UI
         private const float InputGraceSeconds = 0.3f;
         private bool InInputGrace => Time.unscaledTime - OpenedAtRealtime < InputGraceSeconds;
 
-        /// <summary>Where this sheet enters from, in theme pixels. Celeste's screens slide in
-        /// from the right (one screen width); the main menu column comes in from the left
-        /// (OuiMainMenu.TweenFrom x = -500).</summary>
+        /// <summary>Where this sheet enters from, in theme pixels. Every sheet enters from the
+        /// right screen edge and leaves to the left one — single-panel navigation pushes the
+        /// outgoing sheet off left while the incoming one slides in from the right.</summary>
         protected virtual float EnterFromX => 1920f;
+
+        /// <summary>Sheets always leave to the left, whichever side they came in from.</summary>
+        protected float ExitToX => -EnterFromX;
 
         protected ToolkitPanel(VisualElement root, UIManager ui)
         {
@@ -90,7 +93,7 @@ namespace Inkform.UI
 
         protected virtual void PlayEnter() => UiFx.SlideIn(Root, EnterFromX);
 
-        protected virtual void PlayLeave(Action onHidden) => UiFx.SlideOut(Root, EnterFromX, UiFx.ScreenSlideSeconds, onHidden);
+        protected virtual void PlayLeave(Action onHidden) => UiFx.SlideOut(Root, ExitToX, UiFx.ScreenSlideSeconds, onHidden);
 
         // ---- Child lookup, shared by every panel ----
 

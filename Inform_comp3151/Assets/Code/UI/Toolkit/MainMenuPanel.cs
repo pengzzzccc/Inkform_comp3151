@@ -11,10 +11,6 @@ namespace Inkform.UI
     /// </summary>
     public class MainMenuPanel : ToolkitPanel
     {
-        /// <summary>Celeste's menu list slides in from off-screen left (TweenFrom -500), unlike
-        /// every other sheet which comes in from the right.</summary>
-        protected override float EnterFromX => -500f;
-
         public MainMenuPanel(VisualElement root, UIManager ui) : base(root, ui)
         {
             Bind(Q<Button>("Btn_Begin"), "Btn_Begin", OnBegin);

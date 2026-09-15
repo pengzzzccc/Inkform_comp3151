@@ -46,8 +46,9 @@
 **交互签名（所有可选项共享）**：悬浮/聚焦 → 上浮 8px + 放大 1.06 + 文字变绿 + 底部 44px 绿色下划线淡入；
 按下 → 回落 2px + 缩小 0.96；键盘/游戏柄 Submit 无 :active，由 C# `UiFx.Bounce` 补一次回弹。
 
-**全屏切换签名**：菜单页自右滑入（0.25s，CubeOut）+ 淡入；主菜单列表例外，自左滑入（Celeste OuiMainMenu）；
-关闭反向滑出。存档槽额外做 0.06s 级联。
+**全屏切换签名**：所有面板自右滑入（0.25s，CubeOut）+ 淡入、向左滑出。**单面板模型**：场上至多
+存在一张面板，打开新面板时当前面板向左退场（0.25s 交叉过渡，Celeste 同款）；需要"返回"的页面
+（设置、存档菜单）在关闭时按记忆重开来源页。存档槽额外做 0.06s 级联。
 
 ---
 
@@ -110,14 +111,16 @@
 
 | 交互 | 条件 | 行为 |
 |---|---|---|
-| 点按槽位 | 有存档 | `UI.ContinueGame(slot)` → SceneDirector.ContinueGame |
-| 点按槽位 | 空槽 | `UI.StartNewGame(slot)` → BeginNewRun + StartNewGame |
-| **长按 1s** | 有存档 | 进入"覆盖待确认"态：文案变 `Overwrite with a new game? Tap again to confirm`，绿填充铺满触发 |
-| 再点一次 | 覆盖待确认态（3s 内） | 确认覆盖 → StartNewGame |
+| 点按槽位 / Enter / 手柄 A | 有存档 | `UI.ContinueGame(slot)` → SceneDirector.ContinueGame |
+| 点按槽位 / Enter / 手柄 A | 空槽 | `UI.StartNewGame(slot)` → BeginNewRun + StartNewGame |
+| **长按 Ctrl / 手柄北键(Y) 1s** | 有存档，作用于**高亮槽位** | 进入"覆盖待确认"态：文案变 `Overwrite with a new game? Tap again to confirm`，绿填充铺满触发 |
+| 长按卡片（鼠标按住） | 有存档 | 同上（鼠标路径） |
+| 再点一次 / Enter / A | 覆盖待确认态（3s 内） | 确认覆盖 → StartNewGame |
 | 3s 超时 / 点其他卡 | — | 自动回到常态 |
-| Esc | — | 回到 MainMenu（SaveMenu 关闭） |
+| BACK 按钮 / Esc / 手柄 B | — | 返回主菜单（重开 MainMenu 面板） |
 
-键盘/游戏柄限制（保留既有取舍）：Submit 无长按语义 → 只能"继续/新开"，覆盖仅鼠标可用。
+覆盖长按的对象是**当前高亮槽位**（焦点由方向键/摇杆/点击决定）；空槽不启动长按。
+（Celeste OuiFileSelect 形态，无独立 Confirm 按钮——它没有可指向的槽位。）
 
 ### 3.3 Settings（设置 · Celeste OuiOptions 单页滚动）
 
@@ -271,14 +274,14 @@
      │   │   │      OPTIONS     │
      │   │   │           ▼       ▼
      │   │   └──────►┌──────────┐
-     │   │           │ Settings │  Back → Pause(暂停链) 或 留在MainMenu
+     │   │           │ Settings │  Back → 重开 Pause(暂停链) 或 MainMenu（记忆返回）
      │   │           └──────────┘
      │ BEGIN          ▲
      ▼                │OPTIONS
 ┌─────────┐           │
-│ SaveMenu├───────────┘ (MainMenu 保持打开在底层)
+│ SaveMenu├───────────┘ (开设置时 MainMenu 向左退场——单面板，无堆叠)
 └────┬────┘
-     │ 选中槽位(继续/新开/覆盖确认)
+     │ 选中槽位(继续/新开/覆盖确认)          SaveMenu Esc → 重开 MainMenu
      ▼
   进入 Level1 (HUD 重置计时)
 

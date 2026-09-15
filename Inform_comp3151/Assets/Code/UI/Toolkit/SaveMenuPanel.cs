@@ -4,21 +4,22 @@ using System.Globalization;
 using Inkform.Bus;
 using Inkform.Save;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 namespace Inkform.UI
 {
     /// <summary>
     /// Save menu sheet, Celeste OuiFileSelect styling: three postcard slots that slide in from
-    /// the right with a small cascade, black text on cream cards. Behaviour is the old sheet's,
-    /// unchanged: a tap continues (an empty slot starts a new one), a press-and-hold offers to
-    /// overwrite, a second tap confirms.
+    /// the right with a small cascade, black text on cream cards. Behaviour: a tap continues
+    /// (an empty slot starts a new one); the overwrite offer is a one-second hold on the
+    /// focused slot — Ctrl (keyboard), the pad's North button, or the card itself with the
+    /// mouse — shown as a green fill creeping across the card; a tap then confirms.
     ///
-    /// The hold is measured here against PointerDown/PointerUp events (the old UiHoldButton's
-    /// job) and shown as a green fill creeping across the card. Toolkit pointer capture delivers
-    /// the up wherever the release happens, and the click that ends a completed hold is
-    /// swallowed the same way as before. Keyboard/gamepad Submit has no hold to observe — tap
-    /// only, the same limitation the uGUI version had.
+    /// Keyboard/gamepad have no long-press of their own, so the hold key is polled here
+    /// (ctrlKey / buttonNorth, same stance as the pause keys in UIManager — no action asset
+    /// coupling). The release that ends a completed hold is swallowed by the slot's click
+    /// handler, which reads the live hold state (see the note there).
     ///
     /// All captions are ASCII on purpose: the sheet renders in BombSlimeFonts.ttf, which carries
     /// Latin glyphs only.
@@ -43,7 +44,9 @@ namespace Inkform.UI
         private int heldSlot = -1;        // the slot under an unbroken press; -1 = none
         private float heldSeconds;
         private bool holdFired;
-        private bool suppressClick;       // the release that ended a completed hold must not read as a click
+        private bool holdKeyWasDown;      // Ctrl / North edge detector (the key-hold is the Tick's job)
+
+        private int focusedSlot = -1;     // the slot holding UI focus — the key-hold's target
 
         public SaveMenuPanel(VisualElement root, UIManager ui) : base(root, ui)
         {
@@ -70,16 +73,31 @@ namespace Inkform.UI
 
                 slots[i].clicked += () =>
                 {
+                    // Callback order trap: Button's Clickable registered its PointerUp handler
+                    // before ours, so this click fires BEFORE EndHold resets the hold state.
+                    // Read the live hold state here — the release that ends a completed hold
+                    // must be swallowed, not read as a tap that continues the run.
+                    if (holdFired && heldSlot == slot) return;
+
                     UiBus.RaiseClicked();
                     UiFx.Bounce(slots[slot]);
                     OnSlotPressed(slot);
                 };
                 slots[i].RegisterCallback<PointerEnterEvent>(_ => UiBus.RaiseHovered());
-                slots[i].RegisterCallback<FocusInEvent>(_ => UiBus.RaiseHovered());
+                slots[i].RegisterCallback<FocusInEvent>(_ =>
+                {
+                    focusedSlot = slot;
+                    UiBus.RaiseHovered();
+                });
+                slots[i].RegisterCallback<FocusOutEvent>(_ => { if (focusedSlot == slot) focusedSlot = -1; });
                 slots[i].RegisterCallback<PointerDownEvent>(_ => BeginHold(slot));
                 slots[i].RegisterCallback<PointerUpEvent>(_ => EndHold());
             }
+
+            Bind(Q<Button>("Btn_Back"), "Btn_Back", OnBack);
         }
+
+        private void OnBack() => UI.BackFromSaveMenu();
 
         protected override void PlayEnter()
         {
@@ -110,12 +128,21 @@ namespace Inkform.UI
             SaveStore.Changed -= Refresh;
             ClearConfirm();
             ResetHold();
+            focusedSlot = -1;
         }
 
         protected internal override void Teardown() => SaveStore.Changed -= Refresh;
 
         protected internal override void Tick(float unscaledDelta)
         {
+            // The overwrite hold's key edge: Ctrl (keyboard) or North (gamepad) held on the
+            // focused slot starts the hold, releasing it ends it. Polled rather than routed
+            // through actions — same stance as the pause keys in UIManager.
+            bool holdKeyDown = HoldKeyDown();
+            if (holdKeyDown && !holdKeyWasDown && focusedSlot >= 0) BeginHold(focusedSlot);
+            if (!holdKeyDown && holdKeyWasDown) EndHold();
+            holdKeyWasDown = holdKeyDown;
+
             // Advance the overwrite-hold fill unscaled (this sheet can be reached while
             // timeScale is 0 — the pause menu route into it).
             if (heldSlot >= 0 && !holdFired)
@@ -139,10 +166,20 @@ namespace Inkform.UI
             Refresh();
         }
 
+        private static bool HoldKeyDown()
+        {
+            // ctrlKey is the Keyboard device's synthetic "either Ctrl" control.
+            return (Keyboard.current != null && Keyboard.current.ctrlKey.isPressed)
+                || (Gamepad.current != null && Gamepad.current.buttonNorth.isPressed);
+        }
+
         // ---- Slot actions ----
 
         private void BeginHold(int slot)
         {
+            // An empty slot has nothing to overwrite — the hold simply does not start on it.
+            if (!SaveStore.HasSave(slot)) return;
+
             heldSlot = slot;
             heldSeconds = 0f;
             holdFired = false;
@@ -151,10 +188,6 @@ namespace Inkform.UI
 
         private void EndHold()
         {
-            // The release that ended a completed hold arrives as a click right after this.
-            // Swallow it — the player is being asked a question, not answering it.
-            if (holdFired) suppressClick = true;
-
             int slot = heldSlot;
             heldSlot = -1;
             heldSeconds = 0f;
@@ -167,7 +200,6 @@ namespace Inkform.UI
             heldSlot = -1;
             heldSeconds = 0f;
             holdFired = false;
-            suppressClick = false;
             for (int i = 0; i < holdFills.Length; i++)
                 SetHoldFill(i, 0f);
         }
@@ -180,16 +212,6 @@ namespace Inkform.UI
 
         private void OnSlotPressed(int slot)
         {
-            // The release that ended a completed hold lands here as a click. Swallow it, and
-            // restart the window from the release, so a long hold does not eat the time the
-            // player has to answer in.
-            if (suppressClick)
-            {
-                suppressClick = false;
-                if (confirmSlot == slot) confirmSeconds = ConfirmSeconds;
-                return;
-            }
-
             // Standing offer to overwrite this row: this tap is the confirmation.
             if (confirmSlot == slot)
             {
