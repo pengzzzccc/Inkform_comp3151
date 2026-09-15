@@ -1,0 +1,17 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Tutorial.uss" />
+    <!-- Tutorial sheet: dimmed stage, one page image, footer pager. Page sprites come from the
+         TutorialPages asset; TutorialPanel drives Prev/Next/Close and the page counter. End-of-set
+         buttons disable rather than hide, so the footer never reflows mid-read. -->
+    <ui:VisualElement name="Tutorial" class="screen dim">
+        <ui:VisualElement class="tutorial-page">
+            <ui:Image name="Page" class="page-image" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement class="tutorial-footer">
+            <ui:Button name="Btn_Prev" text="&lt; PREV" class="menu-item floaty outline" />
+            <ui:Label name="Lbl_Page" text="1 / 1" class="page-counter outline" picking-mode="Ignore" />
+            <ui:Button name="Btn_Next" text="NEXT &gt;" class="menu-item floaty outline" />
+            <ui:Button name="Btn_Close" text="CLOSE" class="menu-item floaty outline" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

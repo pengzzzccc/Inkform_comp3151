@@ -1,0 +1,24 @@
+/* Gameplay HUD — every node picks nothing so clicks reach the world. */
+
+#Hud { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.hud-layer { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+
+.hud-fps { position: absolute; top: 14px; right: 18px; font-size: var(--fs-corner); color: rgba(255, 255, 255, 0.85); -unity-text-align: middle-right; }
+.hud-timer { position: absolute; top: 20px; left: 0; right: 0; font-size: var(--fs-item); color: var(--c-white); -unity-text-align: middle-center; }
+
+.hud-inventory {
+    position: absolute;
+    right: 36px; bottom: 36px;
+    width: 132px; height: 86px;
+    background-color: rgba(3, 4, 6, 0.8);
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.85);
+    flex-direction: row;
+    align-items: center;
+    padding: 10px;
+}
+.hud-inventory-icon { width: 54px; height: 54px; -unity-background-scale-mode: scale-to-fit; }
+.hud-inventory-count { flex-grow: 1; font-size: var(--fs-corner); color: var(--c-white); -unity-text-align: middle-center; }
+
+.hud-save-toast { position: absolute; right: 44px; bottom: 138px; font-size: var(--fs-corner); color: rgba(255, 255, 255, 0.92); opacity: 0; -unity-text-align: middle-right; }   /* opacity driven by C# */

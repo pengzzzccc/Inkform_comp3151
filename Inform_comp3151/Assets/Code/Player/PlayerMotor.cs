@@ -23,6 +23,10 @@ namespace Inkform.Player
         [SerializeField] private float jumpBuffer = 0.15f;
         [SerializeField] private int jumpTimes = 1;
 
+        [Header("Jump feel")]
+        [SerializeField] private float coyoteTime = 0.1f;          // grace after walking off a ledge: the unused ground jump survives this long
+        [SerializeField] private float apexSpeedThreshold = 3f;    // |vy| below this while holding jump → half gravity (apex float)
+
         [Header("Gravity")]
         [SerializeField] private float gravity = 3f;
         [SerializeField] private float fallGravityMultiplier = 2.2f;
@@ -46,10 +50,12 @@ namespace Inkform.Player
         private Timer attackTimer;
         private Timer knockbackTimer;
         private Timer updateBuffer;     // brief window after leaving the ground, during which jump count is not refilled
+        private Timer coyoteTimer;      // the ground jump's grace window after walking off a ledge
 
         private int jumpLeft;
         private float requestTime = -999f;
         private bool jumpCutQueued;
+        private bool jumpHeld;          // live jump button state — drives the apex half-gravity float
 
         // Dash direction captured at Dash() (unit vector, free angle). StepDash rewrites it into the
         // rigidbody every frame of the dash, so the trajectory stays fixed for the whole duration
@@ -188,6 +194,10 @@ namespace Inkform.Player
         /// <summary>Jump released: cuts a chunk of the upward velocity, holding longer jumps higher.</summary>
         public void CutJump() => jumpCutQueued = true;
 
+        /// <summary>Jump button state, wired from PlayerHandler.JumpPressed / JumpReleased: holding
+        /// through the jump apex halves gravity there so the peak lingers (Celeste's apex float).</summary>
+        public void SetJumpHeld(bool held) => jumpHeld = held;
+
         /// <summary>Attack dash: locks velocity to dir (a unit vector, free angle) for attackTime
         /// seconds — fixed direction, fixed speed, gravity-free — and locks move input for the
         /// duration.</summary>
@@ -234,6 +244,8 @@ namespace Inkform.Player
             attackTimer.Clear();
             knockbackTimer.Clear();
             updateBuffer.Clear();
+            coyoteTimer.Clear();
+            jumpHeld = false;
             grappleLocked = false;
             groundPlatform = null;
             groundPrevPos = Vector2.zero;
@@ -265,11 +277,17 @@ namespace Inkform.Player
 
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
-            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
+            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up
             else if (!contact.CeilingStickActive)                   {body.gravityScale = gravity;}                              // stick time exhausted, fall off
             else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
             else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
             else                                                    {body.gravityScale = gravity;}
+
+            // Apex float (Celeste's jump peak in half gravity): near the top of a held jump the
+            // player lingers. The gravityScale > 0 guard keeps the ceiling stick's -5 (upward
+            // gravity) from being weakened into a slower stick
+            if (jumpHeld && body.gravityScale > 0f && Mathf.Abs(body.linearVelocityY) < apexSpeedThreshold)
+                body.gravityScale *= 0.5f;
         }
 
         private void StepJump()
@@ -311,6 +329,14 @@ namespace Inkform.Player
             }
 
             if ((contact.OnGround || contact.OnCeiling) && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+
+            // Coyote time: the grace window keeps the unused ground jump alive for a moment after
+            // walking off a ledge; once it expires the jump is revoked. Assumes the single-jump
+            // design — a consumed jump is never revoked, and wall jumps grant their own extra.
+            // updateBuffer above is a different job: it blocks the refill on the jump frame itself.
+            // OnCeiling is excluded so ceiling-stick's jump refill is never revoked
+            if (contact.OnGround) coyoteTimer.Set(coyoteTime);
+            else if (!coyoteTimer.IsRunning && !contact.OnCeiling && jumpLeft == jumpTimes) jumpLeft = 0;
         }
     }
 }

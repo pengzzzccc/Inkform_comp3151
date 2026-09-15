@@ -1,0 +1,158 @@
+using System;
+using Inkform.Bus;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace Inkform.UI
+{
+    /// <summary>
+    /// UI Toolkit replacement for the old uGUI BasePanel. A panel is one full-screen sheet built
+    /// from a UXML template (instantiated once by the UIManager at startup, hidden by display
+    /// none); concrete panels find their controls by element name (Q), exactly the naming
+    /// convention BasePanel.FindButton used.
+    ///
+    /// Panels are plain C# objects, not MonoBehaviours — they are created and kept alive by the
+    /// UIManager and outlive scene switches the same way the old prefabs did. Open/Close toggle
+    /// visibility and play the Celeste screen slide; per-frame logic hooks Tick (driven from
+    /// UIManager.Update, unscaled like every menu timer).
+    /// </summary>
+    public abstract class ToolkitPanel
+    {
+        protected readonly VisualElement Root;
+        protected readonly UIManager UI;
+
+        public bool IsOpen { get; private set; }
+
+        /// <summary>Real time the sheet last entered the open state. Buttons swallow clicks for
+        /// a short grace window after it: the freshly unlocked cursor sits dead-centre on the
+        /// pause menu's RESUME row, and a stray gameplay click / double-Esc / Submit echo must
+        /// not instantly execute whatever it lands on (Celeste does the same on its screens).</summary>
+        protected float OpenedAtRealtime { get; private set; } = -10f;
+
+        private const float InputGraceSeconds = 0.3f;
+        private bool InInputGrace => Time.unscaledTime - OpenedAtRealtime < InputGraceSeconds;
+
+        /// <summary>Where this sheet enters from, in theme pixels. Celeste's screens slide in
+        /// from the right (one screen width); the main menu column comes in from the left
+        /// (OuiMainMenu.TweenFrom x = -500).</summary>
+        protected virtual float EnterFromX => 1920f;
+
+        protected ToolkitPanel(VisualElement root, UIManager ui)
+        {
+            Root = root;
+            UI = ui;
+            Root.style.display = DisplayStyle.None;
+        }
+
+        public void Open()
+        {
+            // Refreshed before the guard on purpose: re-opening an already-open sheet (settings
+            // returning to pause) restarts the grace window too.
+            OpenedAtRealtime = Time.unscaledTime;
+            if (IsOpen) return;
+
+            IsOpen = true;
+            Root.style.display = DisplayStyle.Flex;
+            Root.BringToFront();
+            OnOpen();
+            PlayEnter();
+            FocusFirst();
+        }
+
+        public void Close()
+        {
+            if (!IsOpen) return;
+
+            IsOpen = false;
+            OnClose();
+            ReleaseFocus();
+            PlayLeave(() =>
+            {
+                // A quick close-open cycle (CloseSettings reopens pause) must not hide the sheet
+                // that was opened in between — the guard reads the live state, not the call's.
+                if (!IsOpen) Root.style.display = DisplayStyle.None;
+            });
+        }
+
+        /// <summary>Per-frame tick with unscaled delta; only called while the UI layer lives.</summary>
+        protected internal virtual void Tick(float unscaledDelta) { }
+
+        /// <summary>Called once when the whole UI layer dies (UIManager being destroyed): the
+        /// spot where a MonoBehaviour's OnDestroy used to release static-event subscriptions and
+        /// scoped locks that must not outlive their owner.</summary>
+        protected internal virtual void Teardown() { }
+
+        /// <summary>Hook after the panel becomes visible (before the slide-in starts).</summary>
+        protected virtual void OnOpen() { }
+
+        /// <summary>Hook before the panel starts sliding out.</summary>
+        protected virtual void OnClose() { }
+
+        protected virtual void PlayEnter() => UiFx.SlideIn(Root, EnterFromX);
+
+        protected virtual void PlayLeave(Action onHidden) => UiFx.SlideOut(Root, EnterFromX, UiFx.ScreenSlideSeconds, onHidden);
+
+        // ---- Child lookup, shared by every panel ----
+
+        protected VisualElement Q(string name) => Root.Q(name);
+
+        protected T Q<T>(string name) where T : VisualElement => Root.Q<T>(name);
+
+        /// <summary>
+        /// Wires a Button the way BasePanel.Bind did: warn instead of throw when the named
+        /// control is missing (one renamed element must not take down the rest of Awake), and
+        /// route activation through UiBus so hover/click cues keep working without any panel
+        /// knowing the audio system exists. The Bounce is the press feel for the Submit path —
+        /// mouse presses already show :active from USS.
+        /// </summary>
+        protected void Bind(Button button, string name, Action onClick)
+        {
+            if (button == null)
+            {
+                Debug.LogWarning($"{GetType().Name}: no element named '{name}' in the sheet — that control does nothing");
+                return;
+            }
+
+            button.clicked += () =>
+            {
+                if (InInputGrace) return;   // swallow clicks landing on the fresh sheet
+
+                UiBus.RaiseClicked();
+                UiFx.Bounce(button);
+                onClick();
+            };
+            button.RegisterCallback<PointerEnterEvent>(_ => UiBus.RaiseHovered());
+            button.RegisterCallback<FocusInEvent>(_ => UiBus.RaiseHovered());
+        }
+
+        /// <summary>Focuses the sheet's first live .floaty control, standing in for the old
+        /// SelectFirstControl: gamepad/keyboard navigation needs one focused element to start
+        /// from, or the highlight is nowhere until the mouse moves.</summary>
+        protected void FocusFirst()
+        {
+            foreach (VisualElement el in Root.Query(className: "floaty").Build())
+            {
+                if (!el.focusable || !el.enabledSelf) continue;
+                if (!VisibleInHierarchy(el)) continue;
+                el.Focus();
+                return;
+            }
+        }
+
+        private void ReleaseFocus()
+        {
+            if (Root.panel == null) return;
+            if (Root.panel.focusController.focusedElement is VisualElement focused && Root.Contains(focused))
+                focused.Blur();
+        }
+
+        /// <summary>Inline display-none on any ancestor (e.g. the hidden device group) makes an
+        /// element unfocusable in practice; inline styles read immediately, unlike resolvedStyle.</summary>
+        private static bool VisibleInHierarchy(VisualElement el)
+        {
+            for (VisualElement e = el; e != null; e = e.parent)
+                if (e.style.display == DisplayStyle.None) return false;
+            return true;
+        }
+    }
+}

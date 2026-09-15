@@ -1,0 +1,38 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="SaveMenu.uss" />
+    <!-- Celeste OuiFileSelect: 40% dim, a SAVE SLOTS header, then three postcard-style slots
+         sliding in from the right with a cascade. Slot names Slot0..Slot2 are queried by
+         SaveMenuPanel; HoldFill0..2 show the overwrite-hold progress. Captions are ASCII on
+         purpose (BombSlimeFonts is Latin-only). -->
+    <ui:VisualElement name="SaveMenu" class="screen">
+        <ui:VisualElement class="dim" picking-mode="Ignore" />
+        <ui:Label text="SAVE SLOTS" class="save-title header-outline" picking-mode="Ignore" />
+        <ui:VisualElement class="save-column">
+            <ui:Button name="Slot0" class="postcard-slot floaty">
+                <ui:VisualElement class="postcard">
+                    <ui:VisualElement name="HoldFill0" class="hold-fill" picking-mode="Ignore" />
+                    <ui:Label name="SlotTitle0" class="card-title" picking-mode="Ignore" />
+                    <ui:Label name="SlotInfo0" class="card-info" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:Button>
+            <ui:Button name="Slot1" class="postcard-slot floaty">
+                <ui:VisualElement class="postcard">
+                    <ui:VisualElement name="HoldFill1" class="hold-fill" picking-mode="Ignore" />
+                    <ui:Label name="SlotTitle1" class="card-title" picking-mode="Ignore" />
+                    <ui:Label name="SlotInfo1" class="card-info" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:Button>
+            <ui:Button name="Slot2" class="postcard-slot floaty">
+                <ui:VisualElement class="postcard">
+                    <ui:VisualElement name="HoldFill2" class="hold-fill" picking-mode="Ignore" />
+                    <ui:Label name="SlotTitle2" class="card-title" picking-mode="Ignore" />
+                    <ui:Label name="SlotInfo2" class="card-info" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:Button>
+        </ui:VisualElement>
+        <ui:VisualElement class="confirm-hint" picking-mode="Ignore">
+            <ui:Label text="Confirm - Enter" class="corner outline" picking-mode="Ignore" />
+            <ui:Label text="Back - Esc" class="corner outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

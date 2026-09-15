@@ -1,0 +1,5 @@
+/* Unity's default runtime theme MUST come first: ScrollView, Slider and every other built-in
+   control depends on its internal layout styles. Note the special URI — importing by file name
+   ("UnityDefaultRuntimeTheme.tss") does NOT resolve and fails silently. */
+@import url("unity-theme://default");
+@import url("Theme.uss");

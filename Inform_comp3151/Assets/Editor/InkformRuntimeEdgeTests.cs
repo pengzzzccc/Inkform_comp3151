@@ -18,6 +18,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Inkform.Tests
 {
@@ -724,105 +725,55 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void InventoryHud_AlwaysShowsCountAndUsesFifoHeadIcon()
+        public void Hud_InventoryShowsCountAndUsesFifoHeadIcon()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
-            GameObject host = UnityEngine.Object.Instantiate(prefab);
-            InventoryHud hud = host.GetComponentInChildren<InventoryHud>(true);
-            Assert.IsNotNull(hud);
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Hud.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/Hud.uxml");
+            VisualElement host = tree.Instantiate();
+            Hud hud = new Hud(host);
             InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
             SetField(item, "id", "hud-head");
             try
             {
-                Invoke(hud, "Awake");
-                Invoke(hud, "OnEnable");
-                Text count = GetField<Text>(hud, "countText");
-                Image icon = GetField<Image>(hud, "currentIcon");
+                Label count = host.Q<Label>("InventoryCount");
+                VisualElement icon = host.Q("InventoryIcon");
                 Assert.AreEqual("0/1", count.text);
-                Assert.IsFalse(icon.enabled);
+                Assert.AreEqual(DisplayStyle.None, icon.style.display.value);
 
                 Assert.IsTrue(InventoryStore.TryAdd(item));
                 Assert.AreEqual("1/1", count.text);
-                Assert.IsTrue(icon.sprite == item.Icon);
+                Assert.AreEqual(item.Icon, icon.style.backgroundImage.value.sprite);
             }
             finally
             {
-                Invoke(hud, "OnDisable");
+                hud.Dispose();
                 UnityEngine.Object.DestroyImmediate(item);
-                UnityEngine.Object.DestroyImmediate(host);
             }
         }
 
         [Test]
-        public void HudRootPrefab_HasOneConfiguredCanvasAndAllFourReadouts()
+        public void HudUxml_HasAllFourReadoutsAndNeverBlocksPointer()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Hud.uxml");
+            Assert.IsNotNull(tree);
+            VisualElement host = tree.Instantiate();
 
-            Canvas[] canvases = prefab.GetComponentsInChildren<Canvas>(true);
-            Assert.AreEqual(1, canvases.Length);
-            Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvases[0].renderMode);
-            Assert.AreEqual(90, canvases[0].sortingOrder);
+            Assert.IsNotNull(host.Q("Gameplay"));
+            Assert.IsNotNull(host.Q<Label>("TimerLabel"));
+            Assert.IsNotNull(host.Q<Label>("FpsLabel"));
+            Assert.IsNotNull(host.Q("Inventory"));
+            Assert.IsNotNull(host.Q("InventoryIcon"));
+            Assert.IsNotNull(host.Q<Label>("InventoryCount"));
+            Assert.IsNotNull(host.Q<Label>("SaveToast"));
 
-            CanvasScaler scaler = prefab.GetComponent<CanvasScaler>();
-            Assert.IsNotNull(scaler);
-            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
-            Assert.AreEqual(new Vector2(1920f, 1080f), scaler.referenceResolution);
-            Assert.AreEqual(0.5f, scaler.matchWidthOrHeight);
-
-            Assert.IsNotNull(prefab.GetComponent<HudRoot>());
-            Assert.IsNotNull(prefab.GetComponentInChildren<FpsDisplay>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<GameTimer>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<InventoryHud>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<SaveIndicator>(true));
-
-            foreach (Graphic graphic in prefab.GetComponentsInChildren<Graphic>(true))
-                Assert.IsFalse(graphic.raycastTarget, $"{graphic.name} must not block pointer input");
-
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "gameplayRoot");
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "levelTimer");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "root");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "label");
-            AssertSerializedReference(prefab.GetComponentInChildren<GameTimer>(true), "timerText");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "hudRoot");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "currentIcon");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "countText");
-            AssertSerializedReference(prefab.GetComponentInChildren<SaveIndicator>(true), "label");
+            // The old prefab asserted raycastTarget == false on every Graphic; the Toolkit shape
+            // of that contract is picking-mode Ignore on every element of the HUD tree.
+            foreach (VisualElement element in host.Query().Build())
+                Assert.AreEqual(PickingMode.Ignore, element.pickingMode, $"{element.name} must not block pointer input");
         }
 
         [Test]
-        public void GameManager_WiresHudPrefabAndHasNoLegacyFpsComponent()
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Control/GameManager.prefab");
-            Assert.IsNotNull(prefab);
-            Assert.IsNull(prefab.GetComponent<FpsDisplay>());
-
-            UIManager manager = prefab.GetComponent<UIManager>();
-            Assert.IsNotNull(manager);
-            AssertSerializedReference(manager, "hudPrefab");
-        }
-
-        [Test]
-        public void EndPanelPrefab_HasBackButtonAndBothRunReadouts()
-        {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/EndPanel.prefab");
-            Assert.IsNotNull(prefab, "run Tools > Inkform > Build End UI to generate the end sheet");
-
-            Assert.IsNotNull(prefab.GetComponent<EndPanel>());
-            Assert.IsNotNull(prefab.GetComponent<CanvasGroup>(), "BasePanel requires one");
-
-            // EndPanel finds every control by name (BasePanel.Find*), so the names are the contract
-            // with UIBuilder — a rename here silently leaves the sheet empty at runtime.
-            Assert.IsNotNull(prefab.transform.Find("Title"));
-            Assert.IsNotNull(prefab.transform.Find("Btn_Back"));
-            Assert.IsNotNull(prefab.transform.Find("Lbl_Deaths"));
-            Assert.IsNotNull(prefab.transform.Find("Lbl_Time"));
-        }
-
-        [Test]
-        public void GameManager_WiresEndPanelPrefab()
+        public void GameManager_KeepsUiManagerAndItsSoundCueSlots()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/Control/GameManager.prefab");
@@ -830,7 +781,42 @@ namespace Inkform.Tests
 
             UIManager manager = prefab.GetComponent<UIManager>();
             Assert.IsNotNull(manager);
-            AssertSerializedReference(manager, "endPanelPrefab");
+
+            // The Toolkit migration kept the serialized cue slots (the UiBus -> AudioManager
+            // pipeline is unchanged); losing them would silently mute every menu sound.
+            SerializedObject serialized = new SerializedObject(manager);
+            Assert.IsNotNull(serialized.FindProperty("hoverCue"));
+            Assert.IsNotNull(serialized.FindProperty("clickCue"));
+            Assert.IsNotNull(serialized.FindProperty("toggleOnCue"));
+            Assert.IsNotNull(serialized.FindProperty("toggleOffCue"));
+        }
+
+        [Test]
+        public void EndPanelUxml_HasBackButtonAndBothRunReadouts()
+        {
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/EndPanel.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/EndPanel.uxml");
+
+            VisualElement host = tree.Instantiate();
+            // EndPanel finds every control by element name (ToolkitPanel.Q), so the names are the
+            // contract with the UXML — a rename here silently leaves the sheet empty at runtime.
+            Assert.IsNotNull(host.Q("TitleRow"));
+            Assert.IsNotNull(host.Q<UnityEngine.UIElements.Button>("Btn_Back"));
+            Assert.IsNotNull(host.Q<Label>("Lbl_Deaths"));
+            Assert.IsNotNull(host.Q<Label>("Lbl_Time"));
+        }
+
+        [Test]
+        public void ToolkitUi_ResourcesContainEverySheetAndTheme()
+        {
+            foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "Tutorial", "EndPanel", "Hud" })
+            {
+                VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
+                Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
+            }
+
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Resources/UI/Theme.uss"));
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>("Assets/Resources/UI/RuntimeTheme.tss"));
         }
 
         [Test]
@@ -1083,9 +1069,9 @@ namespace Inkform.Tests
         [TestCase(3599f, "59:59")]
         [TestCase(3600f, "01:00:00")]
         [TestCase(3661f, "01:01:01")]
-        public void GameTimer_FormatsElapsedTime(float seconds, string expected)
+        public void Hud_FormatsElapsedTime(float seconds, string expected)
         {
-            Assert.AreEqual(expected, GameTimer.FormatElapsedTime(seconds));
+            Assert.AreEqual(expected, Hud.FormatElapsedTime(seconds));
         }
 
         [Test]

@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Settings.uss" />
+    <!-- Options sheet: Celeste-style single scrolling page (Header + SOUND/GRAPHICS/CONTROLS
+         SubHeaders) over a 40% dim — Settings stacks above the main menu or the pause sheet,
+         so the sheet underneath must be pushed back. The rows themselves are built in C# by
+         SettingsPanel into #Rows — OptionRows for cycling values, slider rows for
+         volumes/sensitivities, rebind rows for the two device groups. -->
+    <ui:VisualElement name="Settings" class="screen dim">
+        <ui:VisualElement class="settings-header" picking-mode="Ignore">
+            <ui:Label text="OPTIONS" class="menu-title header-outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:ScrollView name="Scroll" class="settings-scroll" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Auto">
+            <ui:VisualElement name="Rows" />
+        </ui:ScrollView>
+        <ui:VisualElement class="settings-bottom">
+            <ui:Button name="Btn_Reset" text="RESET" class="menu-item floaty outline" />
+            <ui:Button name="Btn_Back" text="BACK" class="menu-item floaty outline" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

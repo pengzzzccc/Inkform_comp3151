@@ -18,6 +18,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Inkform.Tests
 {
@@ -271,21 +272,17 @@ namespace Inkform.Tests
             Sprite second = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
             Sprite ropeGunOnly = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
 
-            GameObject root = new GameObject("Tutorial test");
-            root.SetActive(false);
-            TutorialPanel panel = root.AddComponent<TutorialPanel>();   // CanvasGroup comes via RequireComponent
-            Button prev = AddTutorialButton(root, "Btn_Prev");
-            Button next = AddTutorialButton(root, "Btn_Next");
-            AddTutorialButton(root, "Btn_Close");
-            GameObject page = new GameObject("Page", typeof(RectTransform), typeof(Image));
-            page.transform.SetParent(root.transform, false);
-            GameObject labelGo = new GameObject("Lbl_Page", typeof(RectTransform), typeof(Text));
-            labelGo.transform.SetParent(root.transform, false);
-            Text label = labelGo.GetComponent<Text>();
+            TutorialPages content = ScriptableObject.CreateInstance<TutorialPages>();
+            content.checkpointPages = new[] { first, second };
+            content.ropeGunPages = new[] { ropeGunOnly };
 
-            SetPages(panel, "checkpointPages", first, second);
-            SetPages(panel, "ropeGunPages", ropeGunOnly);
-            InvokeInstance(panel, "Awake");     // edit mode never runs Unity's magic methods
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Tutorial.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/Tutorial.uxml");
+            VisualElement host = tree.Instantiate();
+
+            // UIManager and the input/freeze systems are not part of what this test exercises —
+            // the panel null-guards all of them (same stance the MonoBehaviour version had).
+            TutorialPanel panel = new TutorialPanel(host, null, content, null, null, null);
             try
             {
                 Assert.IsTrue(panel.ShowOnPickup, "the toggle defaults to on");
@@ -294,33 +291,36 @@ namespace Inkform.Tests
                 Assert.IsFalse(panel.HasPages("other"), "an unknown ability has no page set");
 
                 panel.OpenWith(AbilityIds.Checkpoint);
-                Image pageImage = page.GetComponent<Image>();
-                Assert.AreEqual(first, pageImage.sprite);
+                VisualElement pageImage = host.Q("Page");
+                var prev = host.Q<UnityEngine.UIElements.Button>("Btn_Prev");
+                var next = host.Q<UnityEngine.UIElements.Button>("Btn_Next");
+                Label label = host.Q<Label>("Lbl_Page");
+                Assert.AreEqual(first, pageImage.style.backgroundImage.value.sprite);
                 Assert.AreEqual("1 / 2", label.text);
-                Assert.IsFalse(prev.interactable, "no page before the first");
-                Assert.IsTrue(next.interactable);
+                Assert.IsFalse(prev.enabledSelf, "no page before the first");
+                Assert.IsTrue(next.enabledSelf);
 
-                next.onClick.Invoke();
-                Assert.AreEqual(second, pageImage.sprite);
+                InvokeInstance(panel, "OnNext");
+                Assert.AreEqual(second, pageImage.style.backgroundImage.value.sprite);
                 Assert.AreEqual("2 / 2", label.text);
-                Assert.IsFalse(next.interactable, "no page after the last");
-                Assert.IsTrue(prev.interactable);
+                Assert.IsFalse(next.enabledSelf, "no page after the last");
+                Assert.IsTrue(prev.enabledSelf);
 
-                prev.onClick.Invoke();
-                Assert.AreEqual(first, pageImage.sprite, "Prev steps back to the first page");
+                InvokeInstance(panel, "OnPrev");
+                Assert.AreEqual(first, pageImage.style.backgroundImage.value.sprite, "Prev steps back to the first page");
 
                 panel.OpenWith(AbilityIds.RopeGun);
-                Assert.AreEqual(ropeGunOnly, pageImage.sprite, "each ability opens its own page set");
+                Assert.AreEqual(ropeGunOnly, pageImage.style.backgroundImage.value.sprite, "each ability opens its own page set");
                 Assert.AreEqual("1 / 1", label.text);
-                Assert.IsFalse(prev.interactable);
-                Assert.IsFalse(next.interactable, "a single page has nothing to step to");
+                Assert.IsFalse(prev.enabledSelf);
+                Assert.IsFalse(next.enabledSelf, "a single page has nothing to step to");
 
-                SetPickupSwitch(panel, false);
-                Assert.IsFalse(panel.ShowOnPickup, "the Inspector switch is the off gate OpenTutorial reads");
+                content.showOnPickup = false;
+                Assert.IsFalse(panel.ShowOnPickup, "the asset switch is the off gate OpenTutorial reads");
             }
             finally
             {
-                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(content);
                 UnityEngine.Object.DestroyImmediate(first);
                 UnityEngine.Object.DestroyImmediate(second);
                 UnityEngine.Object.DestroyImmediate(ropeGunOnly);
@@ -334,15 +334,18 @@ namespace Inkform.Tests
             GameObject host = new GameObject("tutorial lock host");
             InputHandler input = host.AddComponent<InputHandler>();
             GameTimeController time = host.AddComponent<GameTimeController>();
+            // The scoped locks key their owner by UnityEngine.Object reference — the plain panel
+            // locks through this dedicated owner component (UIManager owns its lifetime).
+            ToolkitLockOwner owner = host.AddComponent<ToolkitLockOwner>();
 
-            GameObject sheet = new GameObject("Tutorial lock sheet");
-            sheet.SetActive(false);
-            TutorialPanel panel = sheet.AddComponent<TutorialPanel>();   // CanvasGroup comes via RequireComponent
-            sheet.transform.SetParent(host.transform, false);
-            AddTutorialButton(sheet, "Btn_Prev");
-            AddTutorialButton(sheet, "Btn_Next");
-            AddTutorialButton(sheet, "Btn_Close");
-            InvokeInstance(panel, "Awake");     // edit mode never runs Unity's magic methods
+            TutorialPages content = ScriptableObject.CreateInstance<TutorialPages>();
+            content.checkpointPages = new[] { Sprite.Create(new Texture2D(4, 4), new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f) };
+
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Tutorial.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/Tutorial.uxml");
+            VisualElement sheet = tree.Instantiate();
+
+            TutorialPanel panel = new TutorialPanel(sheet, null, content, input, time, owner);
             try
             {
                 input.SetPlaying(true);
@@ -360,17 +363,20 @@ namespace Inkform.Tests
                 Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "closing releases the input lock");
                 Assert.IsFalse(time.IsWorldFrozen, "closing releases the world freeze");
 
-                // Destroyed while open: an owner lock outliving its owner would leave gameplay input
-                // dead for the rest of the session, so OnDestroy must release
+                // Torn down while open: an owner lock outliving its owner would leave gameplay
+                // input dead for the rest of the session, so Teardown (the UIManager's destroy
+                // hook, standing in for the old MonoBehaviour OnDestroy) must release. Reflection
+                // because the method is internal to the runtime assembly.
                 panel.Open();
-                UnityEngine.Object.DestroyImmediate(sheet);
-                Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "OnDestroy releases the input lock");
-                Assert.IsFalse(time.IsWorldFrozen, "OnDestroy releases the world freeze");
+                InvokeInstance(panel, "Teardown");
+                UnityEngine.Object.DestroyImmediate(owner);
+                Assert.IsTrue(ReadField<bool>(input, "actionsEnabled"), "Teardown releases the input lock");
+                Assert.IsFalse(time.IsWorldFrozen, "Teardown releases the world freeze");
             }
             finally
             {
                 Time.timeScale = 1f;
-                if (sheet != null) UnityEngine.Object.DestroyImmediate(sheet);
+                UnityEngine.Object.DestroyImmediate(content);
                 UnityEngine.Object.DestroyImmediate(host);
             }
         }
@@ -491,21 +497,6 @@ namespace Inkform.Tests
         private static RopeGun.RopePhase PhaseOf(RopeGun ropeGun) =>
             (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(ropeGun);
-
-        private static Button AddTutorialButton(GameObject parent, string name)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(parent.transform, false);
-            return go.GetComponent<Button>();
-        }
-
-        private static void SetPages(TutorialPanel panel, string field, params Sprite[] pages) =>
-            panel.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(panel, pages);
-
-        private static void SetPickupSwitch(TutorialPanel panel, bool value) =>
-            panel.GetType().GetField("showOnPickup", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(panel, value);
 
         private static T ReadField<T>(object target, string name) =>
             (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target);

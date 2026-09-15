@@ -1,0 +1,30 @@
+/* Settings — one scrolling page: OPTIONS header, SOUND/GRAPHICS/CONTROLS groups, Reset/Back.
+   Rows are built in C# (OptionRow / slider rows) into #Rows. */
+
+.settings-header { position: absolute; left: 0; right: 0; top: 28px; }
+.settings-scroll { position: absolute; left: 0; right: 0; top: 140px; bottom: 120px; }
+.settings-bottom { position: absolute; right: 40px; bottom: 28px; flex-direction: row; }
+.settings-bottom > .menu-item { font-size: var(--fs-value); margin-left: 20px; }
+
+.subheader { font-size: var(--fs-sub); color: var(--c-gray); -unity-text-align: middle-left; margin: 26px 24px 10px 24px; -unity-font-style: bold; }
+
+/* flex-shrink: 0 — the rows must never be squashed by a constrained ancestor. */
+.option-row { flex-shrink: 0; flex-direction: row; height: 60px; margin: 4px 24px; padding: 0 12px; align-items: center; }
+.option-row .row-label { font-size: var(--fs-item); color: var(--c-white); flex-grow: 1; -unity-text-align: middle-left; }
+.option-row .row-arrow { font-size: var(--fs-item); color: var(--c-white); }
+.option-row .row-value { font-size: var(--fs-value); color: var(--c-white); min-width: 300px; max-width: 420px; -unity-text-align: middle-center; margin: 0 16px; }
+.option-row:hover .row-label, .option-row:focus .row-label { color: var(--c-green); }
+.option-row:disabled .row-label { color: var(--c-disabled); }
+
+.slider-row { flex-shrink: 0; flex-direction: row; height: 60px; margin: 4px 24px; padding: 0 12px; align-items: center; }
+.slider-row .row-label { font-size: var(--fs-item); color: var(--c-white); flex-grow: 1; -unity-text-align: middle-left; }
+.slider-row .settings-slider { width: 520px; height: 40px; margin-left: 16px; }
+.slider-row .row-readout { font-size: var(--fs-value); color: var(--c-white); min-width: 110px; -unity-text-align: middle-right; margin-left: 16px; }
+.slider-row:hover .row-label, .slider-row.focused .row-label { color: var(--c-green); }
+
+/* The slider's own visual: thin round track, white round knob.
+   (Sizing rules — the geometry logic comes from the default theme.) */
+.settings-slider .unity-base-slider__tracker { height: 8px; background-color: rgba(255, 255, 255, 0.16); border-radius: 4px; }
+.settings-slider .unity-base-slider__dragger { width: 20px; height: 26px; border-radius: 10px; background-color: var(--c-white); }
+.settings-slider:focus .unity-base-slider__dragger,
+.settings-slider .unity-base-slider__dragger:active { background-color: var(--c-green); }

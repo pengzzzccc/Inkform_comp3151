@@ -1,0 +1,5 @@
+/* Main menu sheet — title block and menu column pinned to the left. */
+
+.menu-title-block { position: absolute; left: 150px; top: 64px; }
+.menu-column { position: absolute; left: 150px; top: 210px; width: 640px; flex-direction: column; align-items: stretch; }
+.version-label { position: absolute; left: 80px; bottom: 28px; color: var(--c-header); }

@@ -1,0 +1,8 @@
+/* Tutorial — dimmed stage with one page image and a footer pager. */
+
+.tutorial-page { position: absolute; left: 0; right: 0; top: 110px; bottom: 150px; align-items: center; justify-content: center; }
+.tutorial-page > .page-image { flex-grow: 1; -unity-background-scale-mode: scale-to-fit; }
+
+.tutorial-footer { position: absolute; left: 0; right: 0; bottom: 40px; flex-direction: row; align-items: center; justify-content: center; }
+.tutorial-footer > .menu-item { font-size: var(--fs-value); margin: 0 24px; }
+.page-counter { font-size: var(--fs-value); color: var(--c-white); margin: 0 24px; }
