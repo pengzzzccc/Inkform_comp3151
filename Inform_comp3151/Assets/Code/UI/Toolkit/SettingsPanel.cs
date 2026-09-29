@@ -172,7 +172,15 @@ namespace Inkform.UI
                 ShowDeviceContent();
             };
 
-            rumbleRow = AddOnOffRow("Rumble", SettingsStore.Rumble, SettingsStore.SetRumble);
+            rumbleRow = AddOptionRow("Rumble", LevelText(SettingsStore.Rumble));
+            rumbleRow.Stepped += dir =>
+            {
+                var values = (SettingsStore.RumbleLevel[])Enum.GetValues(typeof(SettingsStore.RumbleLevel));
+                int i = Array.IndexOf(values, SettingsStore.Rumble);
+                i = (i + dir + values.Length) % values.Length;
+                SettingsStore.SetRumble(values[i]);
+                rumbleRow.Value = LevelText(values[i]);
+            };
 
             mouseLabel = AddSliderRow("Mouse Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out mouseSlider);
             stickLabel = AddSliderRow("Controller Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out stickSlider);
@@ -363,7 +371,7 @@ namespace Inkform.UI
             perfRateRow.Value = RateText(SettingsStore.PerfInterval);
 
             deviceRow.Value = DeviceText(SettingsStore.Device);
-            rumbleRow.Value = OnOffText(SettingsStore.Rumble);
+            rumbleRow.Value = LevelText(SettingsStore.Rumble);
             SetSlider(mouseSlider, SettingsStore.MouseSensitivity, mouseLabel, SensText);
             SetSlider(stickSlider, SettingsStore.StickSensitivity, stickLabel, SensText);
 
@@ -507,6 +515,14 @@ namespace Inkform.UI
 
         private static string DeviceText(SettingsStore.InputDevice device) =>
             device == SettingsStore.InputDevice.KeyboardMouse ? "Keyboard + Mouse" : "Gamepad";
+
+        private static string LevelText(SettingsStore.RumbleLevel level) => level switch
+        {
+            SettingsStore.RumbleLevel.Off => "OFF",
+            SettingsStore.RumbleLevel.Low => "LOW",
+            SettingsStore.RumbleLevel.Medium => "MEDIUM",
+            _ => "HIGH",
+        };
 
         /// <summary>Intervals are stored in seconds but shown as their reciprocal in Hz
         /// ("10 Hz" .. "0.2 Hz"), matching how the numbers read on the panel.</summary>

@@ -25,6 +25,10 @@ namespace Inkform.Settings
         /// <summary>Which input device family gameplay input is filtered to (InputHandler).</summary>
         public enum InputDevice { KeyboardMouse, Gamepad }
 
+        /// <summary>Rumble intensity. Off silences the pad entirely; the other tiers scale every
+        /// rumble's motor strengths by RumbleScale (an accessibility tier, not an on/off gate).</summary>
+        public enum RumbleLevel { Off = 0, Low = 1, Medium = 2, High = 3 }
+
         // Sensitivity is a plain multiplier shown as 0%~500% in the UI; 1.0 (=100%) means no change.
         public const float MinSensitivity = 0f;
         public const float MaxSensitivity = 5f;
@@ -62,9 +66,20 @@ namespace Inkform.Settings
         /// PerfIntervals never get in through the setter.</summary>
         public static float PerfInterval { get; private set; } = 1f;
 
-        /// <summary>Gamepad rumble on/off; RumbleManager reads this live. Strengths are tuned at
-        /// half-motor-power in the manager itself, so there is no middle setting to feel through.</summary>
-        public static bool Rumble { get; private set; } = true;
+        /// <summary>Gamepad rumble intensity; RumbleManager reads this live and scales every
+        /// event's motor strengths by RumbleScale. Strengths themselves are tuned at half motor
+        /// power in the manager.</summary>
+        public static RumbleLevel Rumble { get; private set; } = RumbleLevel.Medium;
+
+        /// <summary>The multiplier RumbleManager applies to every rumble for the current tier.
+        /// Spread wide enough that consecutive tiers are actually distinguishable by feel.</summary>
+        public static float RumbleScale => Rumble switch
+        {
+            RumbleLevel.Low => 0.45f,
+            RumbleLevel.Medium => 0.7f,
+            RumbleLevel.High => 1f,
+            _ => 0f,
+        };
 
         /// <summary>Global visual FX intensity 0~1: scales screen shake, camera zoom, post punch and
         /// shatter launch speed at their consumers. Hitstop is a duration, not a strength, so it is
@@ -123,6 +138,8 @@ namespace Inkform.Settings
         private const string KeyFxIntensity = "Inkform.fxIntensity";
         private const string KeyPerfRecording = "Inkform.perfRecording";
         private const string KeyPerfInterval = "Inkform.perfInterval";
+        private const string KeyRumbleLevel = "Inkform.rumbleLevel";
+        // Legacy on/off key (bool). Read once to migrate; deleted by SetRumble and the reset path.
         private const string KeyRumble = "Inkform.rumbleOn";
 
         // ---- Lifecycle ----
@@ -144,7 +161,7 @@ namespace Inkform.Settings
             ShowFps = false;
             PerfRecording = false;
             PerfInterval = 1f;
-            Rumble = true;
+            Rumble = RumbleLevel.Medium;
             FxIntensity = 1f;
             cachedResolutions = null;
         }
@@ -177,7 +194,22 @@ namespace Inkform.Settings
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
             PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 0) != 0;
             PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
-            Rumble = PlayerPrefs.GetInt(KeyRumble, 1) != 0;
+
+            // Rumble tier, migrating the legacy bool key once: the old "on" (tuned as the
+            // everyday feel) maps to Medium, the old "off" to Off. The new key wins once present.
+            if (PlayerPrefs.HasKey(KeyRumbleLevel))
+            {
+                int level = PlayerPrefs.GetInt(KeyRumbleLevel, (int)RumbleLevel.Medium);
+                Rumble = level >= 0 && level <= (int)RumbleLevel.High ? (RumbleLevel)level : RumbleLevel.Medium;
+            }
+            else if (PlayerPrefs.HasKey(KeyRumble))
+            {
+                Rumble = PlayerPrefs.GetInt(KeyRumble, 1) != 0 ? RumbleLevel.Medium : RumbleLevel.Off;
+                PlayerPrefs.SetInt(KeyRumbleLevel, (int)Rumble);
+                PlayerPrefs.DeleteKey(KeyRumble);
+            }
+            else Rumble = RumbleLevel.Medium;
+
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
 
             ResolutionWidth = PlayerPrefs.GetInt(KeyResW, 0);
@@ -337,11 +369,12 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
-        public static void SetRumble(bool value)
+        public static void SetRumble(RumbleLevel value)
         {
             if (Rumble == value) return;
             Rumble = value;
-            PlayerPrefs.SetInt(KeyRumble, value ? 1 : 0);
+            PlayerPrefs.SetInt(KeyRumbleLevel, (int)value);
+            PlayerPrefs.DeleteKey(KeyRumble);   // the legacy bool key is superseded
             Changed?.Invoke();
         }
 
@@ -357,7 +390,7 @@ namespace Inkform.Settings
             ShowFps = false;
             PerfRecording = false;
             PerfInterval = 1f;
-            Rumble = true;
+            Rumble = RumbleLevel.Medium;
             FxIntensity = 1f;
             Resolution r = Screen.currentResolution;
             ResolutionWidth = r.width;
@@ -383,6 +416,7 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyFxIntensity);
             PlayerPrefs.DeleteKey(KeyPerfRecording);
             PlayerPrefs.DeleteKey(KeyPerfInterval);
+            PlayerPrefs.DeleteKey(KeyRumbleLevel);
             PlayerPrefs.DeleteKey(KeyRumble);
 
             ApplyGraphics();

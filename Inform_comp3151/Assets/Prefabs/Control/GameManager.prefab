@@ -142,41 +142,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60be3a14fc1fb4044b170de2661afd40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Fx.RumbleManager
-  enableRumble: 1
-  landStrength: 0.18
+  landStrength: 0.4
   landDuration: 0.12
-  blastStrength: 0.5
+  landCooldown: 0.25
+  blastStrength: 0.9
   blastDuration: 0.22
   blastFalloff: 20
   shockSpeed: 30
   playerHalfWidth: 0.5
-  fireStrength: 0.1
+  fireStrength: 0.25
   fireDuration: 0.08
-  hitStrength: 0.28
+  hitStrength: 0.6
   hitDuration: 0.15
-  deathStrength: 0.2
+  deathStrength: 0.5
   deathDuration: 0.25
-  checkpointStrength: 0.08
+  checkpointStrength: 0.22
   checkpointDuration: 0.25
-  respawnStrength: 0.08
+  respawnStrength: 0.2
   respawnDuration: 0.1
-  dashStrength: 0.2
+  dashStrength: 0.45
   dashDuration: 0.1
-  dashFailStrength: 0.08
+  dashFailStrength: 0.2
   dashFailDuration: 0.06
-  tickStrength: 0.08
+  tickStrength: 0.2
   tickDuration: 0.05
-  brokenStrength: 0.08
+  brokenStrength: 0.2
   brokenDuration: 0.1
-  storeStrength: 0.2
+  storeStrength: 0.45
   storeDuration: 0.1
-  releaseStrength: 0.08
+  releaseStrength: 0.2
   releaseDuration: 0.1
-  upgradeStrength: 0.2
+  upgradeStrength: 0.5
   upgradeDuration: 0.25
-  uiStrength: 0.08
+  uiStrength: 0.22
   uiClickDuration: 0.1
   uiToggleDuration: 0.1
+  minMotorLevel: 0.12
+  dualSenseRumble: 1
 --- !u!114 &1644368403275166719
 MonoBehaviour:
   m_ObjectHideFlags: 0
