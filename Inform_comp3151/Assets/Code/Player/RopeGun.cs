@@ -106,6 +106,7 @@ namespace Inkform.Player
         private float stickAimSpeedBase;
 
         private Rigidbody2D playerBody;
+        private SpriteRenderer bodySprite;   // the player's own renderer — its sorting layer is the rope family's layer
         private PlayerMotor motor;
 
         private Vector2 aimOffset;      // free cursor offset, clamped between the safe inner radius and current range
@@ -191,6 +192,7 @@ namespace Inkform.Player
         void Awake()
         {
             playerBody = GetComponent<Rigidbody2D>();
+            bodySprite = GetComponent<SpriteRenderer>();
             TryGetComponent(out motor);
             currentMaxRange = maxRange;
             previewFilter.SetLayerMask(hitMask);
@@ -313,6 +315,7 @@ namespace Inkform.Player
             col.radius = bulletRadius;
             var sr = hookGo.AddComponent<SpriteRenderer>();
             sr.sprite = bulletSprite != null ? bulletSprite : DiscSprite;
+            if (bodySprite != null) sr.sortingLayerID = bodySprite.sortingLayerID;   // same layer as the rope/reticle: the player's
             sr.sortingOrder = 15;
             hookBody.linearVelocity = v0;
             FaceHookRotation(v0);
@@ -852,6 +855,10 @@ namespace Inkform.Player
             go.transform.SetParent(transform, false);
             sprite = go.AddComponent<SpriteRenderer>();
             sprite.sprite = fallback;
+            // Rope-family rendering rides the player's sorting layer (same stance as
+            // InteractionPromptPart copying its host): if the body ever moves layers, the rope,
+            // hook and reticle follow without a code change. Relative orders stay as authored.
+            if (bodySprite != null) sprite.sortingLayerID = bodySprite.sortingLayerID;
             sprite.sortingOrder = sortingOrder;
             return go.transform;
         }
