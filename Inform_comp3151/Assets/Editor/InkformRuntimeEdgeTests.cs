@@ -1285,38 +1285,52 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeFire_KeepsShotRangeAnchoredAtFirePositionAndUsesContinuousCollision()
+        public void RopeFire_AnchorsInstantlyAtThePreviewIntercept()
         {
-            GameObject go = new GameObject("RopeGun shot origin test");
+            GameObject go = new GameObject("RopeGun instant fire test");
+            GameObject wall = new GameObject("instant fire wall");
             Vector2 testOrigin = new Vector2(10000f, 10000f);
             go.transform.position = testOrigin;
             go.SetActive(false);
-            Rigidbody2D playerBody = go.AddComponent<Rigidbody2D>();
+            go.AddComponent<Rigidbody2D>();
             RopeGun gun = go.AddComponent<RopeGun>();
             go.SetActive(true);
             InitializeRopeGun(gun);
+            wall.layer = 6;
+            BoxCollider2D box = wall.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.02f, 4f);
             try
             {
-                Vector2 freeCursor = new Vector2(1.2f, 0.5f);
-                SetField(gun, "aimOffset", freeCursor);
-                gun.TryFire();
-                Rigidbody2D hookBody = GetField<Rigidbody2D>(gun, "hookBody");
-                Assert.AreEqual(CollisionDetectionMode2D.Continuous, hookBody.collisionDetectionMode);
-                Assert.AreEqual(testOrigin, GetField<Vector2>(gun, "shotPlayerPosition"));
-                Assert.AreEqual(4f, GetField<float>(gun, "shotMaxRange"), 0.001f);
-                Assert.AreEqual(freeCursor, GetField<Vector2>(gun, "shotAimOffset"),
-                    "the shot must snapshot the free cursor target at fire time");
+                // Aim straight at a solid wall 2 units right; the preview resolves the intercept…
+                wall.transform.position = testOrigin + new Vector2(2f, 0f);
+                SetField(gun, "aimOffset", new Vector2(1.5f, 0f));
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
 
-                hookBody.position = testOrigin + new Vector2(3f, 0f);
-                playerBody.position = testOrigin + new Vector2(-10f, 0f);
-                Invoke(gun, "FixedUpdate");
-                Assert.AreEqual("Flying", GetField<object>(gun, "phase").ToString(),
-                    "moving the player after firing must not invalidate the shot range");
+                // …and the press anchors there the same frame: no projectile, straight to Pulling.
+                gun.TryFire();
+                Assert.AreEqual("Pulling", GetField<object>(gun, "phase").ToString(),
+                    "a green reticle press must anchor instantly — no Flying phase exists anymore");
+
+                GameObject hook = GetField<GameObject>(gun, "hookGo");
+                Assert.IsNotNull(hook, "the static hook sprite spawns at the anchor");
+                Assert.AreEqual(testOrigin.x + 2f - 0.01f - 0.04f, hook.transform.position.x, 0.05f,
+                    "hook sits on the preview intercept, nudged outward by the anchor clearance");
+
+                // A red reticle (nothing intercepts within range) refuses the shot like the ability gate.
+                Invoke(gun, "Finish");
+                wall.transform.position = testOrigin + new Vector2(8f, 0f);
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                gun.TryFire();
+                Assert.AreEqual("Idle", GetField<object>(gun, "phase").ToString(),
+                    "a red reticle press must not anchor anything");
             }
             finally
             {
                 GameObject hook = GetField<GameObject>(gun, "hookGo");
                 if (hook != null) UnityEngine.Object.DestroyImmediate(hook);
+                UnityEngine.Object.DestroyImmediate(wall);
                 ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
             }

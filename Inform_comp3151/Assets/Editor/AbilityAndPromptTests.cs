@@ -237,7 +237,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeGun_FireIsDeniedWithoutTheAbility()
+        public void RopeGun_FireIsDeniedWithoutTheAbilityOrAGreenReticle()
         {
             AbilityStore.ClearWithoutSaving();
             GameObject player = new GameObject("RopeGun gate test");
@@ -254,12 +254,13 @@ namespace Inkform.Tests
 
                 Assert.IsTrue(AbilityStore.Unlock(AbilityIds.RopeGun));
                 InvokeInstance(ropeGun, "TryFire");
-                Assert.AreEqual(RopeGun.RopePhase.Flying, PhaseOf(ropeGun),
-                    "with the ability earned the same press fires normally");
+                Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
+                    "instant fire anchors only on a green reticle — an empty scene has no " +
+                    "intercept, so the press is refused exactly like the ability gate");
             }
             finally
             {
-                InvokeInstance(ropeGun, "Finish");      // despawns the hook the earned shot created
+                InvokeInstance(ropeGun, "Finish");      // no-op when nothing fired; safety for future edits
                 UnityEngine.Object.DestroyImmediate(player);
             }
         }
