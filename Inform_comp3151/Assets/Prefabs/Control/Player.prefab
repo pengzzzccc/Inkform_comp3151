@@ -328,7 +328,7 @@ MonoBehaviour:
   fallCutMultiplier: 0.12
   jumpBuffer: 0.15
   jumpTimes: 1
-  coyoteTime: 0.1
+  coyoteTime: 0.2
   apexSpeedThreshold: 3
   gravity: 2.5
   fallGravityMultiplier: 1.9
