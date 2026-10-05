@@ -31,6 +31,8 @@ namespace Inkform.Player
         [SerializeField] private float gravity = 3f;
         [SerializeField] private float fallGravityMultiplier = 2.2f;
         [SerializeField][Range(0, 1)] private float onWallGravityMultiplier = 0.2f;
+        [Tooltip("Terminal velocity: falling speed caps here instead of accelerating forever. Reference: jump 12, rope pull 16, dash 25.")]
+        [SerializeField] private float maxFallSpeed = 25f;
 
         [Header("Wall jump")]
         [SerializeField] private float wallJumpTime = 0.15f;
@@ -288,6 +290,13 @@ namespace Inkform.Player
             // gravity) from being weakened into a slower stick
             if (jumpHeld && body.gravityScale > 0f && Mathf.Abs(body.linearVelocityY) < apexSpeedThreshold)
                 body.gravityScale *= 0.5f;
+
+            // Terminal velocity: a long fall caps here instead of accelerating forever (tunnel-
+            // through risk on thin floors at extreme speeds, and an unreadably harsh landing).
+            // Clamp lives after the gravity branches so it also bounds the wall-slide and ceiling-
+            // release paths; upward motion (vy > 0) is untouched.
+            if (body.linearVelocityY < -maxFallSpeed)
+                body.linearVelocityY = -maxFallSpeed;
         }
 
         private void StepJump()

@@ -1,5 +1,4 @@
 using System.IO;
-using System.Linq;
 using Inkform.UI;
 using UnityEditor;
 using UnityEngine;
@@ -17,8 +16,6 @@ namespace Inkform.EditorTools
     ///     a .panelsettings left by an earlier run is migrated (moved) automatically. The
     ///     UIManager configures an identical runtime instance when this asset is missing, so the
     ///     game still runs without it, but the asset makes the setup inspectable.
-    ///   - TutorialPages.asset: the tutorial's page sprites (pre-filled from Art/UI/Tutirial),
-    ///     which used to live in serialized arrays on the Tutorial prefab.
     ///   - Resources copies of the fonts (BombSlimeFonts + LiberationSans), so the runtime
     ///     document can load them (Resources.Load cannot reach Art/UI or TextMesh Pro/Fonts).
     ///
@@ -38,8 +35,6 @@ namespace Inkform.EditorTools
         // type, so a same-named pair resolves ambiguously at runtime.
         private const string ThemePath = ResDir + "/RuntimeTheme.tss";
         private const string ThemePathLegacy = ResDir + "/Theme.tss";
-        private const string TutorialPath = ResDir + "/TutorialPages.asset";
-        private const string TutorialArtDir = "Assets/Art/UI/Tutirial";
 
         /// <summary>Fonts copied into Resources so Resources.Load can reach them (it cannot load
         /// from Art/ or TextMesh Pro/). BombSlime is the project pixel font; LiberationSans is the
@@ -141,43 +136,7 @@ namespace Inkform.EditorTools
                 Debug.LogWarning("UIToolkitBootstrap: MainPanel panel settings were corrected (scale mode must be Scale With Screen Size @ 1920x1080, match 0.5)", settings);
             }
 
-            if (AssetDatabase.LoadAssetAtPath<TutorialPages>(TutorialPath) == null)
-            {
-                TutorialPages pages = ScriptableObject.CreateInstance<TutorialPages>();
-                pages.checkpointPages = LoadPageSprites("TimeCardT");
-                pages.ropeGunPages = LoadPageSprites("RopeGunT");
-                AssetDatabase.CreateAsset(pages, TutorialPath);
-            }
-
             AssetDatabase.SaveAssets();
-        }
-
-        /// <summary>The tutorial page screenshots, ordered by their trailing page number (same
-        /// folder the old UIBuilder filled the prefab arrays from).</summary>
-        private static Sprite[] LoadPageSprites(string prefix)
-        {
-            if (!Directory.Exists(TutorialArtDir)) return System.Array.Empty<Sprite>();
-
-            return Directory.GetFiles(TutorialArtDir, prefix + "*.png")
-                .Select(Path.GetFileNameWithoutExtension)
-                .OrderBy(name => TrailingNumber(name) ?? int.MaxValue)
-                .Select(name => AssetDatabase.LoadAssetAtPath<Sprite>($"{TutorialArtDir}/{name}.png"))
-                .Where(sprite => sprite != null)
-                .ToArray();
-        }
-
-        private static int? TrailingNumber(string name)
-        {
-            int digits = 0;
-            int value = 0;
-            int scale = 1;
-            for (int i = name.Length - 1; i >= 0 && char.IsDigit(name[i]); i--)
-            {
-                value += (name[i] - '0') * scale;
-                scale *= 10;
-                digits++;
-            }
-            return digits > 0 ? value : (int?)null;
         }
     }
 }

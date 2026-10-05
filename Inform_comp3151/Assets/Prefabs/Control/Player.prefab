@@ -329,9 +329,10 @@ MonoBehaviour:
   jumpTimes: 1
   coyoteTime: 0.2
   apexSpeedThreshold: 3
-  gravity: 2.5
-  fallGravityMultiplier: 1.9
+  gravity: 2
+  fallGravityMultiplier: 1.4
   onWallGravityMultiplier: 0.1
+  maxFallSpeed: 15
   wallJumpTime: 0.18
   wallKickMultiplier: 0.5
   attackMultiplier: 2.5

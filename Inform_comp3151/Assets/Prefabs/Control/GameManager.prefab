@@ -128,6 +128,9 @@ MonoBehaviour:
   inventoryCapacityUpgrade: {fileID: 11400000, guid: 98c71ef0d806eb94388de42aa85d97c3, type: 2}
   jump: {fileID: 0}
   land: {fileID: 11400000, guid: 8910332ea935bd946962c594897611c8, type: 2}
+  ropeFire: {fileID: 11400000, guid: a1626c14602e82e4b8e3c50d99cf5727, type: 2}
+  ropeHit: {fileID: 11400000, guid: a07029ad34759c9439ba437956ff992f, type: 2}
+  ropeCancel: {fileID: 11400000, guid: 7f7695527cc729a41ba112500954be6b, type: 2}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 11400000, guid: 969a79cb96c05b0b8eac1d2a35a600fc, type: 2}
 --- !u!114 &6402705293193736749

@@ -298,8 +298,11 @@ namespace Inkform.Player
             // Special hits resolve along the fired parabola at the press moment, before the
             // terrain anchor: a carriable found on the way becomes an eat-pull (highest priority,
             // same precedence the flying probe used), chains are severed wherever the path passes
-            // close to them.
-            if (SweepPathForSpecials(out ICarriable carriable))
+            // close to them. A probe result for an object destroyed this frame (the physics scene
+            // lags destroys by a sync) reads non-null through the interface — drop it and fall
+            // through to the terrain anchor, same fake-null guard Finish uses.
+            if (SweepPathForSpecials(out ICarriable carriable)
+                && carriable as MonoBehaviour != null)
             {
                 Vector2 targetPos = carriable.transform.position;
                 CreateHookAt(targetPos, targetPos - playerBody.position);
@@ -337,6 +340,7 @@ namespace Inkform.Player
         public void DetachOnJump()
         {
             if (phase != RopePhase.Pulling) return;
+            RopeGunBus.RaiseRopeCancelled();   // deliberate break, not a natural end
             Finish();
         }
 
@@ -348,6 +352,7 @@ namespace Inkform.Player
         public void Cancel()
         {
             if (phase == RopePhase.Idle) return;
+            RopeGunBus.RaiseRopeCancelled();   // deliberate break (re-press / dash), not a natural end
             Finish();
         }
 
@@ -635,7 +640,12 @@ namespace Inkform.Player
 
             bool wasGreen = previewGreen;
             previewGreen = hit;
-            if (!hit) previewCarriable = null;
+
+            // The interface has no Unity fake-null overload: a carriable destroyed since the last
+            // frame (e.g. a bomb swallowed or blown up mid-aim) still reads non-null through the
+            // interface reference — clear it the same way Finish does. Also covers a stale hit
+            // from this frame's probe (the physics scene lags destroys by a sync).
+            if (!hit || previewCarriable as MonoBehaviour == null) previewCarriable = null;
 
             // Reticle: green SNAPS to the resolved target — a carriable it would eat-pull (follows
             // it as it swings) or the terrain anchor — so what the player sees glowing is what the

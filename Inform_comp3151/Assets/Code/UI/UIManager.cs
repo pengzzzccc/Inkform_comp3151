@@ -4,7 +4,6 @@ using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Input;
-using Inkform.Life;
 using Inkform.Save;
 using Inkform.Settings;
 using UnityEngine;
@@ -56,7 +55,6 @@ namespace Inkform.UI
         private Inkform.Level.SceneDirector sceneDirector;   // sibling on GameManager; owns the scene policy
         private UIDocument uiDocument;
         private VisualElement menusRoot;
-        private ToolkitLockOwner tutorialLockOwner;   // scoped-lock owner the tutorial sheet locks with
         private Hud hud;
         private bool paused;
 
@@ -90,9 +88,6 @@ namespace Inkform.UI
             sceneDirector = GetComponent<Inkform.Level.SceneDirector>();
             gameTime = GetComponent<GameTimeController>();
             if (gameTime == null) gameTime = gameObject.AddComponent<GameTimeController>();
-            // The tutorial's scoped locks key their owner by UnityEngine.Object reference; the
-            // sheet itself is a plain object, so it locks through this dedicated component.
-            tutorialLockOwner = gameObject.AddComponent<ToolkitLockOwner>();
 
             CreateDocument();
             CreateHud();
@@ -110,15 +105,6 @@ namespace Inkform.UI
             UiBus.Hovered += OnUiHovered;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
-
-            // A pickup grants an ability and the menu layer answers with its tutorial. Raised here
-            // (not on the panel) because panels never touch the game bus — same stance as every
-            // other panel; this class is the one place gameplay meets menus.
-            ItemBus.AbilityUnlocked += OnAbilityUnlocked;
-
-            // The tutorial freezes the world while it is up, so a death under the sheet should not
-            // happen — kept as a safety net for any damage path that ignores the freeze
-            LifeBus.Died += OnPlayerDied;
         }
 
         void OnDestroy()
@@ -129,16 +115,12 @@ namespace Inkform.UI
             UiBus.Hovered -= OnUiHovered;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
-            ItemBus.AbilityUnlocked -= OnAbilityUnlocked;
-            LifeBus.Died -= OnPlayerDied;
 
             // Where the old MonoBehaviours' OnDestroy/OnDisable released static subscriptions and
-            // scoped locks (save-menu refresh, tutorial stage hold, HUD toasts). Destroying the
-            // lock owner additionally lets the lock tables' dead-owner prune sweep anything left.
+            // scoped locks (save-menu refresh, HUD toasts).
             foreach (ToolkitPanel panel in panels.Values)
                 panel.Teardown();
             hud?.Dispose();
-            if (tutorialLockOwner != null) Destroy(tutorialLockOwner);
         }
 
         void Update()
@@ -173,7 +155,6 @@ namespace Inkform.UI
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
 
             // Innermost sheet first, then outwards — Esc/B always back out one level
-            if (IsOpen<TutorialPanel>()) { CloseTutorial(); return; }
             if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { BackFromSaveMenu(); return; }
             // The end sheet has no inner level: Escape leaves the finished run for the main menu
@@ -233,44 +214,6 @@ namespace Inkform.UI
             SetCursor(false);
         }
 
-        // ---- Tutorial ----
-
-        private void OnAbilityUnlocked(Vector2 position, string abilityId) => OpenTutorial(abilityId);
-
-        /// <summary>
-        /// A pickup just granted an ability: show that ability's tutorial sheet and free the
-        /// cursor. The sheet itself holds gameplay still while it is up — TutorialPanel.OnOpen
-        /// takes a scoped gameplay-input lock and freezes the world, both released on every close
-        /// path — so the click that flips a page no longer fires the rope gun or jumps, and
-        /// nothing can hit the player mid-read.
-        /// Fires only when the tutorial content is wired, its Show On Pickup flag is on, and it
-        /// carries pages for this ability — any of those missing, the unlock simply happens
-        /// silently.
-        /// </summary>
-        public void OpenTutorial(string abilityId)
-        {
-            TutorialPanel panel = GetPanel<TutorialPanel>();
-            if (panel == null || !panel.ShowOnPickup || !panel.HasPages(abilityId)) return;
-
-            // Single-panel bookkeeping (OpenWith carries its own setup + Open, so OpenCore does
-            // not apply): retire whatever sheet is on stage before the tutorial slides in.
-            if (activePanel != panel)
-            {
-                activePanel?.Close();
-                activePanel = panel;
-            }
-            panel.OpenWith(abilityId);
-            SetCursor(true);
-        }
-
-        /// <summary>Tutorial's Close button / Escape: hide the sheet and lock the cursor back for
-        /// gameplay. Idempotent — both the button and the sheet chain can land here in one frame.</summary>
-        public void CloseTutorial()
-        {
-            Close<TutorialPanel>();
-            SetCursor(false);
-        }
-
         /// <summary>End sheet's Back button and Escape: leaves the finished run and returns to the
         /// main menu. SceneDirector owns the transition (and ends the run on the way out).</summary>
         public void ReturnToMainMenu()
@@ -278,11 +221,6 @@ namespace Inkform.UI
             Close<EndPanel>();
             SetCursor(false);
             sceneDirector?.ReturnToMainMenu();
-        }
-
-        private void OnPlayerDied(DeathContext ctx)
-        {
-            if (IsOpen<TutorialPanel>()) CloseTutorial();
         }
 
         private void SetPaused(bool value)
@@ -324,7 +262,6 @@ namespace Inkform.UI
             Close<PausePanel>();
             Close<SettingsPanel>();
             Close<SaveMenuPanel>();
-            Close<TutorialPanel>();
 
             if (isEnd)
             {
@@ -486,12 +423,6 @@ namespace Inkform.UI
             AddPanel<SaveMenuPanel>("UI/SaveMenu", host => new SaveMenuPanel(host, this));
             AddPanel<PausePanel>("UI/PauseMenu", host => new PausePanel(host, this));
             AddPanel<SettingsPanel>("UI/Settings", host => new SettingsPanel(host, this));
-            AddPanel<TutorialPanel>("UI/Tutorial", host => new TutorialPanel(
-                host, this,
-                Resources.Load<TutorialPages>("UI/TutorialPages"),
-                GetComponent<InputHandler>(),
-                gameTime,
-                tutorialLockOwner));
             AddPanel<EndPanel>("UI/EndPanel", host => new EndPanel(host, this));
         }
 
