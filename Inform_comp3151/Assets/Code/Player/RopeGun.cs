@@ -60,6 +60,29 @@ namespace Inkform.Player
         [SerializeField] private Color hitColor = new Color(0.35f, 1f, 0.35f);
         [SerializeField] private Color missColor = new Color(1f, 0.35f, 0.35f);
 
+        [Header("Snap")]
+        [Tooltip("Green reticle snaps to the terrain anchor. Off: the green reticle rides the free cursor (color/firing unchanged).")]
+        [SerializeField] private bool wallSnap = false;
+        [Tooltip("Carriables (bombs) on the path are snap targets and eat-pull candidates. Off: the rope ignores them entirely — preview never snaps to them, firing never eat-pulls them.")]
+        [SerializeField] private bool bombSnap = true;
+        [Tooltip("Snap escape dead zone in world units: pulling the free cursor closer than the snap target only releases the snap once inside this margin. Prevents flicker at the boundary.")]
+        [SerializeField] private float snapDeadZone = 0.3f;
+        [Tooltip("While sliding on a wall snap, rescale the aim input by the measured geometric gain so the anchor's on-wall speed equals the free-cursor speed the sensitivity settings define, whatever the wall angle. Off: the anchor follows the raw intercept geometry (grazing angles feel slower).")]
+        [SerializeField] private bool wallSnapAdaptiveSpeed = true;
+
+        // Adaptive wall-slide speed: the snap anchor moves as intercept(aimOffset), so its speed
+        // depends on the wall angle (a grazing aim barely moves the intercept, a square-on aim
+        // moves it 1:1). Each sliding frame measures |anchor move| / |cursor move|, smooths it,
+        // and the next frame's aim input is divided by it — the anchor then slides at exactly
+        // the free-cursor speed the settings define. Clamped so grazing-angle spikes cannot
+        // explode the input.
+        private float snapGainSmooth = 1f;
+        private bool snapSliding;
+        private Vector2 lastAnchorPos;
+        private Vector2 lastAimOffset;
+        private const float SnapGainMin = 0.2f;
+        private const float SnapGainMax = 5f;
+
         [Header("Rope")]
         [SerializeField] private Sprite ropeSegmentSprite;                  // vertical rope strip: the art runs along the sprite's +Y, tiled along the rope's length
         [SerializeField] private Material ropeMaterial;                     // optional; null = the SpriteRenderer default (Sprites-Default)
@@ -247,6 +270,13 @@ namespace Inkform.Player
         public void Aim(Vector2 delta, bool pixelDelta)
         {
             if (phase != RopePhase.Idle || LifeBus.IsDead) return;
+
+            // Adaptive wall-slide speed: while the reticle slides on a wall snap, divide the
+            // input by the measured geometric gain — the anchor then moves along the wall at
+            // the same speed the free cursor would have at the current sensitivity settings,
+            // regardless of the wall angle. Same path for mouse and stick.
+            if (wallSnapAdaptiveSpeed && snapSliding)
+                delta *= Mathf.Clamp(1f / snapGainSmooth, 1f / SnapGainMax, 1f / SnapGainMin);
 
             if (pixelDelta)
             {
@@ -546,11 +576,15 @@ namespace Inkform.Player
 
                 // Layer-agnostic carriable probe (bombs etc. live on Default, which the preview's
                 // hitMask never sees): every collider resolves to its Interactable node, then the
-                // ICarriable part is requested from that node
-                Collider2D[] probes = Physics2D.OverlapCircleAll(p, bombDetectRadius + bulletRadius);
-                foreach (Collider2D probe in probes)
+                // ICarriable part is requested from that node. Skipped when bombSnap is off — the
+                // press must never eat-pull a bomb the aim never promised
+                if (bombSnap)
                 {
-                    if (TryGetCarriable(probe, out carriable)) return true;
+                    Collider2D[] probes = Physics2D.OverlapCircleAll(p, bombDetectRadius + bulletRadius);
+                    foreach (Collider2D probe in probes)
+                    {
+                        if (TryGetCarriable(probe, out carriable)) return true;
+                    }
                 }
 
                 // Chains: point-to-segment distance under the radius severs at the nearest segment
@@ -606,19 +640,24 @@ namespace Inkform.Player
                 p = ClipSegmentToRange(rangeCenter, last, p, currentMaxRange, out bool reachedRange);
 
                 // Carriable probe first (same precedence as SweepPathForSpecials at fire time):
-                // finding one along the path means the press would eat-pull it
-                int probeCount = Physics2D.OverlapCircleNonAlloc(
-                    p, bombDetectRadius + bulletRadius, previewProbeHits);
-                for (int i = 0; i < probeCount; i++)
+                // finding one along the path means the press would eat-pull it. Skipped entirely
+                // when bombSnap is off — the reticle never gets hijacked by a bomb on the path,
+                // and the per-frame probes stop costing anything.
+                if (bombSnap)
                 {
-                    if (TryGetCarriable(previewProbeHits[i], out ICarriable carriable))
+                    int probeCount = Physics2D.OverlapCircleNonAlloc(
+                        p, bombDetectRadius + bulletRadius, previewProbeHits);
+                    for (int i = 0; i < probeCount; i++)
                     {
-                        previewCarriable = carriable;
-                        hit = true;
-                        break;
+                        if (TryGetCarriable(previewProbeHits[i], out ICarriable carriable))
+                        {
+                            previewCarriable = carriable;
+                            hit = true;
+                            break;
+                        }
                     }
+                    if (hit) break;
                 }
-                if (hit) break;
 
                 Vector2 seg = p - last;
                 float segLen = seg.magnitude;
@@ -648,21 +687,24 @@ namespace Inkform.Player
             if (!hit || previewCarriable as MonoBehaviour == null) previewCarriable = null;
 
             // Reticle: green SNAPS to the resolved target — a carriable it would eat-pull (follows
-            // it as it swings) or the terrain anchor — so what the player sees glowing is what the
-            // press pulls to. Red rides the free cursor (stick/mouse controlled); on the green→red
-            // flip the free cursor adopts the last anchor's distance first, so the red reticle
-            // starts exactly where the green one vanished instead of teleporting.
+            // it as it swings) or, with wallSnap on, the terrain anchor — so what the player sees
+            // glowing is what the press pulls to. With wallSnap off the green reticle rides the
+            // free cursor instead (lastAnchorDistance then equals the cursor's own length, so the
+            // escape and the handover below degenerate into no-ops — color and firing unchanged).
+            // Red rides the free cursor; on the green→red flip the free cursor adopts the last
+            // anchor's distance first, so the red reticle starts where the green one vanished.
             if (hit)
             {
                 Vector2 anchorPos = previewCarriable != null
                     ? (Vector2)previewCarriable.transform.position
-                    : AnchorPointOf(previewHit);
+                    : wallSnap ? AnchorPointOf(previewHit) : target;
                 lastAnchorDistance = Vector2.Distance(rangeCenter, anchorPos);
 
                 // Edge-snap escape: pulling the free cursor CLOSER than the snap target releases
                 // the snap — the reticle turns red right where the player pulled it (the cursor's
                 // own length is kept; the handover below must not stretch it back to the anchor).
-                if (aimOffset.magnitude < lastAnchorDistance)
+                // The dead zone keeps the flip from flickering at the boundary.
+                if (aimOffset.magnitude < lastAnchorDistance - snapDeadZone)
                 {
                     previewGreen = false;
                     reticle.position = target;
@@ -670,6 +712,21 @@ namespace Inkform.Player
                 else
                 {
                     reticle.position = anchorPos;
+
+                    // Adaptive wall-slide gain: measure |anchor move| / |cursor move| on
+                    // consecutive terrain-slide frames only (bomb snaps are skipped — their
+                    // target moves on its own and would poison the ratio; so do switch frames
+                    // and frames the aim stood still, e.g. on a moving platform).
+                    if (wallSnap && previewCarriable == null && snapSliding)
+                    {
+                        float aimMove = (aimOffset - lastAimOffset).magnitude;
+                        float anchorMove = (anchorPos - lastAnchorPos).magnitude;
+                        if (aimMove > 0.001f && anchorMove > 0.0001f)
+                        {
+                            float gain = Mathf.Clamp(anchorMove / aimMove, SnapGainMin, SnapGainMax);
+                            snapGainSmooth = Mathf.Lerp(snapGainSmooth, gain, 0.35f);
+                        }
+                    }
                 }
             }
             else
@@ -682,6 +739,10 @@ namespace Inkform.Player
                 }
                 reticle.position = target;
             }
+
+            snapSliding = previewGreen && wallSnap && previewCarriable == null;
+            lastAnchorPos = reticle.position;
+            lastAimOffset = aimOffset;
 
             reticleSprite.color = previewGreen ? hitColor : missColor;
             float s = crosshairSize * (previewGreen ? 1.25f : 1f);
