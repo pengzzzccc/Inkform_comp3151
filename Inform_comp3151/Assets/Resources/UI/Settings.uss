@@ -1,10 +1,14 @@
-/* Settings — one scrolling page: OPTIONS header, SOUND/GRAPHICS/CONTROLS groups, Reset/Back.
-   Rows are built in C# (OptionRow / slider rows) into #Rows. */
+/* Settings shell — two-level. Each sub-page is its own UXML/USS/Page triple mounted into
+   #Pages; this sheet carries the shell (header, page area, BACK) plus the shared row styles
+   that cascade into every mounted page. */
 
 .settings-header { position: absolute; left: 0; right: 0; top: 28px; }
-.settings-scroll { position: absolute; left: 0; right: 0; top: 140px; bottom: 120px; }
+.settings-pages { position: absolute; left: 0; right: 0; top: 140px; bottom: 120px; }
+.settings-scroll { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
 .settings-bottom { position: absolute; right: 40px; bottom: 28px; flex-direction: row; }
 .settings-bottom > .menu-item { font-size: var(--fs-value); margin-left: 20px; }
+
+/* Row vocabulary shared by every page (the shell's stylesheet cascades down to them). */
 
 .subheader { font-size: var(--fs-sub); color: var(--c-gray); -unity-text-align: middle-left; margin: 26px 24px 10px 24px; -unity-font-style: bold; }
 

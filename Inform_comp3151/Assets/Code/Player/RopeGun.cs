@@ -60,15 +60,9 @@ namespace Inkform.Player
         [SerializeField] private Color hitColor = new Color(0.35f, 1f, 0.35f);
         [SerializeField] private Color missColor = new Color(1f, 0.35f, 0.35f);
 
-        [Header("Snap")]
-        [Tooltip("Green reticle snaps to the terrain anchor. Off: the green reticle rides the free cursor (color/firing unchanged).")]
-        [SerializeField] private bool wallSnap = false;
-        [Tooltip("Carriables (bombs) on the path are snap targets and eat-pull candidates. Off: the rope ignores them entirely — preview never snaps to them, firing never eat-pulls them.")]
-        [SerializeField] private bool bombSnap = true;
-        [Tooltip("Snap escape dead zone in world units: pulling the free cursor closer than the snap target only releases the snap once inside this margin. Prevents flicker at the boundary.")]
-        [SerializeField] private float snapDeadZone = 0.3f;
-        [Tooltip("While sliding on a wall snap, rescale the aim input by the measured geometric gain so the anchor's on-wall speed equals the free-cursor speed the sensitivity settings define, whatever the wall angle. Off: the anchor follows the raw intercept geometry (grazing angles feel slower).")]
-        [SerializeField] private bool wallSnapAdaptiveSpeed = true;
+        // Snap behaviour (wall/bomb snap, dead zone, adaptive slide speed) is player-facing and
+        // lives in SettingsStore — read live at each use site. Only the adaptive speed's runtime
+        // state is kept here.
 
         // Adaptive wall-slide speed: the snap anchor moves as intercept(aimOffset), so its speed
         // depends on the wall angle (a grazing aim barely moves the intercept, a square-on aim
@@ -275,7 +269,7 @@ namespace Inkform.Player
             // input by the measured geometric gain — the anchor then moves along the wall at
             // the same speed the free cursor would have at the current sensitivity settings,
             // regardless of the wall angle. Same path for mouse and stick.
-            if (wallSnapAdaptiveSpeed && snapSliding)
+            if (SettingsStore.RopeAdaptiveSpeed && snapSliding)
                 delta *= Mathf.Clamp(1f / snapGainSmooth, 1f / SnapGainMax, 1f / SnapGainMin);
 
             if (pixelDelta)
@@ -578,7 +572,7 @@ namespace Inkform.Player
                 // hitMask never sees): every collider resolves to its Interactable node, then the
                 // ICarriable part is requested from that node. Skipped when bombSnap is off — the
                 // press must never eat-pull a bomb the aim never promised
-                if (bombSnap)
+                if (SettingsStore.RopeBombSnap)
                 {
                     Collider2D[] probes = Physics2D.OverlapCircleAll(p, bombDetectRadius + bulletRadius);
                     foreach (Collider2D probe in probes)
@@ -643,7 +637,7 @@ namespace Inkform.Player
                 // finding one along the path means the press would eat-pull it. Skipped entirely
                 // when bombSnap is off — the reticle never gets hijacked by a bomb on the path,
                 // and the per-frame probes stop costing anything.
-                if (bombSnap)
+                if (SettingsStore.RopeBombSnap)
                 {
                     int probeCount = Physics2D.OverlapCircleNonAlloc(
                         p, bombDetectRadius + bulletRadius, previewProbeHits);
@@ -697,14 +691,14 @@ namespace Inkform.Player
             {
                 Vector2 anchorPos = previewCarriable != null
                     ? (Vector2)previewCarriable.transform.position
-                    : wallSnap ? AnchorPointOf(previewHit) : target;
+                    : SettingsStore.RopeWallSnap ? AnchorPointOf(previewHit) : target;
                 lastAnchorDistance = Vector2.Distance(rangeCenter, anchorPos);
 
                 // Edge-snap escape: pulling the free cursor CLOSER than the snap target releases
                 // the snap — the reticle turns red right where the player pulled it (the cursor's
                 // own length is kept; the handover below must not stretch it back to the anchor).
                 // The dead zone keeps the flip from flickering at the boundary.
-                if (aimOffset.magnitude < lastAnchorDistance - snapDeadZone)
+                if (aimOffset.magnitude < lastAnchorDistance - SettingsStore.RopeSnapDeadZone)
                 {
                     previewGreen = false;
                     reticle.position = target;
@@ -717,7 +711,7 @@ namespace Inkform.Player
                     // consecutive terrain-slide frames only (bomb snaps are skipped — their
                     // target moves on its own and would poison the ratio; so do switch frames
                     // and frames the aim stood still, e.g. on a moving platform).
-                    if (wallSnap && previewCarriable == null && snapSliding)
+                    if (SettingsStore.RopeWallSnap && previewCarriable == null && snapSliding)
                     {
                         float aimMove = (aimOffset - lastAimOffset).magnitude;
                         float anchorMove = (anchorPos - lastAnchorPos).magnitude;
@@ -740,7 +734,7 @@ namespace Inkform.Player
                 reticle.position = target;
             }
 
-            snapSliding = previewGreen && wallSnap && previewCarriable == null;
+            snapSliding = previewGreen && SettingsStore.RopeWallSnap && previewCarriable == null;
             lastAnchorPos = reticle.position;
             lastAimOffset = aimOffset;
 

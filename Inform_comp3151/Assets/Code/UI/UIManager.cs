@@ -154,8 +154,10 @@ namespace Inkform.UI
             // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
 
-            // Innermost sheet first, then outwards — Esc/B always back out one level
-            if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
+            // Innermost sheet first, then outwards — Esc/B always back out one level. Settings
+            // backs out internally first (a category page returns to its ROOT list).
+            if (IsOpen<SettingsPanel>()
+                && GetPanel<SettingsPanel>()?.HandleBack() != true) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { BackFromSaveMenu(); return; }
             // The end sheet has no inner level: Escape leaves the finished run for the main menu
             if (IsOpen<EndPanel>()) { ReturnToMainMenu(); return; }

@@ -809,7 +809,9 @@ namespace Inkform.Tests
         [Test]
         public void ToolkitUi_ResourcesContainEverySheetAndTheme()
         {
-            foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud" })
+            // Panels the UIManager mounts, then the settings sub-pages the shell mounts itself
+            foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud",
+                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls" })
             {
                 VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
                 Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
