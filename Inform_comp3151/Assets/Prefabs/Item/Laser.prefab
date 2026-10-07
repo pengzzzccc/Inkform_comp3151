@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 2245339735514763243}
   - component: {fileID: 1013494821639984387}
   - component: {fileID: 9085582415471670063}
+  - component: {fileID: 300000000000000001}
   m_Layer: 0
   m_Name: Laser
   m_TagString: Untagged
@@ -77,6 +78,7 @@ MonoBehaviour:
   onTime: 2
   offTime: 1.5
   startVisible: 1
+  loopSource: {fileID: 300000000000000001}
 --- !u!212 &1013494821639984387
 SpriteRenderer:
   serializedVersion: 2
@@ -136,6 +138,20 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &300000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7072248482715684300}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 234c0e44edde44d98774b4077fa9b07d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.AmbientSource
+  cue: {fileID: 11400000, guid: a5a8407a86662c6498764c8b91f68b34, type: 2}
+  offset: {x: 0, y: 0, z: 0}
 --- !u!61 &9085582415471670063
 BoxCollider2D:
   m_ObjectHideFlags: 0

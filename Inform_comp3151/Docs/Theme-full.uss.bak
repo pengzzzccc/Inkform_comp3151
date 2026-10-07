@@ -1,0 +1,515 @@
+/* ============================================================
+   Inkform UI theme — Celeste-flavoured (UXML/USS migration).
+
+   Colour values and motion parameters are taken from Celeste's
+   decompiled source (TextMenu.cs / OuiMainMenu.cs / OuiOptions.cs /
+   OuiFileSelectSlot.cs / MountainModel.cs). The signed hover/press
+   interaction (float up + small highlight, press-down feel) is the
+   project's own spec and replaces Celeste's flash/wiggle — see
+   Docs/UI-UIToolkit-Celeste-Design.md.
+   ============================================================ */
+
+:root {
+    /* ---- Celeste palette (source-verified) ---- */
+    --c-night:    rgb(1, 8, 23);        /* MountainModel default sky  #010817 */
+    --c-summit:   rgb(19, 32, 62);      /* summit sky                  #13203E */
+    --c-farewell: rgb(40, 26, 53);      /* farewell sky                #281A35 */
+    --c-green:    rgb(132, 255, 84);    /* TextMenu.HighlightColorA    #84FF54 */
+    --c-green-press: rgb(90, 170, 60);  /* highlight darkened for press (ours) */
+    --c-yellow:   rgb(252, 255, 89);    /* TextMenu.HighlightColorB    #FCFF59 */
+    --c-header:   rgb(72, 61, 139);     /* DarkSlateBlue — headers, version */
+    --c-gray:     rgb(128, 128, 128);   /* Color.Gray — subheaders */
+    --c-disabled: rgb(47, 79, 79);      /* DarkSlateGray */
+    --c-pink:     rgb(219, 112, 147);   /* PaleVioletRed — warnings */
+    --c-card:     rgb(252, 240, 245);   /* postcard cream */
+    --c-card-edge: rgb(35, 28, 38);     /* postcard outline */
+    --c-ink:      rgb(24, 20, 26);      /* black text on cards */
+    --c-ink-soft: rgb(60, 50, 66);      /* card titles */
+    --c-dim:      rgba(0, 0, 0, 0.4);   /* overlay dim (MenuOptions: Black * 0.4) */
+    --c-white:    rgb(255, 255, 255);
+
+    /* ---- type scale (Celeste 2.0 / 1.5 / 1.0 / 0.8 / 0.6 / 0.5) ---- */
+    --fs-title: 76px;
+    --fs-begin: 57px;
+    --fs-item: 38px;
+    --fs-value: 30px;
+    --fs-sub: 23px;
+    --fs-corner: 19px;
+
+    /* ---- signed interaction ---- */
+    --float-y: -8px;
+    --press-y: -2px;
+    --t-float: 0.18s;
+    --t-press: 0.08s;
+}
+
+/* ---------------- screens ---------------- */
+
+.screen {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+}
+
+.dim { background-color: var(--c-dim); }
+
+/* ---------------- text helpers ---------------- */
+
+/* Celeste draws a 2px black stroke under all UI text (DrawOutline 2f). */
+.outline {
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Big headers: Celeste stacks a 4px DarkSlateBlue edge under a 2px black
+   stroke (DrawEdgeOutline); Toolkit gives one layer — take the blue. */
+.header-outline {
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: var(--c-header);
+}
+
+/* ---------------- floaty controls: signed interaction ----------------
+   Shared by every selectable row/button. Float + green highlight on
+   hover/focus, press-down on :active. Translation/scale/color ride USS
+   transitions; the release overshoot is C# (UiFx.Bounce), because the
+   keyboard/gamepad Submit path never produces :active. */
+
+.floaty {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    transition-property: translate, scale, color, background-color;
+    transition-duration: var(--t-float);
+    transition-timing-function: ease-out;
+}
+
+.floaty:hover, .floaty:focus {
+    translate: 0 var(--float-y);
+    scale: 1.06 1.06;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+}
+
+.floaty:active {
+    translate: 0 var(--press-y);
+    scale: 0.96 0.96;
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+}
+
+.floaty:disabled {
+    translate: 0 0;
+    scale: 1 1;
+}
+
+/* Small green underline: the "small highlight" that fades in while the
+   item floats. Present as a child element in the UXML. */
+.underline {
+    position: absolute;
+    bottom: 2px; left: 12px;
+    width: 44px; height: 3px;
+    background-color: var(--c-green);
+    border-radius: 2px;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+.floaty:hover > .underline, .floaty:focus > .underline { opacity: 1; }
+
+/* ---------------- menu items ---------------- */
+
+.menu-item {
+    color: var(--c-white);
+    font-size: var(--fs-item);
+    -unity-text-align: middle-left;
+    padding: 4px 12px;
+    margin: 6px 0;
+}
+
+.menu-item:hover, .menu-item:focus { color: var(--c-green); }
+.menu-item:active  { color: var(--c-green-press); }
+.menu-item:disabled { color: var(--c-disabled); }
+
+.menu-begin { font-size: var(--fs-begin); }
+
+.menu-title {
+    font-size: var(--fs-title);
+    color: var(--c-gray);
+    -unity-text-align: middle-center;
+}
+
+.subheader {
+    font-size: var(--fs-sub);
+    color: var(--c-gray);
+    -unity-text-align: middle-left;
+    margin: 26px 24px 10px 24px;
+    -unity-font-style: bold;
+}
+
+.corner {
+    font-size: var(--fs-corner);
+    color: var(--c-white);
+}
+
+/* ---------------- main menu ---------------- */
+
+.menu-title-block {
+    position: absolute;
+    left: 150px; top: 64px;
+}
+
+.menu-column {
+    position: absolute;
+    left: 150px; top: 210px;
+    width: 640px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.version-label {
+    position: absolute;
+    left: 80px; bottom: 28px;
+    color: var(--c-header);
+}
+
+/* ---------------- bottom-right Confirm/Back hint (ButtonUI) ---------------- */
+
+.confirm-hint {
+    position: absolute;
+    right: 40px; bottom: 28px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.confirm-hint > .corner { margin-left: 28px; }
+
+/* ---------------- save menu: postcards ---------------- */
+
+/* Sheet header above the cascade of cards. */
+.save-title {
+    position: absolute;
+    left: 0; right: 0; top: 110px;
+    font-size: var(--fs-item);
+    color: var(--c-white);
+    -unity-text-align: middle-center;
+}
+
+.save-column {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.postcard-slot {
+    width: 980px; height: 150px;
+    margin: 14px 0;
+}
+
+.postcard {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    background-color: var(--c-card);
+    border-color: var(--c-card-edge);
+    border-width: 3px;
+    border-radius: 10px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.postcard-slot:hover > .postcard, .postcard-slot:focus > .postcard {
+    border-color: var(--c-green);
+}
+
+.card-title {
+    font-size: var(--fs-value);
+    color: var(--c-ink-soft);
+    -unity-text-align: middle-center;
+}
+
+.card-info {
+    font-size: var(--fs-corner);
+    color: var(--c-ink);
+    -unity-text-align: middle-center;
+    margin-top: 8px;
+    white-space: normal;
+}
+
+/* Green fill creeping across the card while the overwrite hold builds. */
+.hold-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0;
+    background-color: rgba(132, 255, 84, 0.22);
+    border-top-left-radius: 7px;
+    border-bottom-left-radius: 7px;
+}
+
+/* ---------------- option rows (Celeste TextMenu.Option shape) ---------------- */
+
+.option-row {
+    height: 60px;
+    margin: 4px 24px;
+    padding: 0 12px;
+    align-items: center;
+}
+
+.option-row .row-label {
+    font-size: var(--fs-item);
+    color: var(--c-white);
+    flex-grow: 1;
+    -unity-text-align: middle-left;
+}
+
+.option-row:hover .row-label, .option-row:focus .row-label { color: var(--c-green); }
+.option-row:active .row-label { color: var(--c-green-press); }
+.option-row:disabled .row-label { color: var(--c-disabled); }
+
+/* Rows float a little less than full menu items — they are wide. */
+.option-row:hover, .option-row:focus { translate: 0 -4px; scale: 1.02 1.02; }
+.option-row:active { translate: 0 0; scale: 1 1; }
+
+.option-row .row-arrow {
+    font-size: var(--fs-item);
+    color: var(--c-white);
+    opacity: 0.25;
+    transition-property: opacity, translate;
+    transition-duration: 0.15s;
+    transition-timing-function: ease-out;
+}
+
+/* Celeste: the arrows bob while the row is selected (sin * 4px). The bob
+   is omitted; fade-in + green is our small-highlight language. */
+.option-row:hover .row-arrow, .option-row:focus .row-arrow { opacity: 1; color: var(--c-green); }
+
+.option-row .row-value {
+    font-size: var(--fs-value);
+    color: var(--c-white);
+    min-width: 300px;
+    max-width: 420px;
+    -unity-text-align: middle-center;
+    margin-left: 16px;
+    margin-right: 16px;
+}
+
+/* ---------------- slider rows ---------------- */
+
+.slider-row {
+    height: 60px;
+    margin: 4px 24px;
+    padding: 0 12px;
+    align-items: center;
+}
+
+.slider-row .row-label {
+    font-size: var(--fs-item);
+    color: var(--c-white);
+    flex-grow: 1;
+    -unity-text-align: middle-left;
+}
+
+/* The slider itself takes focus (the row is not focusable), so SettingsPanel mirrors it onto
+   a `focused` class — :focus-within is not portable across Unity versions. */
+.slider-row.focused .row-label, .slider-row:hover .row-label { color: var(--c-green); }
+
+.slider-row .settings-slider {
+    width: 520px;
+    height: 40px;
+    margin-left: 16px;
+}
+
+.slider-row .row-readout {
+    font-size: var(--fs-value);
+    color: var(--c-white);
+    min-width: 110px;
+    -unity-text-align: middle-right;
+    margin-left: 16px;
+}
+
+/* Celeste-ish slider: thin round track, white round knob, black edge. */
+.settings-slider .unity-base-slider__tracker {
+    height: 8px;
+    background-color: rgba(255, 255, 255, 0.16);
+    border-radius: 4px;
+}
+
+.settings-slider .unity-base-slider__dragger {
+    width: 20px;
+    height: 26px;
+    border-radius: 10px;
+    background-color: var(--c-white);
+    border-width: 3px;
+    border-color: rgba(0, 0, 0, 0.85);
+    transition-property: background-color;
+    transition-duration: 0.1s;
+}
+
+.settings-slider:focus .unity-base-slider__dragger,
+.settings-slider .unity-base-slider__dragger:active {
+    background-color: var(--c-green);
+}
+
+/* ---------------- settings sheet ---------------- */
+
+.settings-header {
+    position: absolute;
+    left: 0; right: 0; top: 28px;
+}
+
+.settings-scroll {
+    position: absolute;
+    left: 0; right: 0; top: 140px; bottom: 120px;
+}
+
+.settings-bottom {
+    position: absolute;
+    right: 40px; bottom: 28px;
+    flex-direction: row;
+}
+
+.settings-bottom > .menu-item {
+    font-size: var(--fs-value);
+    margin-left: 20px;
+}
+
+/* ---------------- tutorial ---------------- */
+
+.tutorial-page {
+    position: absolute;
+    left: 0; right: 0; top: 110px; bottom: 150px;
+    align-items: center;
+    justify-content: center;
+}
+
+.tutorial-page > .page-image {
+    flex-grow: 1;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.tutorial-footer {
+    position: absolute;
+    left: 0; right: 0; bottom: 40px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.tutorial-footer > .menu-item { font-size: var(--fs-value); margin: 0 24px; }
+
+.page-counter {
+    font-size: var(--fs-value);
+    color: var(--c-white);
+    margin: 0 24px;
+}
+
+/* ---------------- end panel ---------------- */
+
+.end-center {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.end-title-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 120px;
+    margin-bottom: 30px;
+}
+
+.end-stat {
+    font-size: var(--fs-begin);
+    color: var(--c-white);
+    -unity-text-align: middle-center;
+    margin: 10px 0;
+}
+
+/* ---------------- pause ---------------- */
+
+.menu-center {
+    position: absolute;
+    left: 0; right: 0; top: 0; bottom: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-center > .menu-title { margin-bottom: 40px; }
+
+.menu-center .menu-column {
+    position: relative;
+    left: 0; top: 0;
+    width: 720px;
+    align-items: center;
+}
+
+.menu-center .menu-item { -unity-text-align: middle-center; }
+
+.menu-center .menu-item > .underline { left: 50%; margin-left: -22px; }
+
+/* ---------------- HUD ---------------- */
+
+#Hud {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+}
+
+.hud-layer {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+}
+
+.hud-fps {
+    position: absolute;
+    top: 14px; right: 18px;
+    font-size: var(--fs-corner);
+    color: rgba(255, 255, 255, 0.85);
+    -unity-text-align: middle-right;
+}
+
+.hud-timer {
+    position: absolute;
+    top: 20px; left: 0; right: 0;
+    font-size: var(--fs-item);
+    color: var(--c-white);
+    -unity-text-align: middle-center;
+}
+
+.hud-inventory {
+    position: absolute;
+    right: 36px; bottom: 36px;
+    width: 132px; height: 86px;
+    background-color: rgba(3, 4, 6, 0.8);
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.85);
+    flex-direction: row;
+    align-items: center;
+    padding: 10px;
+}
+
+.hud-inventory-icon {
+    width: 54px; height: 54px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.hud-inventory-count {
+    flex-grow: 1;
+    font-size: var(--fs-corner);
+    color: var(--c-white);
+    -unity-text-align: middle-center;
+}
+
+.hud-save-toast {
+    position: absolute;
+    right: 44px; bottom: 138px;
+    font-size: var(--fs-corner);
+    color: rgba(255, 255, 255, 0.92);
+    opacity: 0;
+    -unity-text-align: middle-right;
+}

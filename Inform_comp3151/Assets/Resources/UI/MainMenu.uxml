@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="MainMenu.uss" />
+    <!-- Celeste OuiMainMenu: title + menu column on the left, Confirm/Back hint bottom right.
+         Styling comes from the panel theme (RuntimeTheme.tss -> Theme.uss); no per-sheet <Style>.
+         The version label's text is filled in by MainMenuPanel (Application.version). -->
+    <ui:VisualElement name="MainMenu" class="screen">
+        <ui:VisualElement name="TitleBlock" class="menu-title-block">
+            <ui:Label name="TitleLabel" text="BOMB SLIME" class="menu-title header-outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+        <ui:VisualElement name="MenuColumn" class="menu-column">
+            <ui:Button name="Btn_Begin" text="BEGIN" class="menu-item menu-begin floaty outline" />
+            <ui:Button name="Btn_Settings" text="OPTIONS" class="menu-item floaty outline" />
+            <ui:Button name="Btn_Exit" text="EXIT" class="menu-item floaty outline" />
+        </ui:VisualElement>
+        <ui:Label name="Lbl_Version" class="version-label outline" picking-mode="Ignore" />
+        <ui:VisualElement class="confirm-hint" picking-mode="Ignore">
+            <ui:Label text="Confirm - Enter" class="corner outline" picking-mode="Ignore" />
+            <ui:Label text="Back - Esc" class="corner outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

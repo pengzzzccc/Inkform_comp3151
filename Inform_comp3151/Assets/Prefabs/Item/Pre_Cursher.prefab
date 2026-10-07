@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 8713861047987998606}
   - component: {fileID: 5834612094173528411}
   - component: {fileID: 4706465955168277408}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: CrasherHolder_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -231,7 +231,7 @@ GameObject:
   - component: {fileID: 7919766737383527398}
   - component: {fileID: 6098680028015428621}
   - component: {fileID: 8645988104825929700}
-  m_Layer: 13
+  m_Layer: 6
   m_Name: spike_C_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -420,7 +420,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8897278756745530655}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Pre_Cursher
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -455,7 +455,7 @@ GameObject:
   - component: {fileID: 7614025448265424137}
   - component: {fileID: 6652507611935513828}
   - component: {fileID: 5207594432564017904}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Crasher_0
   m_TagString: Untagged
   m_Icon: {fileID: 0}

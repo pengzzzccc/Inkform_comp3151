@@ -1,3 +1,4 @@
+using Inkform.Audio;
 using Inkform.Tool;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,6 +25,12 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private float offTime = 1.5f;
         [Tooltip("Whether it starts visible or hidden")]
         [SerializeField] private bool startVisible = true;
+
+        [Header("Sound")]
+        [Tooltip("Looping world sound gated by this hazard's visibility: audible while visible, cut while hidden. " +
+            "Assign an AmbientSource (on this object or a child) with its Cue set, and leave that component enabled " +
+            "in the prefab — this gate drives its enabled state. Leave empty for a silent hazard")]
+        [SerializeField] private AmbientSource loopSource;
 
         private Collider2D body;
         private readonly List<Renderer> renderers = new List<Renderer>();
@@ -69,6 +76,18 @@ namespace Inkform.Interactable.Parts
         {
             if (body != null) body.enabled = visible;
             foreach (Renderer r in renderers) r.enabled = visible;
+
+            // The loop follows visibility through AmbientSource's own documented contract: enabling
+            // registers a persistent voice, disabling releases it. That keeps AmbientSource the one
+            // component that owns looping world audio — no second audio implementation lives here
+            if (loopSource != null) loopSource.enabled = visible;
+        }
+
+        // A destroyed hazard must not leave its hum behind: the loop is gated by this component, and
+        // an AmbientSource sitting on a sibling object would otherwise keep playing
+        private void OnDestroy()
+        {
+            if (loopSource != null) loopSource.enabled = false;
         }
     }
 }

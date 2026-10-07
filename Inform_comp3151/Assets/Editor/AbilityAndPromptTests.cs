@@ -4,6 +4,8 @@ using System.IO;
 using System.Reflection;
 using Inkform.Ability;
 using Inkform.Bus;
+using Inkform.Fx;
+using Inkform.Input;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
 using Inkform.Level;
@@ -16,6 +18,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Inkform.Tests
 {
@@ -34,17 +37,17 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void AbilityStore_UnlockOwnsAndRestoreReplaces()
+        public void AbilityStore_DefaultAbilitiesAreBuiltInAndRestoreUnionsThem()
         {
-            Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint));
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
-            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint));
-            Assert.IsFalse(AbilityStore.Unlock(AbilityIds.Checkpoint), "the same ability cannot unlock twice");
-            Assert.IsFalse(AbilityStore.Unlock("  "), "blank ids are rejected");
-            CollectionAssert.AreEqual(new[] { AbilityIds.Checkpoint }, AbilityStore.SnapshotIds());
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint), "both card abilities ship as built-in defaults");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
+            Assert.IsFalse(AbilityStore.Unlock(AbilityIds.Checkpoint), "a default ability is already owned");
+            CollectionAssert.AreEquivalent(new[] { AbilityIds.Checkpoint, AbilityIds.RopeGun }, AbilityStore.SnapshotIds());
 
             AbilityStore.Restore(new[] { "other" });
-            Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint), "Restore replaces the whole set");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint),
+                "Restore unions the defaults in — an old save from before the defaults ships is topped up");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
             Assert.IsTrue(AbilityStore.Owns("other"));
         }
 
@@ -60,11 +63,13 @@ namespace Inkform.Tests
                 SaveStore.UseTestSaveDirectory(directory);
                 SaveStore.ContinueRun(0);
 
-                Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+                Assert.IsTrue(AbilityStore.Unlock("test-extra"));
 
                 SaveData read = JsonUtility.FromJson<SaveData>(File.ReadAllText(Path.Combine(directory, "slot0.json")));
-                CollectionAssert.AreEqual(new[] { AbilityIds.Checkpoint }, read.unlockedAbilityIds,
+                CollectionAssert.Contains(read.unlockedAbilityIds, "test-extra",
                     "an unlock must reach disk immediately");
+                CollectionAssert.Contains(read.unlockedAbilityIds, AbilityIds.RopeGun,
+                    "the built-in defaults ride along on the same write");
             }
             finally
             {
@@ -234,7 +239,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeGun_FireIsDeniedWithoutTheAbility()
+        public void RopeGun_FireIsDeniedWithoutTheAbilityOrAGreenReticle()
         {
             AbilityStore.ClearWithoutSaving();
             GameObject player = new GameObject("RopeGun gate test");
@@ -247,82 +252,19 @@ namespace Inkform.Tests
             {
                 InvokeInstance(ropeGun, "TryFire");
                 Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
-                    "without the ability the shot must be refused before anything spawns");
+                    "the ability ships built-in, so with no intercept the press is refused by the " +
+                    "red-reticle gate before anything spawns");
 
-                Assert.IsTrue(AbilityStore.Unlock(AbilityIds.RopeGun));
+                Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
                 InvokeInstance(ropeGun, "TryFire");
-                Assert.AreEqual(RopeGun.RopePhase.Flying, PhaseOf(ropeGun),
-                    "with the ability earned the same press fires normally");
+                Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
+                    "instant fire anchors only on a green reticle — an empty scene has no " +
+                    "intercept, so the press is refused exactly like the retired ability gate");
             }
             finally
             {
-                InvokeInstance(ropeGun, "Finish");      // despawns the hook the earned shot created
+                InvokeInstance(ropeGun, "Finish");      // no-op when nothing fired; safety for future edits
                 UnityEngine.Object.DestroyImmediate(player);
-            }
-        }
-
-        [Test]
-        public void TutorialPanel_PagesSwitchByAbilityAndRespectThePickupSwitch()
-        {
-            Texture2D texture = new Texture2D(4, 4);
-            Sprite first = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
-            Sprite second = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
-            Sprite ropeGunOnly = Sprite.Create(texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
-
-            GameObject root = new GameObject("Tutorial test");
-            root.SetActive(false);
-            TutorialPanel panel = root.AddComponent<TutorialPanel>();   // CanvasGroup comes via RequireComponent
-            Button prev = AddTutorialButton(root, "Btn_Prev");
-            Button next = AddTutorialButton(root, "Btn_Next");
-            AddTutorialButton(root, "Btn_Close");
-            GameObject page = new GameObject("Page", typeof(RectTransform), typeof(Image));
-            page.transform.SetParent(root.transform, false);
-            GameObject labelGo = new GameObject("Lbl_Page", typeof(RectTransform), typeof(Text));
-            labelGo.transform.SetParent(root.transform, false);
-            Text label = labelGo.GetComponent<Text>();
-
-            SetPages(panel, "checkpointPages", first, second);
-            SetPages(panel, "ropeGunPages", ropeGunOnly);
-            InvokeInstance(panel, "Awake");     // edit mode never runs Unity's magic methods
-            try
-            {
-                Assert.IsTrue(panel.ShowOnPickup, "the toggle defaults to on");
-                Assert.IsTrue(panel.HasPages(AbilityIds.Checkpoint));
-                Assert.IsTrue(panel.HasPages(AbilityIds.RopeGun));
-                Assert.IsFalse(panel.HasPages("other"), "an unknown ability has no page set");
-
-                panel.OpenWith(AbilityIds.Checkpoint);
-                Image pageImage = page.GetComponent<Image>();
-                Assert.AreEqual(first, pageImage.sprite);
-                Assert.AreEqual("1 / 2", label.text);
-                Assert.IsFalse(prev.interactable, "no page before the first");
-                Assert.IsTrue(next.interactable);
-
-                next.onClick.Invoke();
-                Assert.AreEqual(second, pageImage.sprite);
-                Assert.AreEqual("2 / 2", label.text);
-                Assert.IsFalse(next.interactable, "no page after the last");
-                Assert.IsTrue(prev.interactable);
-
-                prev.onClick.Invoke();
-                Assert.AreEqual(first, pageImage.sprite, "Prev steps back to the first page");
-
-                panel.OpenWith(AbilityIds.RopeGun);
-                Assert.AreEqual(ropeGunOnly, pageImage.sprite, "each ability opens its own page set");
-                Assert.AreEqual("1 / 1", label.text);
-                Assert.IsFalse(prev.interactable);
-                Assert.IsFalse(next.interactable, "a single page has nothing to step to");
-
-                SetPickupSwitch(panel, false);
-                Assert.IsFalse(panel.ShowOnPickup, "the Inspector switch is the off gate OpenTutorial reads");
-            }
-            finally
-            {
-                UnityEngine.Object.DestroyImmediate(root);
-                UnityEngine.Object.DestroyImmediate(first);
-                UnityEngine.Object.DestroyImmediate(second);
-                UnityEngine.Object.DestroyImmediate(ropeGunOnly);
-                UnityEngine.Object.DestroyImmediate(texture);
             }
         }
 
@@ -336,6 +278,9 @@ namespace Inkform.Tests
             collider.isTrigger = true;
             root.AddComponent<Inkform.Interactable.Interactable>();
             AbilityPickupPart pickup = root.AddComponent<AbilityPickupPart>();
+            // The card abilities ship built-in now, so the grant-from-nothing path is exercised
+            // on a non-default id (attached before SetActive — Attach runs on activation).
+            SetField(pickup, "abilityId", "test-ability");
             InteractionPromptPart prompt = root.AddComponent<InteractionPromptPart>();
             root.SetActive(true);
             try
@@ -346,14 +291,14 @@ namespace Inkform.Tests
                 try
                 {
                     PlayerBus.RaiseInteractPressed();
-                    Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint),
+                    Assert.IsFalse(AbilityStore.Owns("test-ability"),
                         "confirm with nobody in range must do nothing");
 
                     Assert.IsFalse(pickup.HandleContact(ContactPhase.Enter, playerCollider),
                         "presence tracking never claims the contact");
                     Assert.IsTrue(prompt.PlayerInRange);
                     PlayerBus.RaiseInteractPressed();
-                    Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint));
+                    Assert.IsTrue(AbilityStore.Owns("test-ability"));
                     Assert.IsTrue(root == null, "a collected pickup consumes its world object");
                 }
                 finally
@@ -371,7 +316,8 @@ namespace Inkform.Tests
         public void AbilityPickup_SelfRemovesWhenAbilityAlreadyEarned()
         {
             AbilityStore.ClearWithoutSaving();
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint),
+                "the default abilities count as already earned — the world cards self-remove on load");
 
             GameObject root = new GameObject("Earned pickup test");
             root.SetActive(false);
@@ -443,20 +389,11 @@ namespace Inkform.Tests
             (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(ropeGun);
 
-        private static Button AddTutorialButton(GameObject parent, string name)
-        {
-            GameObject go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(parent.transform, false);
-            return go.GetComponent<Button>();
-        }
+        private static T ReadField<T>(object target, string name) =>
+            (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target);
 
-        private static void SetPages(TutorialPanel panel, string field, params Sprite[] pages) =>
-            panel.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(panel, pages);
-
-        private static void SetPickupSwitch(TutorialPanel panel, bool value) =>
-            panel.GetType().GetField("showOnPickup", BindingFlags.Instance | BindingFlags.NonPublic)!
-                .SetValue(panel, value);
+        private static void SetField(object target, string name, object value) =>
+            target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);

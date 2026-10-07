@@ -36,18 +36,18 @@ namespace Inkform.Audio
             "Off preserves the normal first-come behavior")]
         public bool preferNearestWhenLimited;
 
-        [Header("Distance falloff")]
+        [Header("Spatial (distance + pan)")]
         // Defaulting to off is intentional: existing Cue assets do not store these fields, they take
         // these initial values after deserialization, behaving exactly as before distance was added —
         // this change must not suddenly alter every sound.
-        [Tooltip("Off = always played as 2D. The player's own sounds (jump/land/eat) should keep it off — they are always at the camera center, distance means nothing")]
+        [Tooltip("Off = always played as 2D at the camera. On = the emitter's distance scales volume and cuts " +
+            "highs, and its X offset pans it left/right, saturating at falloffRange. The player's own sounds " +
+            "(jump/land/eat) should keep it off — they are always at the camera center, distance means nothing")]
         public bool spatial = false;
-        [Tooltip("Beyond this distance from the listener, attenuation bottoms out")]
+        [Tooltip("Audible radius: at this distance volume bottoms out and panning reaches hard left/right")]
         public float falloffRange = 20f;
         [Tooltip("Volume factor at max distance. 0 = completely silent")]
         [Range(0f, 1f)] public float minVolume = 0.15f;
-        [Tooltip("Reverb tier ceiling. 0 = this sound never gets reverb")]
-        [Range(0f, 1f)] public float reverbAmount = 1f;
         [Tooltip("Low-pass cutoff frequency (Hz) at max distance. Lower = duller. 22000 = no filtering")]
         public float minCutoff = 900f;
 

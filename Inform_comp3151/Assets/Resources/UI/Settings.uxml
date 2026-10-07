@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Settings.uss" />
+    <!-- Settings shell: header + the page mount + the always-present BACK. Each sub-page
+         (ROOT category list / AUDIO / VIDEO / CONTROLS) is its own UXML/USS/Page triple,
+         instantiated by SettingsPanel into #Pages and display-toggled by its router. Row
+         styles cascade from this sheet to every mounted page. -->
+    <ui:VisualElement name="Settings" class="screen dim">
+        <ui:VisualElement class="settings-header" picking-mode="Ignore">
+            <ui:Label name="Title" text="OPTIONS" class="menu-title header-outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="Pages" class="settings-pages" />
+
+        <ui:VisualElement class="settings-bottom">
+            <ui:Button name="Btn_Back" text="BACK" class="menu-item floaty outline" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

@@ -27,6 +27,9 @@ namespace Inkform.Audio
         [Header("Player")]
         [SerializeField] private SoundCue jump;
         [SerializeField] private SoundCue land;
+        [SerializeField] private SoundCue ropeFire;    // grapple fired (instant anchor follows the same frame)
+        [SerializeField] private SoundCue ropeHit;     // grapple anchored on terrain / grabbed a carriable
+        [SerializeField] private SoundCue ropeCancel;  // pull deliberately broken (re-press, dash, jump off)
 
         // Death sounds are not here: they dispatch by cause rather than by concern (spiked vs fallen
         // should sound different), so the Cue lives on the DeathStrategy asset and is played by the strategy.
@@ -44,6 +47,9 @@ namespace Inkform.Audio
             ItemBus.InventoryCapacityUpgraded += OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged += OnPlayerState;
             PlayerBus.DashAttempted += OnDashAttempted;
+            RopeGunBus.Fired += OnRopeFired;
+            RopeGunBus.Hit += OnRopeHit;
+            RopeGunBus.RopeCancelled += OnRopeCancelled;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -58,6 +64,9 @@ namespace Inkform.Audio
             ItemBus.InventoryCapacityUpgraded -= OnInventoryCapacityUpgraded;
             PlayerBus.StateChanged -= OnPlayerState;
             PlayerBus.DashAttempted -= OnDashAttempted;
+            RopeGunBus.Fired -= OnRopeFired;
+            RopeGunBus.Hit -= OnRopeHit;
+            RopeGunBus.RopeCancelled -= OnRopeCancelled;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
         }
@@ -76,6 +85,13 @@ namespace Inkform.Audio
             Play(bombTick, pos);
             if (succeeded) Play(blast, pos);
         }
+
+        // The rope's own sounds, always on the player — no position, same stance as jump/land
+        private void OnRopeFired(Vector2 dir) => Play(ropeFire);
+
+        private void OnRopeHit(Vector2 dir) => Play(ropeHit);
+
+        private void OnRopeCancelled() => Play(ropeCancel);
 
         private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
 

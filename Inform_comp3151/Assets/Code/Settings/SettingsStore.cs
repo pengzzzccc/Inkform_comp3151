@@ -54,8 +54,9 @@ namespace Inkform.Settings
         public static bool ShowFps { get; private set; }
 
         /// <summary>Session performance recorder on/off — writes the Docs/PerfLogs (or Log/) CSV
-        /// traces. On by default: it is a development tool and silence would be a behavior change.</summary>
-        public static bool PerfRecording { get; private set; } = true;
+        /// traces. Off by default: it is a development tool, and a player's session should not pay
+        /// for a CSV nobody asked for.</summary>
+        public static bool PerfRecording { get; private set; } = false;
 
         /// <summary>Performance recorder sampling interval in seconds (0.1 = 10 Hz). Values outside
         /// PerfIntervals never get in through the setter.</summary>
@@ -64,6 +65,25 @@ namespace Inkform.Settings
         /// <summary>Gamepad rumble on/off; RumbleManager reads this live. Strengths are tuned at
         /// half-motor-power in the manager itself, so there is no middle setting to feel through.</summary>
         public static bool Rumble { get; private set; } = true;
+
+        // ---- Grapping hook (rope gun) aim feel; RopeGun reads these live ----
+
+        /// <summary>Reticle snaps to the terrain anchor while green. Off: the green reticle rides
+        /// the free cursor (color/firing unchanged).</summary>
+        public static bool RopeWallSnap { get; private set; } = true;
+
+        /// <summary>Carriables (bombs) on the aim path are snap targets and eat-pull candidates.
+        /// Off: the rope ignores them entirely — preview never snaps, firing never eat-pulls.</summary>
+        public static bool RopeBombSnap { get; private set; } = true;
+
+        /// <summary>Snap escape dead zone in world units: the free cursor must pull closer than
+        /// the snap target by this margin before the snap releases. Prevents boundary flicker.</summary>
+        public static float RopeSnapDeadZone { get; private set; } = 0.3f;
+
+        /// <summary>While sliding on a wall snap, rescale the aim input by the measured geometric
+        /// gain so the anchor slides at the free-cursor speed the sensitivity settings define,
+        /// whatever the wall angle.</summary>
+        public static bool RopeAdaptiveSpeed { get; private set; } = true;
 
         /// <summary>Global visual FX intensity 0~1: scales screen shake, camera zoom, post punch and
         /// shatter launch speed at their consumers. Hitstop is a duration, not a strength, so it is
@@ -109,7 +129,10 @@ namespace Inkform.Settings
         private const string KeyMouseSens = "Inkform.mouseSensitivity";
         private const string KeyStickSens = "Inkform.stickSensitivity";
         private const string KeyDevice = "Inkform.inputDevice";
-        private const string KeyBindings = "Inkform.bindingOverrides";
+        // The .v3 suffix is a scheme version: bumping it orphans every previously saved override so a
+        // changed default layout reaches players who had rebound under the old defaults (v3, 2026-10:
+        // gamepad Dash/Jump/SpitBomb remapped to LB / LT / RB). Rebinding saves under the new key.
+        private const string KeyBindings = "Inkform.bindingOverrides.v3";
         private const string KeyResW = "Inkform.resolutionWidth";
         private const string KeyResH = "Inkform.resolutionHeight";
         private const string KeyFullscreen = "Inkform.fullscreen";
@@ -120,6 +143,10 @@ namespace Inkform.Settings
         private const string KeyPerfRecording = "Inkform.perfRecording";
         private const string KeyPerfInterval = "Inkform.perfInterval";
         private const string KeyRumble = "Inkform.rumbleOn";
+        private const string KeyRopeWallSnap = "Inkform.ropeWallSnap";
+        private const string KeyRopeBombSnap = "Inkform.ropeBombSnap";
+        private const string KeyRopeDeadZone = "Inkform.ropeSnapDeadZone";
+        private const string KeyRopeAdaptive = "Inkform.ropeAdaptiveSpeed";
 
         // ---- Lifecycle ----
 
@@ -138,9 +165,13 @@ namespace Inkform.Settings
             FpsCap = 60;
             VSync = false;
             ShowFps = false;
-            PerfRecording = true;
+            PerfRecording = false;
             PerfInterval = 1f;
             Rumble = true;
+            RopeWallSnap = true;
+            RopeBombSnap = true;
+            RopeSnapDeadZone = 0.3f;
+            RopeAdaptiveSpeed = true;
             FxIntensity = 1f;
             cachedResolutions = null;
         }
@@ -171,9 +202,13 @@ namespace Inkform.Settings
             FpsCap = PlayerPrefs.GetInt(KeyFps, 120);
             VSync = PlayerPrefs.GetInt(KeyVSync, 0) != 0;
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
-            PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 1) != 0;
+            PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 0) != 0;
             PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
             Rumble = PlayerPrefs.GetInt(KeyRumble, 1) != 0;
+            RopeWallSnap = PlayerPrefs.GetInt(KeyRopeWallSnap, 1) != 0;
+            RopeBombSnap = PlayerPrefs.GetInt(KeyRopeBombSnap, 1) != 0;
+            RopeSnapDeadZone = PlayerPrefs.GetFloat(KeyRopeDeadZone, 0.3f);
+            RopeAdaptiveSpeed = PlayerPrefs.GetInt(KeyRopeAdaptive, 1) != 0;
             FxIntensity = PlayerPrefs.GetFloat(KeyFxIntensity, 1f);
 
             ResolutionWidth = PlayerPrefs.GetInt(KeyResW, 0);
@@ -341,6 +376,41 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
+        // ---- Grapping hook setters (RopeGun reads the properties live) ----
+
+        public static void SetRopeWallSnap(bool value)
+        {
+            if (RopeWallSnap == value) return;
+            RopeWallSnap = value;
+            PlayerPrefs.SetInt(KeyRopeWallSnap, value ? 1 : 0);
+            Changed?.Invoke();
+        }
+
+        public static void SetRopeBombSnap(bool value)
+        {
+            if (RopeBombSnap == value) return;
+            RopeBombSnap = value;
+            PlayerPrefs.SetInt(KeyRopeBombSnap, value ? 1 : 0);
+            Changed?.Invoke();
+        }
+
+        public static void SetRopeSnapDeadZone(float value)
+        {
+            value = Mathf.Clamp01(value);
+            if (Mathf.Approximately(RopeSnapDeadZone, value)) return;
+            RopeSnapDeadZone = value;
+            PlayerPrefs.SetFloat(KeyRopeDeadZone, value);
+            Changed?.Invoke();
+        }
+
+        public static void SetRopeAdaptiveSpeed(bool value)
+        {
+            if (RopeAdaptiveSpeed == value) return;
+            RopeAdaptiveSpeed = value;
+            PlayerPrefs.SetInt(KeyRopeAdaptive, value ? 1 : 0);
+            Changed?.Invoke();
+        }
+
         public static void ResetToDefaults()
         {
             MasterVolume = MusicVolume = SfxVolume = 1f;
@@ -351,9 +421,13 @@ namespace Inkform.Settings
             FpsCap = 120;
             VSync = false;
             ShowFps = false;
-            PerfRecording = true;
+            PerfRecording = false;
             PerfInterval = 1f;
             Rumble = true;
+            RopeWallSnap = true;
+            RopeBombSnap = true;
+            RopeSnapDeadZone = 0.3f;
+            RopeAdaptiveSpeed = true;
             FxIntensity = 1f;
             Resolution r = Screen.currentResolution;
             ResolutionWidth = r.width;
@@ -380,6 +454,10 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyPerfRecording);
             PlayerPrefs.DeleteKey(KeyPerfInterval);
             PlayerPrefs.DeleteKey(KeyRumble);
+            PlayerPrefs.DeleteKey(KeyRopeWallSnap);
+            PlayerPrefs.DeleteKey(KeyRopeBombSnap);
+            PlayerPrefs.DeleteKey(KeyRopeDeadZone);
+            PlayerPrefs.DeleteKey(KeyRopeAdaptive);
 
             ApplyGraphics();
             ApplyAudio();
