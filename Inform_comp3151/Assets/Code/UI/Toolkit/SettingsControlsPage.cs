@@ -80,7 +80,7 @@ namespace Inkform.UI
                 ShowDeviceContent();
             };
 
-            rumbleRow = AddOnOffRow("Rumble", SettingsStore.Rumble, SettingsStore.SetRumble);
+            rumbleRow = AddOnOffRow("Rumble", () => SettingsStore.Rumble, SettingsStore.SetRumble);
 
             mouseLabel = AddSliderRow("Mouse Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out mouseSlider);
             stickLabel = AddSliderRow("Controller Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out stickSlider);
@@ -111,8 +111,8 @@ namespace Inkform.UI
 
             AddSubHeader("GRAPPING HOOK");
 
-            ropeWallSnapRow = AddOnOffRow("Wall Snap", SettingsStore.RopeWallSnap, SettingsStore.SetRopeWallSnap);
-            ropeBombSnapRow = AddOnOffRow("Bomb Snap", SettingsStore.RopeBombSnap, SettingsStore.SetRopeBombSnap);
+            ropeWallSnapRow = AddOnOffRow("Wall Snap", () => SettingsStore.RopeWallSnap, SettingsStore.SetRopeWallSnap);
+            ropeBombSnapRow = AddOnOffRow("Bomb Snap", () => SettingsStore.RopeBombSnap, SettingsStore.SetRopeBombSnap);
 
             deadZoneLabel = AddSliderRow("Snap Dead Zone", 0f, 1f, out deadZoneSlider);
             deadZoneSlider.RegisterValueChangedCallback(e =>
@@ -121,7 +121,7 @@ namespace Inkform.UI
                 deadZoneLabel.text = e.newValue.ToString("0.00");
             });
 
-            ropeAdaptiveRow = AddOnOffRow("Adaptive Speed", SettingsStore.RopeAdaptiveSpeed, SettingsStore.SetRopeAdaptiveSpeed);
+            ropeAdaptiveRow = AddOnOffRow("Adaptive Speed", () => SettingsStore.RopeAdaptiveSpeed, SettingsStore.SetRopeAdaptiveSpeed);
         }
 
         public override void Refresh()

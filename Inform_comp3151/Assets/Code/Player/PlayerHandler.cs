@@ -1,4 +1,5 @@
 using Inkform.Bus;
+using Inkform.Interactable.Parts;
 using Inkform.Life;
 using Inkform.Tool;
 using UnityEngine;
@@ -34,6 +35,20 @@ namespace Inkform.Player
         private RopeGun ropeGun;        // may be null: levels without the rope gun play fine
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
+
+        [Header("Dash break")]
+        [Tooltip("Layers a running dash smashes through. Breakable(11) — the same layer the rope gun's hitMask targets.")]
+        [SerializeField] private LayerMask dashBreakMask = 1 << 11;
+        [Tooltip("The blast published when a dash smash breaks something. Radius and force match a bomb's blastRadius/blastForce, so the spread wave looks identical.")]
+        [SerializeField] private float dashBlastRadius = 2f;
+        [SerializeField] private float dashBlastForce = 18f;
+
+        private const float DashBreakProbeRadius = 0.4f;   // ≈ the player's half-extent
+        private const float DashBreakLookahead = 0.25f;    // break slightly ahead of contact — the dash carries through
+
+        private readonly RaycastHit2D[] dashBreakHits = new RaycastHit2D[8];   // fixed buffer, RopeGun's preview-cast convention
+        private Vector2 lastFramePos;      // previous Update's position — the probe casts the true swept segment
+        private bool dashBlastRaised;      // one Blast wave per dash, however many crates it grinds through
 
         public PlayerInventory Inventory => inventory;
 
@@ -82,6 +97,55 @@ namespace Inkform.Player
             motor.Tick();
             if (motor.ConsumeJumpStarted()) anim.OnJumpStarted();
             anim.Tick();
+
+            StepDashBreak();
+        }
+
+        // Dash smash: while dashing, the frame's true swept segment (previous position → current,
+        // plus a small lookahead along the dash direction) probes the breakable layer. The break
+        // lands just BEFORE physical contact, so the dash never stalls on the crate. Victims claim
+        // themselves through the same HazardBus.Exploded path a bomb uses — fragment burst, break
+        // sound, the lot — and the spread wave publishes once per dash via HazardBus.Blast, which
+        // FxDirector / AudioDirector / RumbleManager render exactly like a bomb's.
+        private void StepDashBreak()
+        {
+            Vector2 pos = transform.position;
+            Vector2 delta = pos - lastFramePos;
+            lastFramePos = pos;
+
+            if (!motor.IsDashing)
+            {
+                dashBlastRaised = false;   // re-arm: one wave per dash
+                return;
+            }
+            if (delta.sqrMagnitude < 0.000001f) return;
+
+            Vector2 dir = motor.DashDirection;
+            Vector2 castVec = delta + dir * DashBreakLookahead;
+            float len = castVec.magnitude;
+            if (len < 0.0001f) return;
+
+            int count = Physics2D.CircleCastNonAlloc(
+                pos - delta, DashBreakProbeRadius, castVec / len, dashBreakHits, len, dashBreakMask);
+
+            for (int i = 0; i < count; i++)
+            {
+                // Only nodes that actually carry a BreakablePart are claimed — a plain solid that
+                // happens to sit on the layer must not raise Exploded at other subscribers.
+                // Fully qualified: from inside Inkform.Player the namespace Inkform.Interactable
+                // shadows the class of the same name (same reason RopeGun qualifies it)
+                Collider2D collider = dashBreakHits[i].collider;
+                Inkform.Interactable.Interactable node =
+                    collider != null ? collider.GetComponentInParent<Inkform.Interactable.Interactable>() : null;
+                if (node == null || !node.TryGetPart(out BreakablePart _)) continue;
+
+                HazardBus.RaiseExploded(node.gameObject, dashBreakHits[i].point, dashBlastForce);
+                if (!dashBlastRaised)
+                {
+                    dashBlastRaised = true;
+                    HazardBus.RaiseBlast(dashBreakHits[i].point, dashBlastRadius, dashBlastForce);
+                }
+            }
         }
 
         // ---- Input entries. Names match the actions in the InputSystem_Actions asset one-to-one;
@@ -121,10 +185,11 @@ namespace Inkform.Player
             motor.CutJump();
         }
 
-        /// <summary>Dash action (LeftShift / RB). Direction = the aim direction (the rope gun's
-        /// reticle; on a pad that is the right stick's last pushed direction), free angle, falling
-        /// back to the 8-way move input, then to the facing — the same chain as SpitBomb. The dash
-        /// itself is fixed-direction and gravity-free for its whole duration (see PlayerMotor).</summary>
+        /// <summary>Dash action (LeftShift / LB). Direction = the aim direction (the rope gun's
+        /// reticle; on a pad that is the right stick's last pushed direction), SNAPPED to 8
+        /// directions — never a free angle — falling back to the 8-way move input, then to the
+        /// facing. The dash itself is fixed-direction and gravity-free for its whole duration,
+        /// decaying to a stop at the end (see PlayerMotor).</summary>
         public void Dash()
         {
             if (LifeBus.IsDead) return;
@@ -134,7 +199,7 @@ namespace Inkform.Player
             {
                 Vector2 dir;
                 if (ropeGun != null)
-                    dir = ropeGun.EffectiveFireDir;
+                    dir = Dir8.Snap(ropeGun.EffectiveFireDir);
                 else if (lastMoveInput.sqrMagnitude > 0.0001f)
                     dir = Dir8.Snap(lastMoveInput);
                 else

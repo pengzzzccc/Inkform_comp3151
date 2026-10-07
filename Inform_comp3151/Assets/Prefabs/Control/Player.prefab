@@ -332,7 +332,7 @@ MonoBehaviour:
   gravity: 2
   fallGravityMultiplier: 1.4
   onWallGravityMultiplier: 0.1
-  maxFallSpeed: 15
+  maxFallSpeed: 12
   wallJumpTime: 0.18
   wallKickMultiplier: 0.5
   attackMultiplier: 2.5

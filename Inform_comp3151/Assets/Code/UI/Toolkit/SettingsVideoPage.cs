@@ -22,9 +22,9 @@ namespace Inkform.UI
             resRow = AddOptionRow("Resolution", FormatRes(SettingsStore.ResolutionWidth, SettingsStore.ResolutionHeight));
             resRow.Stepped += StepResolution;
 
-            fullRow = AddOnOffRow("Fullscreen", SettingsStore.Fullscreen, SettingsStore.SetFullscreen);
+            fullRow = AddOnOffRow("Fullscreen", () => SettingsStore.Fullscreen, SettingsStore.SetFullscreen);
 
-            vsyncRow = AddOnOffRow("VSync", SettingsStore.VSync, SettingsStore.SetVSync);
+            vsyncRow = AddOnOffRow("VSync", () => SettingsStore.VSync, SettingsStore.SetVSync);
 
             fpsRow = AddOptionRow("FPS Cap", FpsText(SettingsStore.FpsCap));
             fpsRow.Stepped += StepFps;
@@ -32,9 +32,9 @@ namespace Inkform.UI
             AddSliderRow("FX Intensity", 0f, 1f, out fxSlider);
             fxSlider.RegisterValueChangedCallback(e => SettingsStore.SetFxIntensity(e.newValue));
 
-            showFpsRow = AddOnOffRow("Show FPS", SettingsStore.ShowFps, SettingsStore.SetShowFps);
+            showFpsRow = AddOnOffRow("Show FPS", () => SettingsStore.ShowFps, SettingsStore.SetShowFps);
 
-            perfRow = AddOnOffRow("Perf Recording", SettingsStore.PerfRecording, SettingsStore.SetPerfRecording);
+            perfRow = AddOnOffRow("Perf Recording", () => SettingsStore.PerfRecording, SettingsStore.SetPerfRecording);
 
             perfRateRow = AddOptionRow("Perf Rate", RateText(SettingsStore.PerfInterval));
             perfRateRow.Stepped += StepPerfRate;

@@ -20,9 +20,11 @@ namespace Inkform.Player
     /// ballistic solve behind the preview is exact: the reticle turns green when solid terrain
     /// intercepts the trajectory within range.
     ///
-    /// Firing is INSTANT: a green reticle means the preview already resolved the intercept — the
-    /// press anchors right there and the pull starts the same frame. No projectile flies, nothing
-    /// to wait for or miss. A red reticle refuses the shot with the denied cue. Along the fired
+        /// Firing is INSTANT: a green reticle means the preview already resolved the intercept — the
+        /// press anchors right there and the pull starts the same frame. No projectile flies, nothing
+        /// to wait for or miss. A red reticle fires too — a miss shot: the hook snaps out to the
+        /// cursor point, hangs there briefly (no anchor, no pull) and retracts with the cancel cue.
+        /// Along the fired
     /// parabola two special hits resolve at the press moment, before the terrain anchor: carriable
     /// objects become an eat-pull (swallow on arrival), bomb hanging chains are severed wherever
     /// the path passes close to them. The hook is a plain static sprite at the anchor (no
@@ -36,7 +38,7 @@ namespace Inkform.Player
     /// </summary>
     public class RopeGun : MonoBehaviour
     {
-        public enum RopePhase { Idle, Pulling }
+        public enum RopePhase { Idle, Pulling, Missing }
 
         [Header("Range")]
         [SerializeField] private float maxRange = 4f;                       // default reticle / hook travel cap
@@ -51,6 +53,7 @@ namespace Inkform.Player
         [SerializeField] private float spriteAngleOffset = 0f;              // hook sprite facing offset (degrees); 0 = art points right (+X)
         [SerializeField] private float muzzleOffset = 0.5f;                 // parabola origin moved forward along the aim, avoids overlapping the player
         [SerializeField] private float bombDetectRadius = 0.55f;            // carriable probe radius along the fired parabola
+        [SerializeField] private float missDangleTime = 0.2f;                // red-shot miss: how long the hook + rope hang at the cursor point before auto-retract
 
         [Header("Aim")]
         [SerializeField] private float mouseAimSensitivity = 1f;
@@ -99,6 +102,7 @@ namespace Inkform.Player
         [SerializeField] private SoundCue deniedCue;
 
         private RopePhase phase = RopePhase.Idle;
+        private float missTimer;      // red-shot miss: countdown to the auto-retract (FixedUpdate ticks it)
 
         /// <summary>Current hook state — the performance recorder logs it so frame costs can be
         /// correlated with the rope's Flying/Pulling phases.</summary>
@@ -306,16 +310,8 @@ namespace Inkform.Player
                 return;
             }
 
-            // Instant hit: only a green reticle fires. The preview already resolved the intercept
-            // along the exact ballistic path — the press anchors right there, same frame. A red
-            // reticle (nothing intercepts within range) is refused exactly like the ability gate:
-            // cue, no rope.
-            if (!previewGreen)
-            {
-                PlayCue(deniedCue);
-                return;
-            }
-
+            // Instant hit: the press anchors right where the preview resolved the intercept, same
+            // frame (green). A red reticle fires too — the miss shot at the tail of this method.
             Vector2 fireDir = EffectiveFireDir;
             RopeGunBus.RaiseFired(fireDir);
 
@@ -331,6 +327,20 @@ namespace Inkform.Player
                 Vector2 targetPos = carriable.transform.position;
                 CreateHookAt(targetPos, targetPos - playerBody.position);
                 StartPullingCarriable(carriable);
+                return;
+            }
+
+            if (!previewGreen)
+            {
+                // Miss shot: nothing intercepts along the path, so the hook snaps out to the
+                // cursor point and hangs there — no anchor, no pull, movement stays free. The
+                // rope draws itself in LateUpdate from pullTarget like any active rope; the
+                // Missing-phase timer in FixedUpdate retracts it.
+                Vector2 missPoint = playerBody.position + aimOffset;
+                CreateHookAt(missPoint, aimOffset);
+                pullTarget = missPoint;
+                phase = RopePhase.Missing;
+                missTimer = Mathf.Max(0f, missDangleTime);
                 return;
             }
 
@@ -360,10 +370,11 @@ namespace Inkform.Player
             ropeRenderer.enabled = true;
         }
 
-        /// <summary>Called by PlayerHandler on jump press: during a pull, release the rope and let the jump happen.</summary>
+        /// <summary>Called by PlayerHandler on jump press: during a pull or a miss dangle, release
+        /// the rope and let the jump happen.</summary>
         public void DetachOnJump()
         {
-            if (phase != RopePhase.Pulling) return;
+            if (phase != RopePhase.Pulling && phase != RopePhase.Missing) return;
             RopeGunBus.RaiseRopeCancelled();   // deliberate break, not a natural end
             Finish();
         }
@@ -489,6 +500,20 @@ namespace Inkform.Player
             if (phase == RopePhase.Idle || LifeBus.IsDead) return;
 
             float dt = Time.fixedDeltaTime;
+
+            // Miss shot: nothing to pull toward — the hook just hangs at the fired cursor point
+            // for its moment, then retracts. Must NOT reach PullStep below: that hard-writes the
+            // body's velocity and would yank the player toward a point in open air.
+            if (phase == RopePhase.Missing)
+            {
+                missTimer -= dt;
+                if (missTimer <= 0f)
+                {
+                    RopeGunBus.RaiseRopeCancelled();   // retract sounds like a deliberate break
+                    Finish();
+                }
+                return;
+            }
 
             if (grapple != null)
             {
