@@ -16,6 +16,9 @@ namespace Inkform.Audio
     /// VoiceArbiter — this class only executes them against real AudioSources.
     /// Attach to the GameManager; PersistentGameRoot keeps that host alive across scenes.
     /// </summary>
+    // Before UIManager (order 0): the boot sting is posted from UIManager.Awake, and a sibling
+    // Awake order left to component order would let it find Instance still null and drop silently
+    [DefaultExecutionOrder(-1000)]
     public class AudioManager : MonoBehaviour
     {
         public static AudioManager Instance { get; private set; }
