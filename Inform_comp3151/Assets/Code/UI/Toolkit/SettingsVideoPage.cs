@@ -70,7 +70,7 @@ namespace Inkform.UI
         {
             int[] opts = SettingsStore.FpsOptions;
             int i = Array.IndexOf(opts, SettingsStore.FpsCap);
-            if (i < 0) i = 1;   // stored value is not one of the options (e.g. hand-edited): land on 60
+            if (i < 0) i = 1;   // stored value is not one of the options (e.g. hand-edited): step from 60
 
             i = (i + dir + opts.Length) % opts.Length;
             SettingsStore.SetFpsCap(opts[i]);
@@ -82,7 +82,7 @@ namespace Inkform.UI
         {
             float[] opts = SettingsStore.PerfIntervals;
             int i = Array.IndexOf(opts, SettingsStore.PerfInterval);
-            if (i < 0) i = 2;   // stored value is not one of the options: land on 1 Hz
+            if (i < 0) i = 2;   // stored value is not one of the options: step from 1 s
 
             i = (i + dir + opts.Length) % opts.Length;
             SettingsStore.SetPerfInterval(opts[i]);

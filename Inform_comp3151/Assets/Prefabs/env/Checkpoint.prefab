@@ -58,7 +58,6 @@ MonoBehaviour:
   - {fileID: -8157192857874580397, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   - {fileID: 4920298330140517438, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   framesPerSecond: 12
-  deniedCue: {fileID: 11400000, guid: f0bc49645f4da13ef9922fe7dbef111b, type: 2}
 --- !u!61 &5108392746215038474
 BoxCollider2D:
   m_ObjectHideFlags: 0

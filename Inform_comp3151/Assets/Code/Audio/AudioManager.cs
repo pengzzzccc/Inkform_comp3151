@@ -44,7 +44,6 @@ namespace Inkform.Audio
         [SerializeField] private int droppedPosts;
 
         public int ActiveVoiceCount => active.Count;
-        public int PooledSourceCount => pool.Count;
 
         private readonly Queue<Source> pool = new Queue<Source>();
         private readonly List<Voice> active = new List<Voice>();
@@ -212,8 +211,7 @@ namespace Inkform.Audio
         public AudioSource Play(SoundCue cue, Vector3? position = null) =>
             Post(new AudioPost(cue, position));
 
-        /// <summary>Full-fat entry point: priority, zone bypass and position in one value. Play is
-        /// the compatibility alias the existing callers keep using.</summary>
+        /// <summary>Same as Play, with the request packed into one value.</summary>
         public AudioSource Post(AudioPost post)
         {
             SoundCue cue = post.cue;
@@ -261,7 +259,7 @@ namespace Inkform.Audio
             }
             if (s.src == null) return null;     // at cap and nothing stealable: already counted + logged
             return StartVoice(s, cue, clip, post.priority, post.position,
-                persistent: false, cue.loop, zoned: !post.ignoreZone && !cue.ignoreListenerPause);
+                persistent: false, cue.loop, zoned: !cue.ignoreListenerPause);
         }
 
         /// <summary>
@@ -324,12 +322,9 @@ namespace Inkform.Audio
                 persistent = persistent,
                 position = position.GetValueOrDefault(Vector3.zero),
                 hasPosition = position.HasValue,
-                baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
-                    * Mathf.Min(listenerZone.volumeScale, emitterZone.volumeScale),
+                baseGain = AudioPremix.BaseGain(cue, t, listenerZone, emitterZone),
             };
-            src.volume = Mathf.Clamp01(voice.baseGain
-                * SettingsStore.MasterVolume
-                * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
+            src.volume = SettingsVolume(voice.baseGain, cue);
             s.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
             src.panStereo = PanOf(cue, position);
             src.outputAudioMixerGroup = cue.output;
@@ -649,11 +644,8 @@ namespace Inkform.Audio
             ZoneMix listenerZone = zoned ? ListenerZoneMix() : ZoneMix.Neutral;
             ZoneMix emitterZone = zoned && cue.spatial ? EmitterZoneMix(voice.position) : ZoneMix.Neutral;
 
-            voice.baseGain = cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
-                * Mathf.Min(listenerZone.volumeScale, emitterZone.volumeScale);
-            voice.source.src.volume = Mathf.Clamp01(voice.baseGain
-                * SettingsStore.MasterVolume
-                * AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
+            voice.baseGain = AudioPremix.BaseGain(cue, t, listenerZone, emitterZone);
+            voice.source.src.volume = SettingsVolume(voice.baseGain, cue);
             voice.source.lpf.cutoffFrequency = AudioPremix.Cutoff(cue, t, listenerZone, emitterZone);
             // Re-panned every frame too: walking past a campfire or a gear moves the sound across
             // the stereo field exactly as it moves across the screen
@@ -669,9 +661,13 @@ namespace Inkform.Audio
             {
                 Voice voice = active[i];
                 if (voice.source.src == null || voice.cue == null) continue;
-                float track = AudioPremix.TrackVolume(voice.cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume);
-                voice.source.src.volume = Mathf.Clamp01(voice.baseGain * SettingsStore.MasterVolume * track);
+                voice.source.src.volume = SettingsVolume(voice.baseGain, voice.cue);
             }
         }
+
+        // The settings half of a voice's volume, shared by every path that (re)writes one
+        private static float SettingsVolume(float baseGain, SoundCue cue) =>
+            AudioPremix.Volume(baseGain, SettingsStore.MasterVolume,
+                AudioPremix.TrackVolume(cue, SettingsStore.MusicVolume, SettingsStore.SfxVolume));
     }
 }

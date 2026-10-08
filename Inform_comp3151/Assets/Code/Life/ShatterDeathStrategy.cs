@@ -29,7 +29,7 @@ namespace Inkform.Life
         // factor would be 1
         [Header("Screen FX")]
         [SerializeField] private float trauma = 0.7f;
-        [SerializeField] private float hitStop = 0.12f;     // ScreenFx.maxHitStop is 0.25, do not exceed
+        [SerializeField] private float hitStop = 0.12f;     // GameTimeController.maxHitStop caps it (0.25)
         [SerializeField] private float zoom = -0.5f;        // negative = push in
         [SerializeField] private float zoomTime = 0.4f;
         [SerializeField] private float punch = 0.8f;        // vignette strength increment; only death uses post-processing at all

@@ -60,7 +60,7 @@ namespace Inkform.Audio
             src.Play();
         }
 
-        public void Stop(float fadeSeconds) => fader.Request(null, fadeSeconds);
+        public void Stop(float fadeSeconds) => fader.Stop(fadeSeconds);
 
         // Fades advance every frame; volume is recomputed whole each time, so settings changes and
         // fade progress share one path with no staleness window

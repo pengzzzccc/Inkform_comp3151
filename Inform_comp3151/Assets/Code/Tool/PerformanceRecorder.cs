@@ -20,11 +20,13 @@ using Debug = UnityEngine.Debug;
 namespace Inkform.Tool
 {
     /// <summary>
-    /// Session performance recorder: samples once per SettingsStore.PerfInterval (Graphics tab's
+    /// Session performance recorder: samples once per SettingsStore.PerfInterval (Video page's
     /// "Sample Rate", 0.1–5 s) whenever SettingsStore.PerfRecording is on, writing one CSV row per
     /// sample until shutdown — frame pacing plus where the player was and what state they were in
     /// when it got slow. Toggling the setting mid-run closes the current file (with its summary)
-    /// and opens a fresh one, so each recorded stretch is a self-contained session.
+    /// and opens a fresh one. Note the summary totals (frames, min FPS, hitches) are not reset per
+    /// file, so a later file's summary also counts the earlier stretches, and only the first file
+    /// gets the "# screen=" line.
     ///
     /// Output location follows one rule: an existing project-root Log/ folder wins; otherwise a
     /// PerfLogs folder is created under Docs/ and used. The session header stamps the git branch and
@@ -55,7 +57,6 @@ namespace Inkform.Tool
         private static PerformanceRecorder active;
 
         private StreamWriter writer;
-        private bool streamFailed;
 
         // Window aggregation: unscaled frame time summed over the interval, plus fps extremes within it
         private float windowTime;
@@ -174,9 +175,6 @@ namespace Inkform.Tool
             if (writer == null) return;     // OpenSession warned; recording stays off
 
             recording = true;
-            lastGcBytes = GC.GetTotalMemory(false);
-            lastGcCollects = GC.CollectionCount(0);
-            lastSceneName = SceneManagerSceneName();
             LevelBus.Started += OnSceneStarted;
         }
 
@@ -247,7 +245,6 @@ namespace Inkform.Tool
                     $"perf_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
                 writer = new StreamWriter(path, append: false, Encoding.UTF8);
-                streamFailed = false;   // an earlier failed open must not make CloseStream skip this one
 
                 WriteHeader();
 
@@ -259,7 +256,6 @@ namespace Inkform.Tool
             }
             catch (Exception e)
             {
-                streamFailed = true;
                 writer = null;
                 // Deliberately NOT disabling the component: the settings toggle must stay able to
                 // retry (a directory that was unwritable at boot can come back). Recording stays
@@ -309,8 +305,7 @@ namespace Inkform.Tool
             double now = Time.realtimeSinceStartup - startRealtime;
             float avgFps = windowFrames / Mathf.Max(windowTime, 1e-5f);
             float avgMs = 1000f * windowTime / Mathf.Max(windowFrames, 1);
-            string scene = SceneManagerSceneName();
-            if (scene != lastSceneName) lastSceneName = scene;   // marker rows come from LevelBus.Started
+            string scene = SceneManagerSceneName();   // scene marker rows come from LevelBus.Started
 
             Transform player = PlayerBus.Player != null ? PlayerBus.Player.transform : null;
             Vector2 pos = player != null ? (Vector2)player.position : Vector2.zero;
@@ -412,7 +407,6 @@ namespace Inkform.Tool
 
         private void CloseStream()
         {
-            if (streamFailed) return;
             try { writer?.Dispose(); }
             catch (Exception e) { Debug.LogWarning($"PerformanceRecorder: could not close log ({e.Message})"); }
             writer = null;

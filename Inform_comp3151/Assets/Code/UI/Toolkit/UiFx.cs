@@ -30,8 +30,9 @@ namespace Inkform.UI
         private static void ResetStatics() => Live.Clear();
 
         /// <summary>Drives apply(ease(t)) with t in [0,1] over duration seconds (unscaled),
-        /// after an optional delay. onComplete runs exactly once, on the frame t reaches 1 —
-        /// or immediately when the element is not on a panel any more.</summary>
+        /// after an optional delay. onComplete runs at most once: on the frame t reaches 1, or
+        /// immediately when the element is not on a panel at the call. A newer tween on the same
+        /// element cancels this one, and its onComplete never runs.</summary>
         public static void Tween(VisualElement el, float duration, Func<float, float> ease, Action<float> apply,
             float delay = 0f, Action onComplete = null)
         {

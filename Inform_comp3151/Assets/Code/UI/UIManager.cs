@@ -83,17 +83,6 @@ namespace Inkform.UI
         public bool IsPaused => paused;
         public bool IsInMainMenu { get; private set; }
 
-        /// <summary>True while any panel is open. Nothing else needs to know about the menus.</summary>
-        public bool AnyPanelOpen
-        {
-            get
-            {
-                foreach (ToolkitPanel panel in panels.Values)
-                    if (panel.IsOpen) return true;
-                return false;
-            }
-        }
-
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -272,7 +261,7 @@ namespace Inkform.UI
 
         // ---- Navigation ----
 
-        /// <summary>Menu scene loaded: show the main menu (Save menu / settings stay closed).</summary>
+        /// <summary>Any scene loaded: apply that scene's menu / end / gameplay UI state.</summary>
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             ApplySceneState(scene);
@@ -400,8 +389,8 @@ namespace Inkform.UI
         }
 
         /// <summary>Resumes the run held in a save slot. Callback for the Save menu's occupied
-        /// slots. A slot that turns out to be empty falls through to a fresh run inside
-        /// SceneDirector.</summary>
+        /// slots. A save SceneDirector refuses (empty, or naming an unknown room) logs a warning
+        /// and leaves the menu as it is.</summary>
         public void ContinueGame(int slot)
         {
             SetPaused(false);

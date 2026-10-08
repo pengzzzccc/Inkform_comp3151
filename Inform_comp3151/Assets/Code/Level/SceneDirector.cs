@@ -19,9 +19,10 @@ namespace Inkform.Level
     ///
     /// Transition pipeline, the same shape the official Unity samples use: lock + fade out → async
     /// Single-mode load → resolve the current room → fade in → hand input back. The lock makes every
-    /// entry point (doors, new game, continue, quit-to-menu) mutually exclusive, and sceneLoaded
-    /// only sets a flag because it fires before this coroutine's AsyncOperation continuation
-    /// (clearing state there has crashed the coroutine before — see OnSceneLoaded).
+    /// entry point (doors, new game, continue, quit-to-menu) mutually exclusive. sceneLoaded fires
+    /// before this coroutine's AsyncOperation continuation, so it only does per-scene setup (flag,
+    /// hitstop clear, intro staging) and never touches the transition state (clearing state there
+    /// has crashed the coroutine before — see OnSceneLoaded).
     /// </summary>
     public class SceneDirector : MonoBehaviour
     {
@@ -38,11 +39,9 @@ namespace Inkform.Level
         [Tooltip("Seconds of fade back to clear after the new scene is active")]
         [SerializeField] private float fadeInSeconds = 0.4f;
 
-        private RoomDefinition currentRoom;
         private bool worldMissingWarned;
         private bool sceneInitPending;
         private bool transitionInProgress;
-        private AsyncOperation loadOperation;
 
         private string pendingSpawnId;
         private Vector2? pendingSpawnPos;
@@ -57,15 +56,13 @@ namespace Inkform.Level
 
         public bool IsTransitioning => transitionInProgress;
 
-        public SceneArrivalType PendingArrivalType => pendingArrivalType;
-
         void Awake()
         {
             if (Instance != null && Instance != this) { enabled = false; return; }
             Instance = this;
 
-            // Self-installed like UIManager's GamepadCursor / InventoryHud: the fader exists without
-            // anyone having to add it to the GameManager prefab by hand
+            // Self-installed: the fader exists without anyone having to add it to the GameManager
+            // prefab by hand
             fader = GetComponent<SceneFader>();
             if (fader == null) fader = gameObject.AddComponent<SceneFader>();
         }
@@ -117,7 +114,7 @@ namespace Inkform.Level
         private void InitForScene()
         {
             string scene = SceneManager.GetActiveScene().name;
-            currentRoom = world != null ? world.FindBySceneName(scene) : null;
+            RoomDefinition currentRoom = world != null ? world.FindBySceneName(scene) : null;
 
             // Null means the menu or an unregistered scene (an editor cold start into a test level) —
             // either way no room is running, which is all Started's subscribers need to know
@@ -311,7 +308,6 @@ namespace Inkform.Level
             try
             {
                 operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-                loadOperation = operation;
             }
             catch (System.Exception exception)
             {
@@ -331,7 +327,6 @@ namespace Inkform.Level
             yield return operation;
 
             LastLoadMs = (Time.realtimeSinceStartup - loadStart) * 1000f;
-            loadOperation = null;
             GameStateStore.Set(GameStateStore.GameState.Transition);
 
             RoomIntro intro = FindAnyObjectByType<RoomIntro>();
@@ -362,7 +357,6 @@ namespace Inkform.Level
             transitionInProgress = false;
             pendingArrivalType = SceneArrivalType.None;
             SetGameStateFromActiveScene();
-            loadOperation = null;
             pendingSpawnId = null;
             pendingSpawnPos = null;
             if (!SaveStore.AbortNewRun()) SaveStore.EndRun();

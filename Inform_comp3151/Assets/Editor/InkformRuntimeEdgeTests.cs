@@ -70,7 +70,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV1_MigratesToV3WithEmptyOneSlotInventory()
+        public void SaveV1_MigratesToCurrentWithEmptyOneSlotInventory()
         {
             string path = Path.Combine(Application.temporaryCachePath, $"inkform-v1-{Guid.NewGuid():N}.json");
             try
@@ -255,47 +255,6 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeRangeOverrides_UseMinimumAndRestoreBySource()
-        {
-            GameObject go = new GameObject("RopeGun range test");
-            go.SetActive(false);
-            go.AddComponent<Rigidbody2D>();
-            RopeGun gun = go.AddComponent<RopeGun>();
-            go.SetActive(true);
-            InitializeRopeGun(gun);
-            object wide = new object();
-            object narrow = new object();
-            try
-            {
-                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
-                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
-
-                RopeGunBus.RaiseRangeOverride(wide, 3f);
-                Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "a wider boundary must not push a free cursor outward");
-
-                RopeGunBus.RaiseRangeOverride(narrow, 2f);
-                Assert.AreEqual(2f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "a shorter range must pull an out-of-bounds cursor inward");
-
-                RopeGunBus.RaiseRangeRestored(narrow);
-                Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "restoring range must preserve the free cursor distance");
-                RopeGunBus.RaiseRangeRestored(wide);
-                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
-            }
-            finally
-            {
-                ShutdownRopeGun(gun);
-                UnityEngine.Object.DestroyImmediate(go);
-            }
-        }
-
-        [Test]
         public void BlastWaveFx_ExpandsWithEaseOutThinsFadesAndRemainsPresentationOnly()
         {
             int blastCount = 0;
@@ -457,11 +416,11 @@ namespace Inkform.Tests
                 Assert.Less(movedDistance, 4f, "ordinary input must not force the cursor to max range");
 
                 SetField(gun, "aimOffset", new Vector2(0.1f, 0f));
-                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Invoke(gun, "ClampAimOffsetToRange");
                 Assert.AreEqual(0.7f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
 
                 SetField(gun, "aimOffset", new Vector2(10f, 0f));
-                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Invoke(gun, "ClampAimOffsetToRange");
                 Assert.AreEqual(4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
             }
             finally
@@ -528,7 +487,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV3_RestoresLargeCapacityPickupIdsAndKeepsSlotsIsolated()
+        public void Save_RestoresLargeCapacityPickupIdsAndKeepsSlotsIsolated()
         {
             string directory = Path.Combine(Application.temporaryCachePath, $"inkform-v3-{Guid.NewGuid():N}");
             Directory.CreateDirectory(directory);
@@ -912,7 +871,7 @@ namespace Inkform.Tests
                 Assert.AreEqual(new Vector3(12f, 8f, cameraGo.transform.position.z), cameraGo.transform.position);
 
                 Vector3 staged = cameraGo.transform.position;
-                handler.ResumeFollow(false);
+                handler.ResumeFollow();
                 Assert.IsFalse(handler.IsFollowHeld);
                 Assert.AreEqual(staged, cameraGo.transform.position,
                     "smooth resume must not cut to the player on the release frame");

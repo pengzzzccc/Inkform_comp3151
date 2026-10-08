@@ -345,7 +345,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(cue);
             }
         }
@@ -370,7 +370,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(gameplay);
                 UnityEngine.Object.DestroyImmediate(critical);
             }
@@ -401,7 +401,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(ear);
                 UnityEngine.Object.DestroyImmediate(cue);
             }
@@ -434,7 +434,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(ear);
                 UnityEngine.Object.DestroyImmediate(cue);
             }
@@ -460,7 +460,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(ear);
                 UnityEngine.Object.DestroyImmediate(cue);
             }
@@ -487,7 +487,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(ear);
                 UnityEngine.Object.DestroyImmediate(ambience);
                 UnityEngine.Object.DestroyImmediate(blast);
@@ -518,7 +518,7 @@ namespace Inkform.Tests
             }
             finally
             {
-                DestroyManager(go, manager);
+                DestroyManager(go);
                 UnityEngine.Object.DestroyImmediate(ear);
                 UnityEngine.Object.DestroyImmediate(nonSpatial);
                 UnityEngine.Object.DestroyImmediate(positionless);
@@ -541,7 +541,7 @@ namespace Inkform.Tests
             return go;
         }
 
-        private static void DestroyManager(GameObject go, AudioManager manager)
+        private static void DestroyManager(GameObject go)
         {
             UnityEngine.Object.DestroyImmediate(go);    // OnDisable/OnDestroy run as part of teardown
         }
@@ -580,9 +580,6 @@ namespace Inkform.Tests
 
         private static T GetField<T>(object target, string name) =>
             (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(target);
-
-        private static void Invoke(object target, string method) =>
-            target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);
     }
 }
 #endif

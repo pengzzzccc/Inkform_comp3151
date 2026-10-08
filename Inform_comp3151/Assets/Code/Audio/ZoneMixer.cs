@@ -77,7 +77,7 @@ namespace Inkform.Audio
         }
 
         /// <summary>Strictest-wins combination, exposed because AudioManager also uses it to fold
-        /// the zones containing a spatial sound's emitter (StateAt).</summary>
+        /// the zones containing a spatial sound's emitter (AudioManager.EmitterZoneMix).</summary>
         public static ZoneMix Combine(ZoneMix a, ZoneMix b) => new ZoneMix(
             a.volumeScale * b.volumeScale,
             Mathf.Min(a.cutoff, b.cutoff),

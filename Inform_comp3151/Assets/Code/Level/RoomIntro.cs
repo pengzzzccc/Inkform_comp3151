@@ -32,14 +32,11 @@ namespace Inkform.Level
         private RespawnDirector respawn;
         private bool prepared;
 
-        public bool SpawnSucceeded { get; private set; }
-
         /// <summary>Called under the opaque scene fader, before the new room is revealed.</summary>
         public void PrepareBeforeReveal(RespawnDirector respawn)
         {
             if (prepared) return;
             prepared = true;
-            SpawnSucceeded = false;
             this.respawn = respawn;
 
             bars = GetComponent<CinematicBars>();
@@ -77,10 +74,9 @@ namespace Inkform.Level
             }
 
             PlayerHandler player = respawn != null
-                ? respawn.SpawnPlayerAtSceneStart(false)
+                ? respawn.SpawnPlayerAtSceneStart()
                 : null;
-            SpawnSucceeded = player != null;
-            if (!SpawnSucceeded)
+            if (player == null)
                 Debug.LogError("RoomIntro: failed to instantiate the player; releasing the presentation safely", this);
         }
 
@@ -89,7 +85,7 @@ namespace Inkform.Level
         {
             // Both actions start in this frame: the player is already controllable, the camera eases
             // out of its establishing position while the movie bars retract around the live scene.
-            if (cam != null) cam.ResumeFollow(false);
+            if (cam != null) cam.ResumeFollow();
             if (bars != null) yield return bars.Hide(barsSeconds);
             prepared = false;
         }
@@ -97,7 +93,7 @@ namespace Inkform.Level
         private void OnDestroy()
         {
             // A forced scene switch or play-mode stop must never leave a surviving camera held.
-            if (prepared && cam != null) cam.ResumeFollow(false);
+            if (prepared && cam != null) cam.ResumeFollow();
             if (prepared && respawn != null) respawn.ReleaseSceneInitialization();
             prepared = false;
         }

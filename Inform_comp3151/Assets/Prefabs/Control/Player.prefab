@@ -185,13 +185,11 @@ MonoBehaviour:
   ropeWidth: 0.06
   ropeSortingOrder: -5
   anchorClearance: 0.04
-  chainCutRadius: 0.35
   pullSpeed: 16
   arrivalDistance: 0.7
   stuckTime: 0.25
   swallowDistance: 1.1
   hitStopTime: 0.06
-  deniedCue: {fileID: 11400000, guid: f0bc49645f4da13ef9922fe7dbef111b, type: 2}
 --- !u!50 &2846290267072033032
 Rigidbody2D:
   serializedVersion: 5
@@ -329,7 +327,6 @@ MonoBehaviour:
   jumpBuffer: 0.15
   jumpTimes: 1
   coyoteTime: 0.2
-  apexSpeedThreshold: 3
   gravity: 2
   fallGravityMultiplier: 1.4
   onWallGravityMultiplier: 0.1

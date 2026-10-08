@@ -40,7 +40,7 @@ namespace Inkform.Player
 
         // SpriteRenderer.bounds rather than the collider's, for two reasons:
         // ① shards should be sliced along the "visible silhouette", and the player collider is a
-        //    0.5×0.5 capsule, a size smaller than the art;
+        //    0.6×0.5 capsule, a size smaller than the art;
         // ② the collider's bounds die once PlayerHandler disables physics, and which of the two
         //    components receives the same event first is not guaranteed — the renderer's bounds avoid
         //    that ordering pitfall entirely

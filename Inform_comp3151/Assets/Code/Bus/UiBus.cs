@@ -6,13 +6,14 @@ namespace Inkform.Bus
     /// <summary>
     /// UI bus: menu interaction feedback. Same split as the gameplay buses — the control that was
     /// touched raises the signal, and whoever presents it (currently UIManager, which owns the Cue
-    /// slots) subscribes. UiButtonFx / UiToggleFx never need to know the audio system exists.
+    /// slots) subscribes. The raising controls (ToolkitPanel.Bind, OptionRow, the settings pages)
+    /// never need to know the audio system exists.
     ///
-    /// Unlike LifeBus / PlayerBus this bus keeps no snapshot: "the pointer is over a button" is
-    /// already stored by the EventSystem, and nothing needs to read it back later.
+    /// Unlike LifeBus / PlayerBus this bus keeps no snapshot: nothing needs to read "the pointer
+    /// is over a button" back later.
     ///
     /// These are presentation signals only. A button's actual behaviour still goes through its own
-    /// onClick listener (BasePanel.Bind) — do not route game logic through Clicked, which fires for
+    /// click handler (ToolkitPanel.Bind) — do not route game logic through Clicked, which fires for
     /// every button on every panel and cannot say which one.
     /// </summary>
     public static class UiBus
@@ -25,9 +26,10 @@ namespace Inkform.Bus
         /// <summary>A control was activated — pointer click or the UI map's Submit.</summary>
         public static event Action Clicked;
 
-        /// <summary>A toggle flipped; the argument is the new state. Raised only for genuine user
-        /// input: the settings panel pulls values back with SetIsOnWithoutNotify (SettingsPanel.Refresh),
-        /// which deliberately does not fire onValueChanged, so re-opening a panel stays silent.</summary>
+        /// <summary>An option row's value was stepped or the row was confirmed; the argument picks
+        /// the cue — true for a right step / click ("on"), false for a left step ("off"). Raised
+        /// only for genuine user input: the pages write values back through OptionRow.Value
+        /// (SettingsSubPage.Refresh), which raises nothing, so re-opening a page stays silent.</summary>
         public static event Action<bool> Toggled;
 
         public static void RaiseHovered() => Hovered?.Invoke();

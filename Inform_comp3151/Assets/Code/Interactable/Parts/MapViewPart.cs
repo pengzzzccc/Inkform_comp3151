@@ -213,7 +213,7 @@ namespace Inkform.Interactable.Parts
             ReleaseExitAction();
             if (!owned) return;
 
-            if (cam != null && cam.IsFollowHeld) cam.ResumeFollow(false);
+            if (cam != null && cam.IsFollowHeld) cam.ResumeFollow();
             ReleaseWorldFreeze();
             prompt?.SetSuppressed(false);
 

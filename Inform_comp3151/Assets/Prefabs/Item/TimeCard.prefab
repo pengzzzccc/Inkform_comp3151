@@ -156,7 +156,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.AbilityPickupPart
   abilityId: checkpoint
-  collectCue: {fileID: 11400000, guid: 30a2cbb46c36e734a9a7dba2f705f70e, type: 2}
 --- !u!114 &10000000009
 MonoBehaviour:
   m_ObjectHideFlags: 0

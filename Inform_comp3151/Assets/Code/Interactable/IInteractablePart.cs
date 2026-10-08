@@ -5,7 +5,7 @@ namespace Inkform.Interactable
     /// <summary>
     /// Interactable behavior component (part): attach to the same object as the Interactable node or
     /// to a child; collected automatically by the node in Awake via GetComponentsInChildren and
-    /// Attach-ed one by one. Each part owns one behavior (touch-death / carriable / grabbable...);
+    /// Attach-ed one by one. Each part owns one behavior (touch-death / carriable / breakable...);
     /// when the node receives a physics callback it dispatches in declaration order — returning true
     /// means "handled" and later parts do not receive this contact.
     ///

@@ -81,15 +81,21 @@ namespace Inkform.Audio
             return Mathf.Clamp((emitterPos.Value.x - listenerPos.x) / falloffRange, -1f, 1f);
         }
 
-        /// <summary>Cue volume × distance falloff × settings tracks × zone scale. Zone scale is the
+        /// <summary>Cue volume × distance falloff × zone scale — everything except the settings
+        /// tracks, so a live voice can be re-scaled when a slider moves. Zone scale is the
         /// stricter (smaller) of listener and emitter zones.</summary>
+        public static float BaseGain(SoundCue cue, float t, in ZoneMix listener, in ZoneMix emitter) =>
+            cue.volume * Mathf.Lerp(1f, cue.minVolume, t)
+            * Mathf.Min(listener.volumeScale, emitter.volumeScale);
+
+        /// <summary>A voice's final volume: base gain × master × the Cue's settings track.</summary>
+        public static float Volume(float baseGain, float master, float track) =>
+            Mathf.Clamp01(baseGain * master * track);
+
+        /// <summary>Cue volume × distance falloff × settings tracks × zone scale.</summary>
         public static float Volume(SoundCue cue, float t, float master, float track,
-            in ZoneMix listener, in ZoneMix emitter)
-        {
-            float falloffGain = Mathf.Lerp(1f, cue.minVolume, t);
-            float zoneScale = Mathf.Min(listener.volumeScale, emitter.volumeScale);
-            return Mathf.Clamp01(cue.volume * falloffGain * master * track * zoneScale);
-        }
+            in ZoneMix listener, in ZoneMix emitter) =>
+            Volume(BaseGain(cue, t, listener, emitter), master, track);
 
         /// <summary>
         /// Low-pass cutoff in Hz. The listener's zone caps every zoned sound ("in a cave everything
@@ -117,8 +123,8 @@ namespace Inkform.Audio
             return Mathf.Max(-10000f, 20f * Mathf.Log10(wet)) * 100f;
         }
 
-        /// <summary>Which settings track scales this Cue. The Music track only matters once the
-        /// music path exists; Cues can be tagged ahead of time.</summary>
+        /// <summary>Which settings track scales this Cue: Music-category Cues (MusicPlayer) ride the
+        /// Music slider, everything else the SFX slider.</summary>
         public static float TrackVolume(SoundCue cue, float musicVolume, float sfxVolume) =>
             cue.category == SoundCue.Category.Music ? musicVolume : sfxVolume;
     }

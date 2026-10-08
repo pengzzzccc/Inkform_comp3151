@@ -5,10 +5,9 @@ using UnityEngine.InputSystem;
 namespace Inkform.Input
 {
     /// <summary>
-    /// The single shared InputSystem_Actions instance for the whole project. InputHandler (gameplay
-    /// actions) and UIManager (UI input module) used to each `new` their own wrapper; a runtime
-    /// rebind done on one instance would never reach the other. This holder ends the split: a rebind
-    /// writes to this one asset and both consumers see it.
+    /// The single shared InputSystem_Actions instance for the whole project (InputHandler,
+    /// MapViewPart, the settings Controls page, BindingTools). One instance means a runtime rebind
+    /// written here is seen by every consumer.
     ///
     /// Binding overrides are the official runtime layer on top of the .inputactions asset: the asset
     /// stays the single source of the default bindings (rebind there, Unity regenerates the wrapper),

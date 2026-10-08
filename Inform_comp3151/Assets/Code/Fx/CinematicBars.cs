@@ -22,9 +22,6 @@ namespace Inkform.Fx
 
         private RectTransform top, bottom;
 
-        /// <summary>Slides both bars in from the screen edges; completes when fully in.</summary>
-        public IEnumerator Show(float seconds) => Animate(barHeightFraction, seconds);
-
         /// <summary>Slides both bars back out; completes when gone.</summary>
         public IEnumerator Hide(float seconds) => Animate(0f, seconds);
 

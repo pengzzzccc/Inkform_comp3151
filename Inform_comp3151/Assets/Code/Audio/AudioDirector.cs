@@ -99,7 +99,7 @@ namespace Inkform.Audio
             Play(inventoryCapacityUpgrade, pos);
 
         // Both of these are "the player's own sounds", always at the camera center, so like
-        // attack/jump/land they pass no position. The matching Cue assets should keep spatial off —
+        // jump/land they pass no position. The matching Cue assets should keep spatial off —
         // see the Tooltip in SoundCue.cs
         private void OnRespawned(GameObject victim, Vector2 pos) => Play(respawn);
 
@@ -131,7 +131,7 @@ namespace Inkform.Audio
         {
             if (cue == null) return;                        // slot unconfigured, skip silently
             if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Post(new AudioPost(cue, position));
+            AudioManager.Instance.Play(cue, position);
         }
     }
 }

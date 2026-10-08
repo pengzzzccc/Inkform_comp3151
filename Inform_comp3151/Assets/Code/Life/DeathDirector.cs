@@ -40,7 +40,7 @@ namespace Inkform.Life
         {
             if (strategies != null)
             {
-                // Linear scan: there are only three causes; a dictionary's cost and mental overhead
+                // Linear scan: there are only a handful of causes; a dictionary's cost and mental overhead
                 // are not worth it
                 foreach (DeathStrategy s in strategies)
                 {

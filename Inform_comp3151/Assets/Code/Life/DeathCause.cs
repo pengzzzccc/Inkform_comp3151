@@ -14,7 +14,7 @@ namespace Inkform.Life
     /// </summary>
     public enum DeathCause
     {
-        Spike,      // spikes: the only cause actually triggered today
+        Spike,      // spikes and other plain HarmOnTouch hazards (the default cause)
         Blast,      // death by explosion (reserved; explosions currently only knock back, never kill)
         Void,       // falling out of the world / abyss (reserved; no DeathZone exists yet)
         Burned,     // caught in a fire jet — published by FireJet's HarmOnTouch

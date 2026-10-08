@@ -10,7 +10,7 @@ namespace Inkform.UI
 {
     /// <summary>
     /// The gameplay HUD, rebuilt on the Toolkit tree from the old prefab's five components:
-    /// GameTimer (top centre, now in BombSlimeFont), FpsDisplay (top right), InventoryHud
+    /// GameTimer (top centre), FpsDisplay (top right), InventoryHud
     /// (bottom right), SaveIndicator (the "Saved" toast above it) and the HudRoot visibility
     /// switch. Everything is picking-mode Ignore in the UXML — the HUD never eats a click meant
     /// for the world.

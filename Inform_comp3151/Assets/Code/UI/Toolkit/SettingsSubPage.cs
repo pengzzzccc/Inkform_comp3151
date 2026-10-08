@@ -9,7 +9,7 @@ namespace Inkform.UI
     /// Base class for one settings sub-page. Each page owns its own triple of files — a UXML
     /// template under Resources/UI, its USS, and a Page class — instantiated by the base
     /// constructor and mounted into the Settings shell by SettingsPanel, which routes between
-    /// the pages (ShowTab) and forwards Refresh/Reset.
+    /// the pages (ShowTab) and forwards Refresh.
     ///
     /// The shared row vocabulary (option rows, slider rows, sub-headers) lives here so every
     /// page builds rows the same way; the row STYLES cascade from the shell's Settings.uss

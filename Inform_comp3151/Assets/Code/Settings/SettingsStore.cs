@@ -12,7 +12,8 @@ namespace Inkform.Settings
     /// scene loads (RuntimeInitializeOnLoadMethod) and every Set saves back. Readers use the static
     /// properties directly: AudioManager reads volumes when a sound starts and subscribes to Changed
     /// to retune its live voices, RopeGun applies sensitivity and subscribes to Changed to re-read
-    /// after edits. The Settings panel is the only writer.
+    /// after edits. The Settings panel is the main writer; InputHandler and UIManager also flip
+    /// Device when they detect the active input family.
     ///
     /// Static (over a GameManager component) because settings are cross-domain infrastructure like the
     /// buses — Audio / Player / UI all touch them — and a static API needs zero scene or prefab edits.
@@ -25,7 +26,7 @@ namespace Inkform.Settings
         /// <summary>Which input device family gameplay input is filtered to (InputHandler).</summary>
         public enum InputDevice { KeyboardMouse, Gamepad }
 
-        // Sensitivity is a plain multiplier shown as 0%~500% in the UI; 1.0 (=100%) means no change.
+        // Sensitivity is a plain multiplier, shown as such in the UI (e.g. "2.5"); 1.0 means no change.
         public const float MinSensitivity = 0f;
         public const float MaxSensitivity = 5f;
 
@@ -90,11 +91,11 @@ namespace Inkform.Settings
         /// deliberately untouched — same for gamepad rumble, which is haptic, not visual.</summary>
         public static float FxIntensity { get; private set; } = 1f;
 
-        /// <summary>Frame cap options offered by the Graphics tab; 0 = uncapped. The current pick
+        /// <summary>Frame cap options offered by the Video page; 0 = uncapped. The current pick
         /// lives in FpsCap; this list only feeds the UI's left/right stepping.</summary>
         public static readonly int[] FpsOptions = { 30, 60, 120, 0 };
 
-        /// <summary>Performance recorder sampling intervals (seconds) the Graphics tab steps
+        /// <summary>Performance recorder sampling intervals (seconds) the Video page steps
         /// through; shown to the player as their reciprocal in Hz (10 Hz .. 0.2 Hz).</summary>
         public static readonly float[] PerfIntervals = { 0.1f, 0.5f, 1f, 2f, 5f };
 
@@ -162,7 +163,7 @@ namespace Inkform.Settings
             Device = InputDevice.KeyboardMouse;
             ResolutionWidth = ResolutionHeight = 0;
             Fullscreen = true;
-            FpsCap = 60;
+            FpsCap = 120;
             VSync = false;
             ShowFps = false;
             PerfRecording = false;
@@ -222,7 +223,7 @@ namespace Inkform.Settings
             }
         }
 
-        // ---- Setters (panel is the only writer) ----
+        // ---- Setters ----
 
         // Each Set: guard on change (skip the PlayerPrefs write and the Changed storm when the slider
         // value did not actually move), clamp to the legal range, persist, then notify.
@@ -357,7 +358,7 @@ namespace Inkform.Settings
         }
 
         /// <summary>Performance recorder sampling interval in seconds. Only the PerfIntervals
-        /// values are accepted — the Graphics stepper cycles exactly those, and an off-list value
+        /// values are accepted — the Video page stepper cycles exactly those, and an off-list value
         /// would desync its display.</summary>
         public static void SetPerfInterval(float value)
         {
@@ -468,10 +469,9 @@ namespace Inkform.Settings
 
         /// <summary>
         /// Lands Muted on the audio engine. Goes through the global AudioListener.volume rather than
-        /// the AudioManager's per-Play volume maths: Play reads the volume properties once, when a
-        /// sound starts (AudioManager.Play), so a mute routed through them would leave every already-
-        /// playing loop audible until it ended. The listener volume takes effect on the same frame for
-        /// everything. Nothing else in the project touches this global.
+        /// the per-voice volume maths: one global switch silences every voice and the music on the
+        /// same frame, and unmuting restores the exact mix without recomputing anything. Nothing
+        /// else in the project touches this global.
         /// </summary>
         private static void ApplyAudio()
         {
@@ -496,7 +496,7 @@ namespace Inkform.Settings
             Application.targetFrameRate = VSync ? -1 : FpsCap;
         }
 
-        // ---- Resolution list for the Graphics tab ----
+        // ---- Resolution list for the Video page ----
 
         private static List<Resolution> cachedResolutions;
 

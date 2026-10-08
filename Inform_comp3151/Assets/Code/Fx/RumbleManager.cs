@@ -36,17 +36,6 @@ namespace Inkform.Fx
         [Header("Master")]
         [SerializeField] private bool enableRumble = true;
 
-        /// <summary>Runtime toggle: turning off stops any ongoing rumble immediately.</summary>
-        public bool EnableRumble
-        {
-            get => enableRumble;
-            set
-            {
-                enableRumble = value;
-                if (!value) StopRumble();
-            }
-        }
-
         // All strengths are tuned at half motor power (the player-facing "50% of full" feel); the
         // tier references are Celeste's rumble tables (Light 0.3 / Medium 0.8 / Strong 2.0 at full
         // power, Short 0.1 / Medium 0.25 length) — its Player.cs gives death a Light/Medium rumble,
@@ -140,7 +129,6 @@ namespace Inkform.Fx
             ItemBus.ItemStored += OnItemStored;
             ItemBus.ItemReleased += OnItemReleased;
             ItemBus.InventoryCapacityUpgraded += OnCapacityUpgraded;
-            ItemBus.AbilityUnlocked += OnAbilityUnlocked;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
 
@@ -168,7 +156,6 @@ namespace Inkform.Fx
             ItemBus.ItemStored -= OnItemStored;
             ItemBus.ItemReleased -= OnItemReleased;
             ItemBus.InventoryCapacityUpgraded -= OnCapacityUpgraded;
-            ItemBus.AbilityUnlocked -= OnAbilityUnlocked;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
 
@@ -297,8 +284,6 @@ namespace Inkform.Fx
             AddNow(releaseStrength, releaseStrength, releaseDuration);
 
         private void OnCapacityUpgraded(Vector2 pos, int increase) => AddNow(upgradeStrength, upgradeStrength, upgradeDuration);
-
-        private void OnAbilityUnlocked(Vector2 pos, string abilityId) => AddNow(upgradeStrength, upgradeStrength, upgradeDuration);
 
         private void OnUiClicked() => AddNow(uiStrength, uiStrength, uiClickDuration);
 

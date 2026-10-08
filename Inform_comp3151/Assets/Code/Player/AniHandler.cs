@@ -6,8 +6,9 @@ namespace Inkform.Player
 {
     public class AniHandler : MonoBehaviour
     {
-        [SerializeField] private Animator animations;
-        [SerializeField] private SpriteRenderer sprite;
+        // Runtime caches of the live player's components, rebound by Refresh on every change
+        private Animator animations;
+        private SpriteRenderer sprite;
 
         void OnEnable()
         {
@@ -39,10 +40,8 @@ namespace Inkform.Player
 
         private void Refresh()
         {
-            // Always rebind from the bus's live player: a serialized Animator (GameManager.prefab
-            // carries a stale reference into Player.prefab's internal Animator that resolves to a
-            // non-instance object == null cannot catch) must never be used — the live player's
-            // Animator is the only valid target across scene switches
+            // Always rebind from the bus's live player: the persistent GameManager outlives every
+            // scene's player, so the live player's Animator is the only valid target
             PlayerHandler player = PlayerBus.Player;
             if (player == null) return;
             animations = player.GetComponent<Animator>();
@@ -52,7 +51,7 @@ namespace Inkform.Player
             bool faceL = PlayerBus.Face == FaceDirection.L;
 
             // selfDirectional: the state name carries its direction (which wall the player faces was
-            // already chosen by PlayerHandler), no suffix or flip
+            // already chosen by AnimStateResolver), no suffix or flip
             (string baseName, bool selfDirectional) = PlayerBus.State switch
             {
                 PlayerState.Idle         => ("Idle",          false),

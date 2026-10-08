@@ -29,7 +29,7 @@ namespace Inkform.Life
         // Each item can be zeroed out separately in the Inspector without affecting the others
         [Header("Screen FX")]
         [SerializeField] private float trauma = 0.5f;
-        [SerializeField] private float hitStop = 0.1f;      // ScreenFx.maxHitStop is 0.25, do not exceed
+        [SerializeField] private float hitStop = 0.1f;      // GameTimeController.maxHitStop caps it (0.25)
         [SerializeField] private float zoom = -0.4f;        // negative = push in
         [SerializeField] private float zoomTime = 0.45f;
         [SerializeField] private float punch = 0.9f;        // vignette strength increment

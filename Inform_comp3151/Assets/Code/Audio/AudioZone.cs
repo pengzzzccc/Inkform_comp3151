@@ -32,7 +32,7 @@ namespace Inkform.Audio
 
         void Awake() => bounds = GetComponent<Collider2D>();
 
-        // Registration is for the emitter-side lookup (AudioManager.StateAt): every live zone in
+        // Registration is for the emitter-side lookup (AudioManager.EmitterZoneMix): every live zone in
         // the scene can be asked whether a sound's origin lies inside it
         void OnEnable() => AudioManager.Instance?.RegisterZone(this);
 

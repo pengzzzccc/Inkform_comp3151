@@ -87,11 +87,12 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void ComputePosition_WrappedPosition_StaysOutsideHalfViewWhenHopping()
+        public void TileAndView_HalfViewIsSmallerThanHalfATile()
         {
-            // Wrap hops happen at half a tile; the half view must be smaller so hops occur
-            // off-screen. This is a design invariant of the whole system — if it breaks, the
-            // tile size or the camera view changed and the quad needs resizing.
+            // Constant check, not a ComputePosition call: wrap hops happen at half a tile, so the
+            // half view must be smaller for hops to occur off-screen. This is a design invariant
+            // of the whole system — if it breaks, the tile size or the camera view changed and
+            // the quad needs resizing.
             Assert.Less(HalfView, Tile * 0.5f);
         }
 

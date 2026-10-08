@@ -11,8 +11,8 @@ namespace Inkform.Tests
     /// <summary>
     /// Local parallax: a zone's strata are always-visible child transforms that sit still until
     /// the player enters the trigger box — from that moment each tracks the camera at its own
-    /// factor, and on leaving (or death, or respawn outside) they freeze in place. Re-entering
-    /// re-anchors them to wherever they and the camera now sit.
+    /// factor, and on leaving (or death, or respawn outside) they freeze in place. A tracked position depends
+    /// only on the current camera position, so re-entering needs no re-anchoring.
     ///
     /// Edit mode: MonoBehaviour lifecycle callbacks do not run here, so Awake/LateUpdate/Enter
     /// are driven through reflection (same pattern as AbilityAndPromptTests).
@@ -274,7 +274,7 @@ namespace Inkform.Tests
             Step(zone);
 
             Assert.AreEqual(10f * 0.5f, strata[0].position.x, 0.0001f,
-                "respawn inside the box re-enters and tracks from a fresh anchor");
+                "respawn inside the box re-enters and tracks the camera again");
         }
 
         [Test]

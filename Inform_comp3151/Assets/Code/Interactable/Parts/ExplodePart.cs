@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// The whole explosive in one part: the blast itself plus the two ways it is set off.
+    /// The whole explosive in one part: the blast itself plus the four ways it is set off.
     ///
     /// Detonation paths (deliberately just these — the old speed-threshold part read the
     /// post-solve velocity in the collision callback, where a head-on hit has its normal component
@@ -25,12 +25,11 @@ namespace Inkform.Interactable.Parts
     ///
     /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakablePart
     /// shatters, PlayerHandler gets knocked back, other explosives chain) + one RaiseBlast overall
-    /// (screen shake / sound / rope cutting) — all listeners already on the bus, zero changes.
+    /// (screen shake / sound / rumble) — all listeners already on the bus, zero changes.
     ///
     /// Proximity warning animation: with triggerFrames + proximityRadius configured, the frame
     /// sequence advances as the player approaches (closer = later frame, 0 = normal), raising Ticked
-    /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
-    /// distance-driven branch only.
+    /// on change (AudioDirector plays the tick sound).
     /// </summary>
     public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart, IOnSpit
     {
@@ -78,7 +77,7 @@ namespace Inkform.Interactable.Parts
 
         // All explosives share one player reference. After the player is destroyed or the scene
         // changes it becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics
-        // needed (same as the former Bomb monolith)
+        // needed
         private static Transform playerCache;
 
         private static Transform Player
@@ -219,7 +218,6 @@ namespace Inkform.Interactable.Parts
             // Restorable items are not destroyed — the part hides them and respawn brings them back.
             // Everything else hides before the shards render (Destroy only applies at frame end, so
             // without hiding the body overlaps the shards for one frame), then is destroyed outright
-            // (same as the former Bomb monolith)
             bool restorable = root.TryGetPart(out RestorablePart restore);
 
             if (restorable)
@@ -234,7 +232,7 @@ namespace Inkform.Interactable.Parts
             // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
 
-            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright.
+            // Explosives are unrecoverable: shattered and destroyed outright.
             // The EditMode branch exists so tests can drive Explode() — Destroy is refused outside play mode
             if (!restorable)
             {

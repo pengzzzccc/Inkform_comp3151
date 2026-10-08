@@ -5,7 +5,7 @@ using Inkform.Player;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// Player state/action bus: the only publisher is PlayerHandler — except InteractPressed, which
+    /// Player state/action bus: published by PlayerHandler and its sibling AnimStateResolver (State/Face) — except InteractPressed, which
     /// InputHandler raises because "confirm" targets whatever the player stands near (world parts),
     /// not the player itself. Subscribers need no serialized player reference. State changes are
     /// deduped and snapshotted; DashAttempted is transient.

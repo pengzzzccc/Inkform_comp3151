@@ -25,9 +25,6 @@ namespace Inkform.Interactable.Parts
         private readonly List<Renderer> renderers = new List<Renderer>();
         private bool consumed;
 
-        public string PickupId => pickupId;
-        public int CapacityIncrease => capacityIncrease;
-
         public void Attach(Interactable interactable)
         {
             root = interactable;

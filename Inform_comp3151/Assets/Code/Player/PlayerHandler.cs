@@ -12,14 +12,10 @@ namespace Inkform.Player
     /// derivation), PlayerInventory (carrying). The rope gun (RopeGun) is an optional fifth component:
     /// the game plays fine without it; with it, wiring happens via TryGetComponent.
     ///
-    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly:
-    /// ① InputHandler.player is wired in the GameManager prefab's scene instance override; changing
-    ///    the **class name** would silently break the link (it is a field reference serialized by
-    ///    component type); the input entries below are plain C# calls, renaming them just requires
-    ///    changing both sides and the compiler catches it;
-    /// ② the subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
-    ///    Update order among components on one object — a single driver must order it explicitly, and
-    ///    that is this class.
+    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly: the
+    /// subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
+    /// Update order among components on one object — a single driver must order it explicitly, and
+    /// that is this class. InputHandler finds it through PlayerBus.Player.
     /// </summary>
     // Rigidbody2D needs no declaration here: PlayerMotor already RequiresComponent on it
     [RequireComponent(typeof(ContactSensor))]
@@ -35,7 +31,6 @@ namespace Inkform.Player
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
 
-        public PlayerInventory Inventory => inventory;
 
         void Awake()
         {
@@ -143,7 +138,7 @@ namespace Inkform.Player
                 else
                     dir = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
 
-                // The dash takes over motion: release any active rope (flying hook or mid-pull)
+                // The dash takes over motion: release any active rope (mid-pull or miss dangle)
                 // first, or the pull's per-physics-step velocity writes would fight the dash
                 if (ropeGun != null) ropeGun.Cancel();
 

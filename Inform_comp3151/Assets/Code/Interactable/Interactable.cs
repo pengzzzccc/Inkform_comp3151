@@ -15,7 +15,7 @@ namespace Inkform.Interactable
     ///    concrete behavior;
     /// ② parts attach to this object or its children (collected via GetComponentsInChildren, active
     ///    on attach, no manual Inspector wiring); concrete behavior (touch-death / explosion /
-    ///    carriable / grabbable...) is implemented by each part — "the player needs only interface
+    ///    carriable / breakable...) is implemented by each part — "the player needs only interface
     ///    storage; concrete logic lives in the concrete object".
     ///
     /// Trigger and physical collision dispatch unified: static objects (spikes/lasers, trigger
@@ -34,7 +34,7 @@ namespace Inkform.Interactable
         private bool partsAttached;
 
         /// <summary>Part lookup: unified entry for the player/system side (e.g. PlayerInventory looks up the
-        /// carriable part, RopeGun the grabbable part). Returns false when absent — the caller degrades
+        /// carriable part, RopeGun asks for ICarriable). Returns false when absent — the caller degrades
         /// to "no such behavior".</summary>
         public bool TryGetPart<T>(out T part) where T : class, IInteractablePart
         {

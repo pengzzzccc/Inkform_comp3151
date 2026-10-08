@@ -144,7 +144,7 @@ namespace Inkform.Level
         /// <summary>Instantiates (or reuses) the player at this scene's authored start checkpoint.
         /// A fresh instance is created at its final position and deliberately does not raise the
         /// death-respawn event, so a new-game entrance does not play the respawn sound.</summary>
-        public PlayerHandler SpawnPlayerAtSceneStart(bool snapCamera)
+        public PlayerHandler SpawnPlayerAtSceneStart()
         {
             Checkpoint start = FindStartPoint();
             sceneInitHeld = false;
@@ -157,7 +157,7 @@ namespace Inkform.Level
             }
 
             checkpoint = start.SpawnPos;
-            return PlaceInitialPlayer(checkpoint, snapCamera);
+            return PlaceInitialPlayer(checkpoint, false);   // RoomIntro stages the camera itself
         }
 
         /// <summary>Returns the scene's Player — found, reactivated or freshly instantiated at the

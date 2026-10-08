@@ -7,7 +7,7 @@ namespace Inkform.Level
     /// <summary>
     /// Full-screen fade SceneDirector hides scene switches behind: black up before the load, black
     /// down after the new scene has settled (which also covers RespawnDirector's one-frame-later
-    /// player placement). Code-built overlay canvas like SaveIndicator — no prefab to regenerate —
+    /// player placement). Code-built overlay canvas — no prefab to regenerate —
     /// and driven entirely with unscaled time, because Save &amp; Quit fades while the pause menu
     /// still has timeScale at 0.
     ///

@@ -8,7 +8,7 @@ namespace Inkform.Audio
     {
         public CuePriority priority;
         public float startedAt;     // Time.unscaledTime when the voice started
-        public bool persistent;     // ambient/music-style loop: stealing it is more noticeable, so
+        public bool persistent;     // ambient loop (AmbientSource): stealing it is more noticeable, so
                                     // within the same priority it is stolen only after transients
     }
 
