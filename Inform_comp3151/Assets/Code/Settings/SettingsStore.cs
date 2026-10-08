@@ -129,10 +129,10 @@ namespace Inkform.Settings
         private const string KeyMouseSens = "Inkform.mouseSensitivity";
         private const string KeyStickSens = "Inkform.stickSensitivity";
         private const string KeyDevice = "Inkform.inputDevice";
-        // The .v2 suffix is a scheme version: bumping it orphans every previously saved override so a
-        // changed default layout (2026-09: aim/jump/rope/spit remapped to left stick / A / RT / RB)
-        // reaches players who had rebound under the old defaults. Rebinding saves under the new key.
-        private const string KeyBindings = "Inkform.bindingOverrides.v2";
+        // The .v3 suffix is a scheme version: bumping it orphans every previously saved override so a
+        // changed default layout reaches players who had rebound under the old defaults (v3, 2026-10:
+        // gamepad Dash/Jump/SpitBomb remapped to LB / LT / RB). Rebinding saves under the new key.
+        private const string KeyBindings = "Inkform.bindingOverrides.v3";
         private const string KeyResW = "Inkform.resolutionWidth";
         private const string KeyResH = "Inkform.resolutionHeight";
         private const string KeyFullscreen = "Inkform.fullscreen";

@@ -85,14 +85,17 @@ namespace Inkform.UI
             return row;
         }
 
-        /// <summary>A two-state row: both directions flip the value, so stepping backwards and
-        /// forwards through two options is the same move (the old two-arrow rows' shape).</summary>
-        protected OptionRow AddOnOffRow(string labelText, bool initial, Action<bool> set)
+        /// <summary>A two-state row: every step (click included — OptionRow clicks step +1)
+        /// flips the value, so stepping backwards and forwards through two options is the same
+        /// move (the old two-arrow rows' shape). The current value is read from the store, not
+        /// captured at build time, so Refresh/RESET ALL cannot leave the flip working off a stale
+        /// copy.</summary>
+        protected OptionRow AddOnOffRow(string labelText, Func<bool> get, Action<bool> set)
         {
-            var row = AddOptionRow(labelText, OnOffText(initial));
-            row.Stepped += dir =>
+            var row = AddOptionRow(labelText, OnOffText(get()));
+            row.Stepped += _ =>
             {
-                bool on = dir > 0;
+                bool on = !get();
                 set(on);
                 row.Value = OnOffText(on);
             };

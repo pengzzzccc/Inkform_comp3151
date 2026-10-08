@@ -257,6 +257,7 @@ MonoBehaviour:
   clickCue: {fileID: 11400000, guid: 390adebeb5deeed4aa95918eee10f655, type: 2}
   toggleOnCue: {fileID: 11400000, guid: 63f54ceb8946dba4eaf667dd184541ce, type: 2}
   toggleOffCue: {fileID: 11400000, guid: 20bead21cf678e740adbc223eb85daa9, type: 2}
+  menuMusicCue: {fileID: 11400000, guid: 669bb5afe9a72b44cb081b98ba6f3576, type: 2}
 --- !u!114 &7645394820213847150
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -18,12 +18,7 @@ namespace Inkform.UI
 
         public SettingsAudioPage(SettingsPanel owner) : base(owner, "UI/SettingsAudio")
         {
-            muteRow = AddOptionRow("Mute", OnOffText(SettingsStore.Muted));
-            muteRow.Stepped += dir =>
-            {
-                SettingsStore.SetMuted(dir > 0);
-                muteRow.Value = OnOffText(dir > 0);
-            };
+            muteRow = AddOnOffRow("Mute", () => SettingsStore.Muted, SettingsStore.SetMuted);
 
             masterLabel = AddSliderRow("Main Volume", 0f, 1f, out masterSlider);
             musicLabel = AddSliderRow("Music Volume", 0f, 1f, out musicSlider);

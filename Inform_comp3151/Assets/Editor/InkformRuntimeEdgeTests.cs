@@ -811,7 +811,7 @@ namespace Inkform.Tests
         {
             // Panels the UIManager mounts, then the settings sub-pages the shell mounts itself
             foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud",
-                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls" })
+                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls", "Boot" })
             {
                 VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
                 Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
@@ -819,6 +819,11 @@ namespace Inkform.Tests
 
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Resources/UI/Theme.uss"));
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>("Assets/Resources/UI/RuntimeTheme.tss"));
+
+            // Boot content asset: every slot ships empty on purpose (text placeholders + silence),
+            // but the asset itself must exist — the sequence's timings read from it
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Inkform.UI.BootLogos>("Assets/Resources/UI/BootLogos.asset"),
+                "missing Resources/UI/BootLogos.asset — the boot sequence falls back to hard defaults");
         }
 
         [Test]
@@ -1188,6 +1193,93 @@ namespace Inkform.Tests
             {
                 PlayerBus.DashAttempted -= onDashAttempted;
                 UnityEngine.Object.DestroyImmediate(fuel);
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PlayerDash_SmashesBreakableInFrontThroughTheBombPath()
+        {
+            // Player rig — same shape as the fuel-dash test above
+            GameObject go = new GameObject("Dash break test player");
+            go.SetActive(false);
+            Rigidbody2D body = go.AddComponent<Rigidbody2D>();
+            go.AddComponent<ContactSensor>();
+            PlayerMotor motor = go.AddComponent<PlayerMotor>();
+            AnimStateResolver anim = go.AddComponent<AnimStateResolver>();
+            PlayerInventory inventory = go.AddComponent<PlayerInventory>();
+            PlayerHandler player = go.AddComponent<PlayerHandler>();
+            DashBreaker breaker = go.AddComponent<DashBreaker>();   // own independent loop, RopeGun pattern
+            InventoryItemDefinition fuel = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(fuel, "id", "dash-fuel");
+            SetField(fuel, "dashFuel", true);
+
+            // Wall rig helper — the BreakableWall prefab's shape: one node,
+            // Interactable + BreakablePart + BoxCollider2D (+ renderer to observe the hide)
+            BoxCollider2D WallRig(string name, int layer, float x, out SpriteRenderer sprite)
+            {
+                var wallGo = new GameObject(name);
+                wallGo.layer = layer;
+                BoxCollider2D box = wallGo.AddComponent<BoxCollider2D>();
+                box.size = Vector2.one;
+                sprite = wallGo.AddComponent<SpriteRenderer>();
+                wallGo.AddComponent<Inkform.Interactable.Interactable>();
+                Invoke(wallGo.AddComponent<BreakablePart>(), "OnEnable");   // EditMode never runs it; the bus subscription is the smash path
+                wallGo.transform.position = new Vector3(x, 0f, 0f);
+                Physics2D.SyncTransforms();
+                return box;
+            }
+
+            // The regression this test locks: PlayerTest's standable BreakableWall sits on
+            // Terrain(6), not Breakable(11) — the probe mask must cover both layers
+            BoxCollider2D wallTerrain = WallRig("Dash break wall A (Terrain)", 6, 1.2f, out SpriteRenderer spriteA);
+            BoxCollider2D wallBreakable = WallRig("Dash break wall B (Breakable)", 11, 2.6f, out SpriteRenderer spriteB);
+
+            int blasts = 0;
+            Action<Vector2, float, float> onBlast = (_, _, _) => blasts++;
+            HazardBus.Blast += onBlast;
+            try
+            {
+                Assert.IsTrue(inventory.TryStore(fuel));
+
+                go.SetActive(true);
+                Invoke(motor, "Awake");
+                Invoke(anim, "Awake");
+                Invoke(player, "Awake");
+                Invoke(breaker, "Awake");
+
+                player.Dash();                    // facing defaults R: dashes straight through both walls
+                body.position += Vector2.right * 0.5f;
+                Physics2D.SyncTransforms();
+                Invoke(breaker, "Update");        // the breaker's own loop, not PlayerHandler's chain
+
+                Assert.IsFalse(wallTerrain.enabled, "a dash must smash a standable breakable on the Terrain layer");
+                Assert.IsFalse(spriteA.enabled, "the smashed wall's renderers must hide");
+
+                body.position += Vector2.right * 1.2f;   // same dash carries on into the second wall
+                Physics2D.SyncTransforms();
+                Invoke(breaker, "Update");
+
+                Assert.IsFalse(wallBreakable.enabled, "the same dash must also smash a Breakable-layer wall");
+                Assert.IsFalse(spriteB.enabled, "the smashed wall's renderers must hide");
+                Assert.AreEqual(1, blasts, "exactly one blast wave per dash, however many walls it grinds through");
+
+                Invoke(breaker, "Update");        // broken walls' colliders are off: nothing re-raises
+                Assert.AreEqual(1, blasts, "the smash must not re-fire on a broken wall");
+
+                // Without a dash (timer cleared by a respawn) the same proximity must not break anything
+                BoxCollider2D wall2 = WallRig("Dash break wall C (no dash)", 11, -0.8f, out _);
+                motor.RespawnAt(Vector2.zero);    // clears the dash timer
+                Invoke(breaker, "Update");
+                Assert.IsTrue(wall2.enabled, "walking-pace proximity without a dash must not smash");
+                UnityEngine.Object.DestroyImmediate(wall2.gameObject);
+            }
+            finally
+            {
+                HazardBus.Blast -= onBlast;
+                UnityEngine.Object.DestroyImmediate(fuel);
+                UnityEngine.Object.DestroyImmediate(wallTerrain.gameObject);
+                UnityEngine.Object.DestroyImmediate(wallBreakable.gameObject);
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }

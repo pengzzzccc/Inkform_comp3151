@@ -82,6 +82,8 @@ namespace Inkform.Player
             motor.Tick();
             if (motor.ConsumeJumpStarted()) anim.OnJumpStarted();
             anim.Tick();
+            // Dash smashing lives in DashBreaker's own Update (RopeGun-style independent loop):
+            // it must survive anything this chain throws before it
         }
 
         // ---- Input entries. Names match the actions in the InputSystem_Actions asset one-to-one;
@@ -121,10 +123,11 @@ namespace Inkform.Player
             motor.CutJump();
         }
 
-        /// <summary>Dash action (LeftShift / RB). Direction = the aim direction (the rope gun's
-        /// reticle; on a pad that is the right stick's last pushed direction), free angle, falling
-        /// back to the 8-way move input, then to the facing — the same chain as SpitBomb. The dash
-        /// itself is fixed-direction and gravity-free for its whole duration (see PlayerMotor).</summary>
+        /// <summary>Dash action (LeftShift / LB). Direction = the aim direction (the rope gun's
+        /// reticle; on a pad that is the right stick's last pushed direction), SNAPPED to 8
+        /// directions — never a free angle — falling back to the 8-way move input, then to the
+        /// facing. The dash itself is fixed-direction and gravity-free for its whole duration,
+        /// decaying to a stop at the end (see PlayerMotor).</summary>
         public void Dash()
         {
             if (LifeBus.IsDead) return;
@@ -134,7 +137,7 @@ namespace Inkform.Player
             {
                 Vector2 dir;
                 if (ropeGun != null)
-                    dir = ropeGun.EffectiveFireDir;
+                    dir = Dir8.Snap(ropeGun.EffectiveFireDir);
                 else if (lastMoveInput.sqrMagnitude > 0.0001f)
                     dir = Dir8.Snap(lastMoveInput);
                 else
