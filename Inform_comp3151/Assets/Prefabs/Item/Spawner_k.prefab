@@ -44,5 +44,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6eda585e09036254f99b88a83efe7356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.Spawner
-  spawnTimer: 5
+  spawnTimer: 2.5
   spawnObject: {fileID: 2329586824147779645, guid: 657bada55b2270545ad5213149fe7043, type: 3}
