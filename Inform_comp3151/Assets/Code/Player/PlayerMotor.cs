@@ -42,6 +42,8 @@ namespace Inkform.Player
         [SerializeField][Range(1, 5)] private float attackMultiplier = 1f;
         [SerializeField] private float attackTime = 0.22f;      // dash / move-lockout duration
         [SerializeField][Range(0f, 1f)] private float attackFullFraction = 0.7f;   // speed profile: full speed up to this fraction of the duration, linear decay to zero across the rest
+        [Tooltip("Y velocity asserted on the dash's expiry frame (positive = up). A small upward value gives the dash a soft launch out of the decay instead of dying into a straight drop")]
+        [SerializeField] private float dashEndYVelocity = 1.5f;
 
         [Header("Knockback")]
         [SerializeField] private float knockbackTime = 0.35f;   // move-input lockout after being blasted
@@ -65,7 +67,7 @@ namespace Inkform.Player
         private Vector2 attackDir = Vector2.right;
 
         // Expiry edge for StepDash: set by Dash(), cleared on the first frame the timer is no
-        // longer running — that frame zeroes Y (see StepDash)
+        // longer running — that frame asserts dashEndYVelocity (see StepDash)
         private bool dashActive;
 
         // Platform follow state: standing on a moving platform carries the player along. Zero
@@ -131,8 +133,10 @@ namespace Inkform.Player
         // FixedUpdate: hitstop freezes physics steps, and the dash must keep asserting through them.
         // Speed profile: full speed for the first attackFullFraction of the duration, then a linear
         // decay to zero across the tail — the dash settles to a stop instead of snapping out. On
-        // the expiry frame Y is zeroed outright (the decay's residue would otherwise loft a diagonal
-        // dash); X needs no such handling, Move rewrites it the moment the lockout lifts.
+        // the expiry frame Y is replaced with dashEndYVelocity: the decay's residue would otherwise
+        // loft a diagonal dash, and a hard zero drops straight down — the parameter buys a small
+        // upward launch instead. X needs no such handling, Move rewrites it the moment the lockout
+        // lifts.
         private void StepDash()
         {
             if (!attackTimer.IsRunning)
@@ -140,7 +144,7 @@ namespace Inkform.Player
                 if (dashActive)
                 {
                     dashActive = false;
-                    body.linearVelocityY = 0f;
+                    body.linearVelocityY = dashEndYVelocity;
                 }
                 return;
             }
