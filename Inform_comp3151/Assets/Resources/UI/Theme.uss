@@ -1,0 +1,67 @@
+/* ============================================================
+   Inkform UI — shared base theme.
+   Loaded globally via RuntimeTheme.tss (after unity-theme://default,
+   so it wins ties against the default control styles).
+
+   Per-panel layout rules live in <Panel>.uss next to each sheet,
+   referenced by that sheet's <Style src>. Class names are the API
+   shared with the UXML sheets and the panel C# — do not rename.
+   ============================================================ */
+
+:root {
+    --c-green:     rgb(132, 255, 84);   /* hover / focus highlight */
+    --c-header:    rgb(72, 61, 139);    /* big title outline, version */
+    --c-gray:      rgb(128, 128, 128);  /* big titles, subheaders */
+    --c-disabled:  rgb(47, 79, 79);     /* disabled rows/buttons */
+    --c-card:      rgb(252, 240, 245);  /* save postcard cream */
+    --c-card-edge: rgb(35, 28, 38);
+    --c-ink:       rgb(24, 20, 26);     /* text on postcards */
+    --c-ink-soft:  rgb(60, 50, 66);
+    --c-dim:       rgba(0, 0, 0, 0.4);  /* sheet overlay */
+    --c-white:     rgb(255, 255, 255);
+    --fs-title: 76px;                   /* type scale: title/begin/item/value/sub/corner */
+    --fs-begin: 57px;
+    --fs-item: 38px;
+    --fs-value: 30px;
+    --fs-sub: 23px;
+    --fs-corner: 19px;
+    --float-y: -8px;                   /* hover/focus lift */
+}
+
+/* ---- sheet skeleton ---- */
+
+.screen { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.dim { background-color: var(--c-dim); }
+
+/* ---- text ---- */
+
+.outline {
+    -unity-text-outline-width: 2px;
+    -unity-text-outline-color: rgba(0, 0, 0, 0.9);
+}
+.header-outline {
+    -unity-text-outline-width: 3px;
+    -unity-text-outline-color: var(--c-header);
+}
+
+/* ---- selectable controls ----
+   Transparent background/borders suppress the Unity default Button
+   look (grey rounded fill) that comes with unity-theme://default.
+   :focus sits beside :hover so gamepad/keyboard navigation is visible. */
+
+.floaty { background-color: rgba(0, 0, 0, 0); border-width: 0; border-radius: 0; }
+.floaty:hover, .floaty:focus { translate: 0 var(--float-y); background-color: rgba(0, 0, 0, 0); }
+
+/* ---- menu text ---- */
+
+.menu-item { color: var(--c-white); font-size: var(--fs-item); -unity-text-align: middle-left; padding: 4px 12px; margin: 6px 0; }
+.menu-item:hover, .menu-item:focus { color: var(--c-green); }
+.menu-item:disabled { color: var(--c-disabled); }
+.menu-begin { font-size: var(--fs-begin); }
+.menu-title { font-size: var(--fs-title); color: var(--c-gray); -unity-text-align: middle-center; }
+.corner { font-size: var(--fs-corner); color: var(--c-white); }
+
+/* ---- bottom-right Confirm/Back hint ---- */
+
+.confirm-hint { position: absolute; right: 40px; bottom: 28px; flex-direction: row; align-items: center; }
+.confirm-hint > .corner { margin-left: 28px; }

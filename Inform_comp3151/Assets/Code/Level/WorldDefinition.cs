@@ -26,9 +26,13 @@ namespace Inkform.Level
         [Tooltip("Every room of the world. Doors hold their own destination references; this list is the registry for save lookups and build syncing")]
         [SerializeField] private List<RoomDefinition> rooms = new List<RoomDefinition>();
 
+        [Tooltip("Scene shown when the run is finished — a credits/summary screen, not a room. Also registered in the list above so build syncing covers it")]
+        [SerializeField] private RoomDefinition endRoom;
+
         public SceneReference MenuScene => menuScene;
         public RoomDefinition EntryRoom => entryRoom;
         public IReadOnlyList<RoomDefinition> Rooms => rooms;
+        public RoomDefinition EndRoom => endRoom;
 
         public string MenuSceneName => menuScene.SceneName;
 

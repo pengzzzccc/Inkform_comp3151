@@ -5,11 +5,12 @@ namespace Inkform.Audio
 {
     /// <summary>
     /// Per-scene audio request: drop one in a scene and it wires two things up. The music cue
-    /// crossfades in when the scene loads (Start, not OnEnable: on the boot scene the AudioManager
-    /// may not have run Awake yet, and ordering must not decide whether music plays). Re-requesting
-    /// the already-playing track is a no-op, so re-entering a scene never restarts its music.
-    /// There is deliberately no stop on disable: the outgoing track simply crossfades when the
-    /// next scene brings its own request, and a scene without one inherits the previous track.
+    /// fades in when the scene loads (Start, not OnEnable: on the boot scene the AudioManager
+    /// may not have run Awake yet, and ordering must not decide whether music plays). Scene
+    /// transitions fall silent first — SceneDirector stops the music as the screen fades out —
+    /// so this fade-in always starts from silence: each scene plays only its own track, and a
+    /// scene without a cue simply stays silent. There is deliberately no stop on disable: the
+    /// transition that unloads the scene already faded the outgoing track out.
     ///
     /// The ambient cue is the second feature: a pool of background noises (drips, wind, creaks)
     /// where one random variant plays at a random interval rolled between min and max seconds, for
@@ -21,10 +22,10 @@ namespace Inkform.Audio
         [Tooltip("Music Cue for this scene: category Music, loop on, spatial off")]
         [SerializeField] private SoundCue music;
 
-        [Tooltip("Crossfade seconds on track change")]
+        [Tooltip("Fade-in seconds after the scene loads (scene transitions are silent before this)")]
         [SerializeField] private float fade = 1.5f;
 
-        [Tooltip("When this scene has no Music Cue assigned: on = fade the incoming track out (the main menu wants silence, or will bring its own cue later); off = inherit it, so a gameplay room without its own track keeps the previous one playing")]
+        [Tooltip("When this scene has no Music Cue assigned: on = fade the music channel out on arrival (defense for arrivals that skipped a transition, e.g. pressing Play directly in a room scene); off = leave the music channel as-is. Transitions stop the music themselves, so a scene without a cue is silent either way")]
         [SerializeField] private bool silenceWhenNoMusic;
 
         [Header("Ambient one-shots")]

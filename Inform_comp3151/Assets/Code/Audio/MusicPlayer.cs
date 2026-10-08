@@ -41,8 +41,9 @@ namespace Inkform.Audio
             }
         }
 
-        /// <summary>Crossfades to a Cue (null stops the music). Same-track requests are absorbed
-        /// by the fader as no-ops — scene re-entry must not restart a looping track.</summary>
+        /// <summary>Crossfades to a Cue (null stops the music). Requesting the track that is
+        /// currently the audible one is absorbed by the fader as a no-op; after a stop (scene
+        /// transition) the same cue requested again fades back in from silence.</summary>
         public void Play(SoundCue cue, float fadeSeconds)
         {
             int slot = fader.Request(cue, fadeSeconds);

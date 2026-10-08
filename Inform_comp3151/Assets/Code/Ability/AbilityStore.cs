@@ -14,12 +14,19 @@ namespace Inkform.Ability
     ///
     /// Unlike inventory items abilities are not a bag: no order, no capacity, no consuming. An id is
     /// either owned or it is not, for the whole life of the save slot.
+    ///
+    /// The pickup cards are retired: both abilities ship as built-in defaults. Every entry point
+    /// (fresh boot, new game, save restore) seeds the default set, so old saves without the ids are
+    /// topped up on load, and the next save write records them.
     /// </summary>
     public static class AbilityStore
     {
         public static event Action Changed;
 
-        private static readonly HashSet<string> unlocked = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly string[] DefaultAbilities = { AbilityIds.Checkpoint, AbilityIds.RopeGun };
+
+        private static readonly HashSet<string> unlocked =
+            new HashSet<string>(DefaultAbilities, StringComparer.Ordinal);
         private static bool suppressPersistence;
 
         public static IReadOnlyCollection<string> Unlocked => unlocked;
@@ -29,6 +36,7 @@ namespace Inkform.Ability
         {
             Changed = null;
             unlocked.Clear();
+            foreach (string ability in DefaultAbilities) unlocked.Add(ability);
             suppressPersistence = false;
         }
 
@@ -47,8 +55,9 @@ namespace Inkform.Ability
 
         public static void ClearWithoutSaving()
         {
-            bool changed = unlocked.Count > 0;
+            bool changed = unlocked.Count != DefaultAbilities.Length;
             unlocked.Clear();
+            foreach (string ability in DefaultAbilities) unlocked.Add(ability);
             if (changed) Changed?.Invoke();
         }
 
@@ -77,14 +86,17 @@ namespace Inkform.Ability
         }
 #endif
 
-        /// <summary>Replaces the set from a save slot. Raises Changed once and never writes back —
-        /// restoring is a read, and the restored values are already on disk.</summary>
+        /// <summary>Loads the set from a save slot, unioned with the built-in defaults — a save
+        /// from before the abilities shipped as defaults simply gets topped up. Raises Changed
+        /// once and never writes back — restoring is a read, and the restored values are already
+        /// on disk (the defaults ride along on the next real save write).</summary>
         public static void Restore(string[] abilityIds)
         {
             suppressPersistence = true;
             try
             {
                 unlocked.Clear();
+                foreach (string ability in DefaultAbilities) unlocked.Add(ability);
                 if (abilityIds != null)
                 {
                     foreach (string abilityId in abilityIds)

@@ -20,7 +20,6 @@ GameObject:
   - component: {fileID: 9903000002}
   - component: {fileID: 6555678966854058408}
   - component: {fileID: 7645394820213847150}
-  - component: {fileID: 8368835806917013791}
   - component: {fileID: 9903000014}
   m_Layer: 0
   m_Name: GameManager
@@ -129,6 +128,9 @@ MonoBehaviour:
   inventoryCapacityUpgrade: {fileID: 11400000, guid: 98c71ef0d806eb94388de42aa85d97c3, type: 2}
   jump: {fileID: 0}
   land: {fileID: 11400000, guid: 8910332ea935bd946962c594897611c8, type: 2}
+  ropeFire: {fileID: 11400000, guid: a1626c14602e82e4b8e3c50d99cf5727, type: 2}
+  ropeHit: {fileID: 11400000, guid: a07029ad34759c9439ba437956ff992f, type: 2}
+  ropeCancel: {fileID: 11400000, guid: 7f7695527cc729a41ba112500954be6b, type: 2}
   respawn: {fileID: 11400000, guid: a159bcb5f442b8a42b40718e0ee2c839, type: 2}
   checkpoint: {fileID: 11400000, guid: 969a79cb96c05b0b8eac1d2a35a600fc, type: 2}
 --- !u!114 &6402705293193736749
@@ -190,7 +192,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3f2e36c105b2f0a429f9123bd4fb9491, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
-  poolSize: 24
+  poolSize: 64
   hardCap: 48
   growthStep: 4
   logDrops: 0
@@ -251,16 +253,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51f9b57d5d5b46c8af2d7e11a2d3ca64, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.UI.UIManager
-  mainMenuPrefab: {fileID: 6553077533750102191, guid: f98d658aaf6facc479d133f4f751f6e4, type: 3}
-  pauseMenuPrefab: {fileID: 8893543741165366722, guid: 9b6da9c34b3fd61479362dc7019c04a4, type: 3}
-  saveMenuPrefab: {fileID: 2164662438562936563, guid: 42ddecc13d608e347be1ef0e1a630189, type: 3}
-  settingsPrefab: {fileID: 3616246168738148539, guid: d6e5aa6a422c35d4b87b61d0842b2095, type: 3}
-  tutorialPrefab: {fileID: 2288663264479354303, guid: 3322bbcececc0924eb246c1a0540e841, type: 3}
-  hudPrefab: {fileID: 2194734477307357503, guid: d73551b20014e644589f3e15b957b6ec, type: 3}
   hoverCue: {fileID: 11400000, guid: e1d0cd899ff18644fbf944f4c7170bc6, type: 2}
   clickCue: {fileID: 11400000, guid: 390adebeb5deeed4aa95918eee10f655, type: 2}
   toggleOnCue: {fileID: 11400000, guid: 63f54ceb8946dba4eaf667dd184541ce, type: 2}
   toggleOffCue: {fileID: 11400000, guid: 20bead21cf678e740adbc223eb85daa9, type: 2}
+  menuMusicCue: {fileID: 11400000, guid: 669bb5afe9a72b44cb081b98ba6f3576, type: 2}
 --- !u!114 &7645394820213847150
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -276,21 +273,6 @@ MonoBehaviour:
   world: {fileID: 11400000, guid: 2d7897771e2b41845b1712f21fccd9fe, type: 2}
   fadeOutSeconds: 0.25
   fadeInSeconds: 0.4
---- !u!114 &8368835806917013791
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3174349163457537239}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0005995319481264f84916ba8d893234, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inkform.UI.GamepadCursor
-  cursorSprite: {fileID: 4521880829696946994, guid: 710eb778f56883341bc4aa12ba3a73fd, type: 3}
-  cursorSpeed: 1000
-  cursorSize: 40
 --- !u!114 &9903000014
 MonoBehaviour:
   m_ObjectHideFlags: 0

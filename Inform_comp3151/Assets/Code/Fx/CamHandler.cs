@@ -307,7 +307,9 @@ namespace Inkform.Fx
             if (!limitsResolved)
             {
                 limits.Clear();
-                limits.AddRange(FindObjectsByType<CameraLimit>(FindObjectsSortMode.None));
+                // Parameterless overload: FindObjectsSortMode and its overloads were deprecated
+                // in Unity 6.4; active-only unsorted is the same set the old call returned.
+                limits.AddRange(FindObjectsByType<CameraLimit>());
                 limitsResolved = true;
             }
             if (limits.Count == 0) return position;

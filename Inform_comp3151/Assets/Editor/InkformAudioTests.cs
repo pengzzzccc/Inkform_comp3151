@@ -91,7 +91,7 @@ namespace Inkform.Tests
         // ---- AudioPremix: the audible maths, including the strictest-wins zone combination ----
 
         private static SoundCue NewCue(float volume = 1f, float minVolume = 0.15f, float minCutoff = 900f,
-            bool spatial = false, float falloffRange = 20f, float reverbAmount = 1f,
+            bool spatial = false, float falloffRange = 20f,
             SoundCue.Category category = SoundCue.Category.Sfx)
         {
             SoundCue cue = ScriptableObject.CreateInstance<SoundCue>();
@@ -100,7 +100,6 @@ namespace Inkform.Tests
             cue.minCutoff = minCutoff;
             cue.spatial = spatial;
             cue.falloffRange = falloffRange;
-            cue.reverbAmount = reverbAmount;
             cue.category = category;
             return cue;
         }
@@ -118,6 +117,24 @@ namespace Inkform.Tests
                 "clamped to 1 before easing, so beyond the range it stays fully attenuated");
             Assert.AreEqual(0f, AudioPremix.DistanceT(false, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)),
                 "non-spatial cues are always 'at the ear'");
+        }
+
+        [Test]
+        public void Premix_Pan_SaturatesAtFalloffRangeAndStaysCentredWhenFlat()
+        {
+            // Pan is the emitter's X offset over the audible radius: centred at the ear, fully panned
+            // at the edge of audibility, and clamped beyond it. Vertical offset and z never pan.
+            Assert.AreEqual(0f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), new Vector2(0f, 0f)), 1e-4f);
+            Assert.AreEqual(0.5f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), new Vector2(10f, 0f)), 1e-4f);
+            Assert.AreEqual(-0.5f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), new Vector2(-10f, 0f)), 1e-4f);
+            Assert.AreEqual(1f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)), 1e-4f,
+                "beyond the range stays hard right");
+            Assert.AreEqual(0f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), new Vector2(0f, 30f)), 1e-4f,
+                "vertical offset carries no stereo information");
+            Assert.AreEqual(0f, AudioPremix.Pan(false, 20f, new Vector2(0f, 0f), new Vector2(30f, 0f)), 1e-4f,
+                "non-spatial cues are centred");
+            Assert.AreEqual(0f, AudioPremix.Pan(true, 20f, new Vector2(0f, 0f), null), 1e-4f,
+                "no emitter position means no pan");
         }
 
         [Test]

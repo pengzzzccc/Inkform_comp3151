@@ -23,10 +23,16 @@ namespace Inkform.Player
         [SerializeField] private float jumpBuffer = 0.15f;
         [SerializeField] private int jumpTimes = 1;
 
+        [Header("Jump feel")]
+        [SerializeField] private float coyoteTime = 0.1f;          // grace after walking off a ledge: the unused ground jump survives this long
+        [SerializeField] private float apexSpeedThreshold = 3f;    // |vy| below this while holding jump → half gravity (apex float)
+
         [Header("Gravity")]
         [SerializeField] private float gravity = 3f;
         [SerializeField] private float fallGravityMultiplier = 2.2f;
         [SerializeField][Range(0, 1)] private float onWallGravityMultiplier = 0.2f;
+        [Tooltip("Symmetric Y speed cap: free-fall terminal velocity AND the safety net for any one-off upward burst (rope release, knockback). Active rope pulls and dashes assert their own speed and are unaffected; a jump lands exactly on it.")]
+        [SerializeField] private float maxFallSpeed = 12f;
 
         [Header("Wall jump")]
         [SerializeField] private float wallJumpTime = 0.15f;
@@ -35,6 +41,7 @@ namespace Inkform.Player
         [Header("Attack dash")]
         [SerializeField][Range(1, 5)] private float attackMultiplier = 1f;
         [SerializeField] private float attackTime = 0.22f;      // dash / move-lockout duration
+        [SerializeField][Range(0f, 1f)] private float attackFullFraction = 0.7f;   // speed profile: full speed up to this fraction of the duration, linear decay to zero across the rest
 
         [Header("Knockback")]
         [SerializeField] private float knockbackTime = 0.35f;   // move-input lockout after being blasted
@@ -46,10 +53,20 @@ namespace Inkform.Player
         private Timer attackTimer;
         private Timer knockbackTimer;
         private Timer updateBuffer;     // brief window after leaving the ground, during which jump count is not refilled
+        private Timer coyoteTimer;      // the ground jump's grace window after walking off a ledge
 
         private int jumpLeft;
         private float requestTime = -999f;
         private bool jumpCutQueued;
+        private bool jumpHeld;          // live jump button state — drives the apex half-gravity float
+
+        // Dash direction captured at Dash() (unit vector, free angle). StepDash rewrites it into the
+        // rigidbody every frame of the dash, so the trajectory stays fixed for the whole duration
+        private Vector2 attackDir = Vector2.right;
+
+        // Expiry edge for StepDash: set by Dash(), cleared on the first frame the timer is no
+        // longer running — that frame zeroes Y (see StepDash)
+        private bool dashActive;
 
         // Platform follow state: standing on a moving platform carries the player along. Zero
         // "platform awareness" on the player side — it only reads physical facts (how far the contacted
@@ -93,12 +110,47 @@ namespace Inkform.Player
         public float VelocityX => body.linearVelocityX;
         public float VelocityY => body.linearVelocityY;
 
+        /// <summary>Whether the attack-dash timer is running — the dash owns the velocity while true.</summary>
+        public bool IsDashing => attackTimer.IsRunning;
+
+        /// <summary>The dash's fixed direction (unit vector); meaningful only while IsDashing.</summary>
+        public Vector2 DashDirection => attackDir;
+
         /// <summary>Advances gravity and jump each frame. Called by PlayerHandler after ContactSensor.Tick().</summary>
         public void Tick()
         {
             ApplyNonLinearGravity();
+            StepDash();
             StepJump();
             StepPlatform();
+        }
+
+        // Fixed-trajectory dash: while the dash timer runs, velocity is rewritten every frame so
+        // nothing accumulates on top of it — gravity is zeroed in ApplyNonLinearGravity, and any
+        // external velocity write only survives until the next frame. Update-chain, not
+        // FixedUpdate: hitstop freezes physics steps, and the dash must keep asserting through them.
+        // Speed profile: full speed for the first attackFullFraction of the duration, then a linear
+        // decay to zero across the tail — the dash settles to a stop instead of snapping out. On
+        // the expiry frame Y is zeroed outright (the decay's residue would otherwise loft a diagonal
+        // dash); X needs no such handling, Move rewrites it the moment the lockout lifts.
+        private void StepDash()
+        {
+            if (!attackTimer.IsRunning)
+            {
+                if (dashActive)
+                {
+                    dashActive = false;
+                    body.linearVelocityY = 0f;
+                }
+                return;
+            }
+
+            dashActive = true;
+            float progress = 1f - attackTimer.Remaining / attackTime;
+            float factor = 1f;
+            if (attackFullFraction < 1f && progress > attackFullFraction)
+                factor = 1f - (progress - attackFullFraction) / (1f - attackFullFraction);
+            body.linearVelocity = attackDir * movingSpeed * attackMultiplier * factor;
         }
 
         // Platform follow: adds the contacted rigidbody's movement this frame to the player, carrying
@@ -173,10 +225,18 @@ namespace Inkform.Player
         /// <summary>Jump released: cuts a chunk of the upward velocity, holding longer jumps higher.</summary>
         public void CutJump() => jumpCutQueued = true;
 
-        /// <summary>Attack dash: gives a horizontal velocity in dir and locks move input.</summary>
-        public void Dash(float dir)
+        /// <summary>Jump button state, wired from PlayerHandler.JumpPressed / JumpReleased: holding
+        /// through the jump apex halves gravity there so the peak lingers (Celeste's apex float).</summary>
+        public void SetJumpHeld(bool held) => jumpHeld = held;
+
+        /// <summary>Attack dash: locks velocity to dir (a unit vector, free angle) for attackTime
+        /// seconds — fixed direction, gravity-free, full speed then a linear decay to zero (see
+        /// StepDash) — and locks move input for the duration.</summary>
+        public void Dash(Vector2 dir)
         {
-            body.linearVelocity = new Vector2(dir * movingSpeed * attackMultiplier, body.linearVelocityY);
+            attackDir = dir.sqrMagnitude > 0.0001f ? dir.normalized : Vector2.right;
+            dashActive = true;
+            body.linearVelocity = attackDir * movingSpeed * attackMultiplier;
             attackTimer.Set(attackTime);
         }
 
@@ -214,8 +274,11 @@ namespace Inkform.Player
             requestTime = -999f;
             wallJumpBuffer.Clear();
             attackTimer.Clear();
+            dashActive = false;
             knockbackTimer.Clear();
             updateBuffer.Clear();
+            coyoteTimer.Clear();
+            jumpHeld = false;
             grappleLocked = false;
             groundPlatform = null;
             groundPrevPos = Vector2.zero;
@@ -236,13 +299,44 @@ namespace Inkform.Player
                 return;
             }
 #endif
+            // Attack dash: gravity-free for its whole duration. Must return here — the branches below
+            // assign gravityScale every frame (ceiling stick's -5 would yank an upward dash onto the
+            // ceiling); expiry self-heals like the Flight branch above
+            if (attackTimer.IsRunning)
+            {
+                body.gravityScale = 0f;
+                return;
+            }
+
             bool wallSliding = contact.OnWall && !contact.OnGround && body.linearVelocityY < 0f;
 
-            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up        
+            if (contact.OnCeiling && contact.CeilingStickActive)    {body.gravityScale = -5f;}                                  // stuck to the ceiling, gravity points up
             else if (!contact.CeilingStickActive)                   {body.gravityScale = gravity;}                              // stick time exhausted, fall off
             else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
             else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
             else                                                    {body.gravityScale = gravity;}
+
+            // Apex float (Celeste's jump peak in half gravity): near the top of a held jump the
+            // player lingers. The gravityScale > 0 guard keeps the ceiling stick's -5 (upward
+            // gravity) from being weakened into a slower stick
+            if (jumpHeld && body.gravityScale > 0f && Mathf.Abs(body.linearVelocityY) < apexSpeedThreshold)
+                body.gravityScale *= 0.5f;
+
+            // Symmetric speed cap on Y. Downward: a long fall caps here instead of accelerating
+            // forever (tunnel-through risk on thin floors, unreadably harsh landings). Upward:
+            // the safety net — any one-off burst granting more rise than a jump (a rope release
+            // at pullSpeed 16) is trimmed back. A bomb blast's knockback is exempt: Knockback's
+            // only caller is the explosion handler, so while its lockout runs the launch keeps
+            // its full force, and gravity (19.62 m/s² at the prefab's gravity 2) bleeds 18 down
+            // below the cap in ~0.31s — inside the 0.35s window, so the cap resumes as a no-op,
+            // no snap. Active rope pulls and dashes are likewise unaffected: they assert their
+            // own velocity in FixedUpdate / StepDash, after this Update-chain clamp. Jumps land
+            // exactly ON the cap (equal, not greater) and are never clipped. Lives after the
+            // gravity branches so it also bounds the wall-slide and ceiling-release paths.
+            if (body.linearVelocityY < -maxFallSpeed)
+                body.linearVelocityY = -maxFallSpeed;
+            if (!knockbackTimer.IsRunning && body.linearVelocityY > maxFallSpeed)
+                body.linearVelocityY = maxFallSpeed;
         }
 
         private void StepJump()
@@ -257,8 +351,10 @@ namespace Inkform.Player
                 jumpCutQueued = false;
             }
 
-            bool canJump = (Time.time - requestTime) < jumpBuffer;
-            if (canJump && jumpLeft > 0)
+            // A jump requested during a dash stays buffered (requestTime) and fires right after the
+            // dash ends — the dash owns the velocity until its timer expires
+            bool buffered = (Time.time - requestTime) < jumpBuffer;
+            if (buffered && jumpLeft > 0 && !attackTimer.IsRunning)
             {
                 if (contact.OnLeftWall && !contact.OnGround)
                 {
@@ -282,6 +378,14 @@ namespace Inkform.Player
             }
 
             if ((contact.OnGround || contact.OnCeiling) && !updateBuffer.IsRunning) jumpLeft = jumpTimes;
+
+            // Coyote time: the grace window keeps the unused ground jump alive for a moment after
+            // walking off a ledge; once it expires the jump is revoked. Assumes the single-jump
+            // design — a consumed jump is never revoked, and wall jumps grant their own extra.
+            // updateBuffer above is a different job: it blocks the refill on the jump frame itself.
+            // OnCeiling is excluded so ceiling-stick's jump refill is never revoked
+            if (contact.OnGround) coyoteTimer.Set(coyoteTime);
+            else if (!coyoteTimer.IsRunning && !contact.OnCeiling && jumpLeft == jumpTimes) jumpLeft = 0;
         }
     }
 }

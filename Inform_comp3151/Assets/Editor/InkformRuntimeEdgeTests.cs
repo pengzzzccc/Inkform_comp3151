@@ -18,6 +18,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Inkform.Tests
 {
@@ -724,84 +725,105 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void InventoryHud_AlwaysShowsCountAndUsesFifoHeadIcon()
+        public void Hud_InventoryShowsCountAndUsesFifoHeadIcon()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
-            GameObject host = UnityEngine.Object.Instantiate(prefab);
-            InventoryHud hud = host.GetComponentInChildren<InventoryHud>(true);
-            Assert.IsNotNull(hud);
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Hud.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/Hud.uxml");
+            VisualElement host = tree.Instantiate();
+            Hud hud = new Hud(host);
             InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
             SetField(item, "id", "hud-head");
             try
             {
-                Invoke(hud, "Awake");
-                Invoke(hud, "OnEnable");
-                Text count = GetField<Text>(hud, "countText");
-                Image icon = GetField<Image>(hud, "currentIcon");
+                Label count = host.Q<Label>("InventoryCount");
+                VisualElement icon = host.Q("InventoryIcon");
                 Assert.AreEqual("0/1", count.text);
-                Assert.IsFalse(icon.enabled);
+                Assert.AreEqual(DisplayStyle.None, icon.style.display.value);
 
                 Assert.IsTrue(InventoryStore.TryAdd(item));
                 Assert.AreEqual("1/1", count.text);
-                Assert.IsTrue(icon.sprite == item.Icon);
+                Assert.AreEqual(item.Icon, icon.style.backgroundImage.value.sprite);
             }
             finally
             {
-                Invoke(hud, "OnDisable");
+                hud.Dispose();
                 UnityEngine.Object.DestroyImmediate(item);
-                UnityEngine.Object.DestroyImmediate(host);
             }
         }
 
         [Test]
-        public void HudRootPrefab_HasOneConfiguredCanvasAndAllFourReadouts()
+        public void HudUxml_HasAllFourReadoutsAndNeverBlocksPointer()
         {
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/UI/HudRoot.prefab");
-            Assert.IsNotNull(prefab);
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Hud.uxml");
+            Assert.IsNotNull(tree);
+            VisualElement host = tree.Instantiate();
 
-            Canvas[] canvases = prefab.GetComponentsInChildren<Canvas>(true);
-            Assert.AreEqual(1, canvases.Length);
-            Assert.AreEqual(RenderMode.ScreenSpaceOverlay, canvases[0].renderMode);
-            Assert.AreEqual(90, canvases[0].sortingOrder);
+            Assert.IsNotNull(host.Q("Gameplay"));
+            Assert.IsNotNull(host.Q<Label>("TimerLabel"));
+            Assert.IsNotNull(host.Q<Label>("FpsLabel"));
+            Assert.IsNotNull(host.Q("Inventory"));
+            Assert.IsNotNull(host.Q("InventoryIcon"));
+            Assert.IsNotNull(host.Q<Label>("InventoryCount"));
+            Assert.IsNotNull(host.Q<Label>("SaveToast"));
 
-            CanvasScaler scaler = prefab.GetComponent<CanvasScaler>();
-            Assert.IsNotNull(scaler);
-            Assert.AreEqual(CanvasScaler.ScaleMode.ScaleWithScreenSize, scaler.uiScaleMode);
-            Assert.AreEqual(new Vector2(1920f, 1080f), scaler.referenceResolution);
-            Assert.AreEqual(0.5f, scaler.matchWidthOrHeight);
-
-            Assert.IsNotNull(prefab.GetComponent<HudRoot>());
-            Assert.IsNotNull(prefab.GetComponentInChildren<FpsDisplay>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<GameTimer>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<InventoryHud>(true));
-            Assert.IsNotNull(prefab.GetComponentInChildren<SaveIndicator>(true));
-
-            foreach (Graphic graphic in prefab.GetComponentsInChildren<Graphic>(true))
-                Assert.IsFalse(graphic.raycastTarget, $"{graphic.name} must not block pointer input");
-
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "gameplayRoot");
-            AssertSerializedReference(prefab.GetComponent<HudRoot>(), "levelTimer");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "root");
-            AssertSerializedReference(prefab.GetComponentInChildren<FpsDisplay>(true), "label");
-            AssertSerializedReference(prefab.GetComponentInChildren<GameTimer>(true), "timerText");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "hudRoot");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "currentIcon");
-            AssertSerializedReference(prefab.GetComponentInChildren<InventoryHud>(true), "countText");
-            AssertSerializedReference(prefab.GetComponentInChildren<SaveIndicator>(true), "label");
+            // The old prefab asserted raycastTarget == false on every Graphic; the Toolkit shape
+            // of that contract is picking-mode Ignore on every element of the HUD tree.
+            foreach (VisualElement element in host.Query().Build())
+                Assert.AreEqual(PickingMode.Ignore, element.pickingMode, $"{element.name} must not block pointer input");
         }
 
         [Test]
-        public void GameManager_WiresHudPrefabAndHasNoLegacyFpsComponent()
+        public void GameManager_KeepsUiManagerAndItsSoundCueSlots()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/Control/GameManager.prefab");
             Assert.IsNotNull(prefab);
-            Assert.IsNull(prefab.GetComponent<FpsDisplay>());
 
             UIManager manager = prefab.GetComponent<UIManager>();
             Assert.IsNotNull(manager);
-            AssertSerializedReference(manager, "hudPrefab");
+
+            // The Toolkit migration kept the serialized cue slots (the UiBus -> AudioManager
+            // pipeline is unchanged); losing them would silently mute every menu sound.
+            SerializedObject serialized = new SerializedObject(manager);
+            Assert.IsNotNull(serialized.FindProperty("hoverCue"));
+            Assert.IsNotNull(serialized.FindProperty("clickCue"));
+            Assert.IsNotNull(serialized.FindProperty("toggleOnCue"));
+            Assert.IsNotNull(serialized.FindProperty("toggleOffCue"));
+        }
+
+        [Test]
+        public void EndPanelUxml_HasBackButtonAndBothRunReadouts()
+        {
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/EndPanel.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/EndPanel.uxml");
+
+            VisualElement host = tree.Instantiate();
+            // EndPanel finds every control by element name (ToolkitPanel.Q), so the names are the
+            // contract with the UXML — a rename here silently leaves the sheet empty at runtime.
+            Assert.IsNotNull(host.Q("TitleRow"));
+            Assert.IsNotNull(host.Q<UnityEngine.UIElements.Button>("Btn_Back"));
+            Assert.IsNotNull(host.Q<Label>("Lbl_Deaths"));
+            Assert.IsNotNull(host.Q<Label>("Lbl_Time"));
+        }
+
+        [Test]
+        public void ToolkitUi_ResourcesContainEverySheetAndTheme()
+        {
+            // Panels the UIManager mounts, then the settings sub-pages the shell mounts itself
+            foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud",
+                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls", "Boot" })
+            {
+                VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
+                Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
+            }
+
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Resources/UI/Theme.uss"));
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>("Assets/Resources/UI/RuntimeTheme.tss"));
+
+            // Boot content asset: every slot ships empty on purpose (text placeholders + silence),
+            // but the asset itself must exist — the sequence's timings read from it
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Inkform.UI.BootLogos>("Assets/Resources/UI/BootLogos.asset"),
+                "missing Resources/UI/BootLogos.asset — the boot sequence falls back to hard defaults");
         }
 
         [Test]
@@ -1054,9 +1076,9 @@ namespace Inkform.Tests
         [TestCase(3599f, "59:59")]
         [TestCase(3600f, "01:00:00")]
         [TestCase(3661f, "01:01:01")]
-        public void GameTimer_FormatsElapsedTime(float seconds, string expected)
+        public void Hud_FormatsElapsedTime(float seconds, string expected)
         {
-            Assert.AreEqual(expected, GameTimer.FormatElapsedTime(seconds));
+            Assert.AreEqual(expected, Hud.FormatElapsedTime(seconds));
         }
 
         [Test]
@@ -1151,11 +1173,113 @@ namespace Inkform.Tests
                 Assert.AreEqual(2, attempts);
                 Assert.IsFalse(lastSucceeded);
 
+                // Free-angle dash, fixed trajectory, gravity-free (motor-level — this rig has no rope
+                // gun): direction is captured as given, StepDash reasserts it every Tick, and
+                // ApplyNonLinearGravity yields while the dash timer runs. movingSpeed/attackMultiplier
+                // are the code defaults here (10 / 1), so a straight-up dash asserts as exactly (0, 10)
+                motor.Dash(Vector2.up);
+                Assert.AreEqual(0f, body.linearVelocityX);
+                Assert.Greater(body.linearVelocityY, 0f);
+                Invoke(motor, "ApplyNonLinearGravity");
+                Assert.AreEqual(0f, body.gravityScale, "a dash must be gravity-free");
+
+                body.linearVelocity = new Vector2(5f, -3f);   // e.g. a knockback landed mid-dash
+                motor.Tick();   // public — Invoke()'s reflection only resolves NonPublic members
+                Assert.AreEqual(new Vector2(0f, 10f), body.linearVelocity,
+                    "StepDash must reassert the captured direction and speed every frame");
+
             }
             finally
             {
                 PlayerBus.DashAttempted -= onDashAttempted;
                 UnityEngine.Object.DestroyImmediate(fuel);
+                UnityEngine.Object.DestroyImmediate(go);
+            }
+        }
+
+        [Test]
+        public void PlayerDash_SmashesBreakableInFrontThroughTheBombPath()
+        {
+            // Player rig — same shape as the fuel-dash test above
+            GameObject go = new GameObject("Dash break test player");
+            go.SetActive(false);
+            Rigidbody2D body = go.AddComponent<Rigidbody2D>();
+            go.AddComponent<ContactSensor>();
+            PlayerMotor motor = go.AddComponent<PlayerMotor>();
+            AnimStateResolver anim = go.AddComponent<AnimStateResolver>();
+            PlayerInventory inventory = go.AddComponent<PlayerInventory>();
+            PlayerHandler player = go.AddComponent<PlayerHandler>();
+            DashBreaker breaker = go.AddComponent<DashBreaker>();   // own independent loop, RopeGun pattern
+            InventoryItemDefinition fuel = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(fuel, "id", "dash-fuel");
+            SetField(fuel, "dashFuel", true);
+
+            // Wall rig helper — the BreakableWall prefab's shape: one node,
+            // Interactable + BreakablePart + BoxCollider2D (+ renderer to observe the hide)
+            BoxCollider2D WallRig(string name, int layer, float x, out SpriteRenderer sprite)
+            {
+                var wallGo = new GameObject(name);
+                wallGo.layer = layer;
+                BoxCollider2D box = wallGo.AddComponent<BoxCollider2D>();
+                box.size = Vector2.one;
+                sprite = wallGo.AddComponent<SpriteRenderer>();
+                wallGo.AddComponent<Inkform.Interactable.Interactable>();
+                Invoke(wallGo.AddComponent<BreakablePart>(), "OnEnable");   // EditMode never runs it; the bus subscription is the smash path
+                wallGo.transform.position = new Vector3(x, 0f, 0f);
+                Physics2D.SyncTransforms();
+                return box;
+            }
+
+            // The regression this test locks: PlayerTest's standable BreakableWall sits on
+            // Terrain(6), not Breakable(11) — the probe mask must cover both layers
+            BoxCollider2D wallTerrain = WallRig("Dash break wall A (Terrain)", 6, 1.2f, out SpriteRenderer spriteA);
+            BoxCollider2D wallBreakable = WallRig("Dash break wall B (Breakable)", 11, 2.6f, out SpriteRenderer spriteB);
+
+            int blasts = 0;
+            Action<Vector2, float, float> onBlast = (_, _, _) => blasts++;
+            HazardBus.Blast += onBlast;
+            try
+            {
+                Assert.IsTrue(inventory.TryStore(fuel));
+
+                go.SetActive(true);
+                Invoke(motor, "Awake");
+                Invoke(anim, "Awake");
+                Invoke(player, "Awake");
+                Invoke(breaker, "Awake");
+
+                player.Dash();                    // facing defaults R: dashes straight through both walls
+                body.position += Vector2.right * 0.5f;
+                Physics2D.SyncTransforms();
+                Invoke(breaker, "Update");        // the breaker's own loop, not PlayerHandler's chain
+
+                Assert.IsFalse(wallTerrain.enabled, "a dash must smash a standable breakable on the Terrain layer");
+                Assert.IsFalse(spriteA.enabled, "the smashed wall's renderers must hide");
+
+                body.position += Vector2.right * 1.2f;   // same dash carries on into the second wall
+                Physics2D.SyncTransforms();
+                Invoke(breaker, "Update");
+
+                Assert.IsFalse(wallBreakable.enabled, "the same dash must also smash a Breakable-layer wall");
+                Assert.IsFalse(spriteB.enabled, "the smashed wall's renderers must hide");
+                Assert.AreEqual(1, blasts, "exactly one blast wave per dash, however many walls it grinds through");
+
+                Invoke(breaker, "Update");        // broken walls' colliders are off: nothing re-raises
+                Assert.AreEqual(1, blasts, "the smash must not re-fire on a broken wall");
+
+                // Without a dash (timer cleared by a respawn) the same proximity must not break anything
+                BoxCollider2D wall2 = WallRig("Dash break wall C (no dash)", 11, -0.8f, out _);
+                motor.RespawnAt(Vector2.zero);    // clears the dash timer
+                Invoke(breaker, "Update");
+                Assert.IsTrue(wall2.enabled, "walking-pace proximity without a dash must not smash");
+                UnityEngine.Object.DestroyImmediate(wall2.gameObject);
+            }
+            finally
+            {
+                HazardBus.Blast -= onBlast;
+                UnityEngine.Object.DestroyImmediate(fuel);
+                UnityEngine.Object.DestroyImmediate(wallTerrain.gameObject);
+                UnityEngine.Object.DestroyImmediate(wallBreakable.gameObject);
                 UnityEngine.Object.DestroyImmediate(go);
             }
         }
@@ -1255,38 +1379,52 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeFire_KeepsShotRangeAnchoredAtFirePositionAndUsesContinuousCollision()
+        public void RopeFire_AnchorsInstantlyAtThePreviewIntercept()
         {
-            GameObject go = new GameObject("RopeGun shot origin test");
+            GameObject go = new GameObject("RopeGun instant fire test");
+            GameObject wall = new GameObject("instant fire wall");
             Vector2 testOrigin = new Vector2(10000f, 10000f);
             go.transform.position = testOrigin;
             go.SetActive(false);
-            Rigidbody2D playerBody = go.AddComponent<Rigidbody2D>();
+            go.AddComponent<Rigidbody2D>();
             RopeGun gun = go.AddComponent<RopeGun>();
             go.SetActive(true);
             InitializeRopeGun(gun);
+            wall.layer = 6;
+            BoxCollider2D box = wall.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(0.02f, 4f);
             try
             {
-                Vector2 freeCursor = new Vector2(1.2f, 0.5f);
-                SetField(gun, "aimOffset", freeCursor);
-                gun.TryFire();
-                Rigidbody2D hookBody = GetField<Rigidbody2D>(gun, "hookBody");
-                Assert.AreEqual(CollisionDetectionMode2D.Continuous, hookBody.collisionDetectionMode);
-                Assert.AreEqual(testOrigin, GetField<Vector2>(gun, "shotPlayerPosition"));
-                Assert.AreEqual(4f, GetField<float>(gun, "shotMaxRange"), 0.001f);
-                Assert.AreEqual(freeCursor, GetField<Vector2>(gun, "shotAimOffset"),
-                    "the shot must snapshot the free cursor target at fire time");
+                // Aim straight at a solid wall 2 units right; the preview resolves the intercept…
+                wall.transform.position = testOrigin + new Vector2(2f, 0f);
+                SetField(gun, "aimOffset", new Vector2(1.5f, 0f));
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
 
-                hookBody.position = testOrigin + new Vector2(3f, 0f);
-                playerBody.position = testOrigin + new Vector2(-10f, 0f);
-                Invoke(gun, "FixedUpdate");
-                Assert.AreEqual("Flying", GetField<object>(gun, "phase").ToString(),
-                    "moving the player after firing must not invalidate the shot range");
+                // …and the press anchors there the same frame: no projectile, straight to Pulling.
+                gun.TryFire();
+                Assert.AreEqual("Pulling", GetField<object>(gun, "phase").ToString(),
+                    "a green reticle press must anchor instantly — no Flying phase exists anymore");
+
+                GameObject hook = GetField<GameObject>(gun, "hookGo");
+                Assert.IsNotNull(hook, "the static hook sprite spawns at the anchor");
+                Assert.AreEqual(testOrigin.x + 2f - 0.01f - 0.04f, hook.transform.position.x, 0.05f,
+                    "hook sits on the preview intercept, nudged outward by the anchor clearance");
+
+                // A red reticle (nothing intercepts within range) refuses the shot like the ability gate.
+                Invoke(gun, "Finish");
+                wall.transform.position = testOrigin + new Vector2(8f, 0f);
+                Physics2D.SyncTransforms();
+                Invoke(gun, "UpdatePreview");
+                gun.TryFire();
+                Assert.AreEqual("Idle", GetField<object>(gun, "phase").ToString(),
+                    "a red reticle press must not anchor anything");
             }
             finally
             {
                 GameObject hook = GetField<GameObject>(gun, "hookGo");
                 if (hook != null) UnityEngine.Object.DestroyImmediate(hook);
+                UnityEngine.Object.DestroyImmediate(wall);
                 ShutdownRopeGun(gun);
                 UnityEngine.Object.DestroyImmediate(go);
             }

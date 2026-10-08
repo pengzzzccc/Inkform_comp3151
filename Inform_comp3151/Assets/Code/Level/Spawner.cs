@@ -46,5 +46,21 @@ namespace Inkform.Level
             current = Instantiate(spawnObject, transform.position, Quaternion.identity);
             cooling = false;
         }
+
+        // ---- Authoring ----
+
+        // Always-on spawn marker: orange while a spawn target is wired, warning yellow when the
+        // slot is empty — a spawner without a prefab silently does nothing, and the gizmo makes
+        // that visible in the scene view without selecting every node.
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = spawnObject != null
+                ? new Color(1f, 0.6f, 0.2f, 0.9f)
+                : new Color(1f, 0.85f, 0.2f, 0.9f);
+            Gizmos.DrawWireSphere(transform.position, 0.3f);
+
+            Gizmos.color = new Color(1f, 0.6f, 0.2f, 0.15f);
+            Gizmos.DrawSphere(transform.position, 0.3f);
+        }
     }
 }

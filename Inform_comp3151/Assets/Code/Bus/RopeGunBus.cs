@@ -24,6 +24,11 @@ namespace Inkform.Bus
         /// <summary>Hit: dir = normalized direction from the player toward the anchor (terrain hit point / carriable).</summary>
         public static event Action<Vector2> Hit;
 
+        /// <summary>Cancelled: the player deliberately broke an active pull (re-pressed fire, dashed,
+        /// jumped off the rope). Natural endings — arrival, stuck timeout, death, swallow — do not
+        /// raise this; they are not cancellations.</summary>
+        public static event Action RopeCancelled;
+
         public static void RaiseRangeOverride(object source, float range) => RangeOverride?.Invoke(source, range);
 
         public static void RaiseRangeRestored(object source) => RangeRestored?.Invoke(source);
@@ -31,6 +36,8 @@ namespace Inkform.Bus
         public static void RaiseFired(Vector2 dir) => Fired?.Invoke(dir);
 
         public static void RaiseHit(Vector2 dir) => Hit?.Invoke(dir);
+
+        public static void RaiseRopeCancelled() => RopeCancelled?.Invoke();
 
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger
@@ -41,6 +48,7 @@ namespace Inkform.Bus
             RangeRestored = null;
             Fired = null;
             Hit = null;
+            RopeCancelled = null;
         }
     }
 }
