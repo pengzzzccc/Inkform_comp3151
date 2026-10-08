@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Inkform.Audio;
 using Inkform.Bus;
@@ -48,6 +49,9 @@ namespace Inkform.UI
         [SerializeField] private SoundCue toggleOnCue;
         [SerializeField] private SoundCue toggleOffCue;
 
+        [Tooltip("Main menu BGM. Routed through PlayMusic (the dedicated looping channel); an empty slot simply means a silent menu.")]
+        [SerializeField] private SoundCue menuMusicCue;
+
         private readonly Dictionary<Type, ToolkitPanel> panels = new Dictionary<Type, ToolkitPanel>();
         private ToolkitPanel activePanel;   // the one sheet on stage: opening a panel closes the previous one
         private InputHandler inputHandler;
@@ -57,6 +61,12 @@ namespace Inkform.UI
         private VisualElement menusRoot;
         private Hud hud;
         private bool paused;
+        private Coroutine menuMusicRoutine; // pending delayed menu music from FinishBoot, if any
+
+        // The boot sequence plays only for a session that starts in the menu scene; bootPlayed
+        // is decided once in Awake (the persistent GameManager means it holds for the whole
+        // session), so returning to the menu mid-run always lands on the main menu sheet.
+        private bool bootPlayed;
 
         /// <summary>Real time the pause sheet was last opened. Resume is suppressed for a short
         /// grace window after it, so an input landing on the fresh sheet (the centre-locked
@@ -64,6 +74,11 @@ namespace Inkform.UI
         private float pauseOpenedAtRealtime = -10f;
 
         private const float PauseCloseGraceSeconds = 0.3f;
+
+        // Menu music timing: the boot flow lands the menu first and eases the music in one beat
+        // later; every start (including returns from gameplay) fades in over the same length.
+        private const float MenuMusicDelaySeconds = 1f;
+        private const float MenuMusicFadeSeconds = 1f;
 
         public bool IsPaused => paused;
         public bool IsInMainMenu { get; private set; }
@@ -94,8 +109,14 @@ namespace Inkform.UI
             CreatePanels();
             // Panels land hidden; a scene-landing pass below opens whichever sheet the scene wants.
 
-            // sceneLoaded never fires for the startup scene (same pitfall InputHandler documents),
-            // so the first scene's state is applied here directly; later scenes go through OnSceneLoaded.
+            // The boot sequence is only for sessions that START in the menu scene (launch, or Play
+            // on the menu scene): a session begun mid-game (editor Play from a room) never boots,
+            // not even on its first return to the menu.
+            bootPlayed = sceneDirector == null || !sceneDirector.IsMenuScene(SceneManager.GetActiveScene().name);
+
+            // The startup scene gets its state applied here directly — and note sceneLoaded ALSO
+            // fires for it afterwards (editor play-mode scene reload and builds alike), re-running
+            // ApplySceneState below; later scenes go through OnSceneLoaded the same way.
             ApplySceneState(SceneManager.GetActiveScene());
 
             SceneManager.sceneLoaded += OnSceneLoaded;
@@ -153,6 +174,9 @@ namespace Inkform.UI
 
             // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
+
+            // Boot sheet up: Esc / pad B behave like the any-key gate (skip into the menu)
+            if (IsOpen<BootPanel>()) { FinishBoot(); return; }
 
             // Innermost sheet first, then outwards — Esc/B always back out one level. Settings
             // backs out internally first (a category page returns to its ROOT list).
@@ -275,7 +299,21 @@ namespace Inkform.UI
             else if (IsInMainMenu)
             {
                 Close<EndPanel>();
-                Open<MainMenuPanel>();
+                if (bootPlayed)
+                {
+                    // Repeat landing while the boot sequence is on stage (the startup scene's own
+                    // sceneLoaded): keep booting — never swap the menu sheet over a running boot.
+                    if (!IsOpen<BootPanel>())
+                    {
+                        Open<MainMenuPanel>();
+                        PlayMenuMusic();       // transitions stop the music, so this is a fade-in from silence
+                    }
+                }
+                else
+                {
+                    bootPlayed = true;
+                    Open<BootPanel>();     // session started here: studio card → game card → any key
+                }
                 SetCursor(true);
             }
             else
@@ -296,6 +334,44 @@ namespace Inkform.UI
         {
             Close<SaveMenuPanel>();
             Open<MainMenuPanel>();
+        }
+
+        // ---- Boot sequence ----
+
+        /// <summary>Boot sheet's sting (played as the studio card fades in, right after the engine
+        /// splash hands over). Routed through the same guarded Play as the menu cues; an empty
+        /// slot stays silent.</summary>
+        internal void PlayBootSting(SoundCue cue) => Play(cue);
+
+        /// <summary>Menu BGM on the dedicated music channel: loops and always fades in from
+        /// silence — scene transitions stop the music as the screen fades out, so arriving at
+        /// the menu is a genuine restart, never a resume of gameplay's track.</summary>
+        public void PlayMenuMusic()
+        {
+            if (menuMusicCue == null || AudioManager.Instance == null) return;
+            AudioManager.Instance.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
+        }
+
+        /// <summary>The boot sequence's finish line — its own any-key gate, or Esc/pad B through
+        /// the Escape stack. Closes the boot card, slides the main menu in, and queues the menu
+        /// music: it starts MenuMusicDelaySeconds after the click, not with it.</summary>
+        public void FinishBoot()
+        {
+            if (!IsOpen<BootPanel>()) return;
+            Close<BootPanel>();
+            Open<MainMenuPanel>();
+            if (menuMusicRoutine != null) StopCoroutine(menuMusicRoutine);
+            menuMusicRoutine = StartCoroutine(StartMenuMusicAfterDelay());
+        }
+
+        // The boot flow's beat of quiet before the menu music. The guards keep a hyper-fast Begin
+        // (slot picked within the delay) from playing menu music over gameplay — the transition
+        // would stop the music anyway, but the delayed call would then start it again mid-run.
+        private IEnumerator StartMenuMusicAfterDelay()
+        {
+            yield return new WaitForSecondsRealtime(MenuMusicDelaySeconds);
+            menuMusicRoutine = null;
+            if (IsInMainMenu && IsOpen<MainMenuPanel>()) PlayMenuMusic();
         }
 
         /// <summary>
@@ -426,6 +502,7 @@ namespace Inkform.UI
             AddPanel<PausePanel>("UI/PauseMenu", host => new PausePanel(host, this));
             AddPanel<SettingsPanel>("UI/Settings", host => new SettingsPanel(host, this));
             AddPanel<EndPanel>("UI/EndPanel", host => new EndPanel(host, this));
+            AddPanel<BootPanel>("UI/Boot", host => new BootPanel(host, this));
         }
 
         private void AddPanel<TPanel>(string resource, Func<VisualElement, TPanel> create)

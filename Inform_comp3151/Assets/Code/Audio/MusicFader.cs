@@ -10,8 +10,9 @@ namespace Inkform.Audio
     ///
     /// Each channel tracks its own cue, volume, target and rate; "the current track" is simply
     /// whichever channel targets full volume (at most one). Requesting the current track is a
-    /// no-op (re-entering a scene must not restart its music); requesting the track that is
-    /// fading out reverses the fade in place — same sources, same clips, only the targets swap.
+    /// no-op; any other request crossfades over the current bed. A track that was fading out and
+    /// is wanted back starts over from silence — scene switches fall silent between rooms, so a
+    /// re-request after that stop must fade in from zero, never resume the fading-out instance.
     /// </summary>
     public sealed class MusicFader
     {
@@ -29,9 +30,8 @@ namespace Inkform.Audio
 
         /// <summary>
         /// Requests a track (null = stop the music). Returns the slot (0/1) whose source must be
-        /// given the new clip, or -1 when there is nothing to do: same track already playing,
-        /// the outgoing track re-requested (in-place fade reversal), or a stop with nothing
-        /// playing.
+        /// given the new clip, or -1 when there is nothing to do: same track already playing, or
+        /// a stop while the fade already targets silence.
         /// </summary>
         public int Request(SoundCue cue, float fadeSeconds)
         {
@@ -42,14 +42,6 @@ namespace Inkform.Audio
             if (cue != null)
             {
                 if (current >= 0 && CueOf(current) == cue) return -1;       // already the track
-                if (CueOf(other) == cue && VolumeOf(other) > 0f)
-                {
-                    // Fade reversal: the outgoing track is wanted back — swap the roles in place,
-                    // same physical sources, no clip change for the caller
-                    if (current >= 0) SetTarget(current, 0f, rate);
-                    SetTarget(other, 1f, rate);
-                    return -1;
-                }
             }
             else if (current < 0)
             {
@@ -102,8 +94,6 @@ namespace Inkform.Audio
         private int QuieterSlot => ch0.volume <= ch1.volume ? 0 : 1;
 
         private SoundCue CueOf(int slot) => slot == 0 ? ch0.cue : ch1.cue;
-
-        private float VolumeOf(int slot) => slot == 0 ? ch0.volume : ch1.volume;
 
         private void SetTarget(int slot, float target, float rate)
         {

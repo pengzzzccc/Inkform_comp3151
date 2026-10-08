@@ -1,4 +1,5 @@
 using System.Collections;
+using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Input;
@@ -293,6 +294,12 @@ namespace Inkform.Level
 
         private IEnumerator LoadSceneRoutine(string sceneName)
         {
+            // A transition plays no music: the outgoing track fades out in step with the visual
+            // fade, the incoming scene's own cue fades in after arrival (SceneMusic.Start /
+            // PlayMenuMusic). A failed load therefore stays silent — the old scene's SceneMusic
+            // never re-runs Start.
+            if (AudioManager.Instance != null) AudioManager.Instance.StopMusic(fadeOutSeconds);
+
             // Fade to black first, so the load's first hiccup is already behind the curtain
             if (fader != null) yield return fader.FadeOut(fadeOutSeconds);
 
