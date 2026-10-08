@@ -27,7 +27,8 @@ namespace Inkform.Player
         /// Along the fired
     /// parabola two special hits resolve at the press moment, before the terrain anchor: carriable
     /// objects become an eat-pull (swallow on arrival), bomb hanging chains are severed wherever
-    /// the path passes close to them. The hook is a plain static sprite at the anchor (no
+    /// the path passes close to them — and the sweep stops at the first terrain blocker, so
+    /// specials sitting behind a wall are unreachable (the flying hook's collision, kept). The hook is a plain static sprite at the anchor (no
     /// rigidbody); the rope renders as a straight line, no Verlet simulation.
     /// Pulling: hard-velocity straight-line pull toward the anchor (follows moving terrain);
     /// pressing fire or jump mid-pull releases the rope outright; reaching near the anchor
@@ -572,7 +573,10 @@ namespace Inkform.Player
         // preview walked: a carriable under the probe radius becomes an eat-pull target (returning
         // true ends the sweep — the pull takes over), and every bomb chain segment close to a
         // sample point is severed. This is what the flying hook used to do per physics step,
-        // collapsed into a single instant pass.
+        // collapsed into a single instant pass — including the collision: the sweep STOPS at the
+        // first terrain blocker (the same segment cast the preview runs), so a carriable or a
+        // chain behind a wall is unreachable, exactly as a physical hook that smacked into the
+        // wall would be.
         private bool SweepPathForSpecials(out ICarriable carriable)
         {
             carriable = null;
@@ -612,6 +616,20 @@ namespace Inkform.Player
                 {
                     int seg = chain.NearestSegment(p, cutDist);
                     if (seg >= 0) chain.CutAt(seg);
+                }
+
+                // Terrain occlusion, deliberately AFTER the probe/chains to mirror the preview's
+                // per-sample order (preview and fired path must stay the same walk): the segment
+                // this step just crossed is cast, and the first blocker ends the sweep — nothing
+                // beyond the wall is reachable. Without this the instant pass tunneled straight
+                // through terrain the flying hook used to collide with.
+                Vector2 segVec = p - last;
+                float segLen = segVec.magnitude;
+                if (segLen > 0.0001f)
+                {
+                    int blocked = Physics2D.CircleCast(
+                        last, bulletRadius, segVec / segLen, previewFilter, previewCastHits, segLen);
+                    if (blocked > 0) return false;
                 }
 
                 if (reachedRange) break;

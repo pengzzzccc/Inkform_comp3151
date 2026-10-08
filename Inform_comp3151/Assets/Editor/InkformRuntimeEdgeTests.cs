@@ -811,7 +811,7 @@ namespace Inkform.Tests
         {
             // Panels the UIManager mounts, then the settings sub-pages the shell mounts itself
             foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud",
-                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls" })
+                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls", "Boot" })
             {
                 VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
                 Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
@@ -819,6 +819,11 @@ namespace Inkform.Tests
 
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Resources/UI/Theme.uss"));
             Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<ThemeStyleSheet>("Assets/Resources/UI/RuntimeTheme.tss"));
+
+            // Boot content asset: every slot ships empty on purpose (text placeholders + silence),
+            // but the asset itself must exist — the sequence's timings read from it
+            Assert.IsNotNull(AssetDatabase.LoadAssetAtPath<Inkform.UI.BootLogos>("Assets/Resources/UI/BootLogos.asset"),
+                "missing Resources/UI/BootLogos.asset — the boot sequence falls back to hard defaults");
         }
 
         [Test]
