@@ -21,11 +21,18 @@ namespace Inkform.Bus
         /// raise this; they are not cancellations.</summary>
         public static event Action RopeCancelled;
 
+        /// <summary>Released: an active pull ended on its own — arrived at the anchor, stuck timeout,
+        /// or the grabbed carriable could not be swallowed. Not raised for a successful swallow
+        /// (ItemBus.ItemStored covers it), death, a destroyed target, or a miss retract.</summary>
+        public static event Action RopeReleased;
+
         public static void RaiseFired(Vector2 dir) => Fired?.Invoke(dir);
 
         public static void RaiseHit(Vector2 dir) => Hit?.Invoke(dir);
 
         public static void RaiseRopeCancelled() => RopeCancelled?.Invoke();
+
+        public static void RaiseRopeReleased() => RopeReleased?.Invoke();
 
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger
@@ -35,6 +42,7 @@ namespace Inkform.Bus
             Fired = null;
             Hit = null;
             RopeCancelled = null;
+            RopeReleased = null;
         }
     }
 }

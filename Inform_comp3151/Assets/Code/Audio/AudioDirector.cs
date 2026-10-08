@@ -30,6 +30,14 @@ namespace Inkform.Audio
         [SerializeField] private SoundCue ropeFire;    // grapple fired (instant anchor follows the same frame)
         [SerializeField] private SoundCue ropeHit;     // grapple anchored on terrain / grabbed a carriable
         [SerializeField] private SoundCue ropeCancel;  // pull deliberately broken (re-press, dash, jump off)
+        [SerializeField] private SoundCue ropeRelease; // pull ended on its own (arrived, stuck, swallow failed)
+        [SerializeField] private SoundCue dashTrail;   // afterimage trail on a successful dash (DashAfterimage)
+        [Tooltip("Played every Footstep Interval while walking on the ground; the Cue picks a random clip each step")]
+        [SerializeField] private SoundCue footstep;
+        [Tooltip("Seconds between two footsteps while walking on the ground")]
+        [SerializeField] private float footstepInterval = 0.3f;
+
+        private float nextFootstepTime;
 
         // Death sounds are not here: they dispatch by cause rather than by concern (spiked vs fallen
         // should sound different), so the Cue lives on the DeathStrategy asset and is played by the strategy.
@@ -50,6 +58,7 @@ namespace Inkform.Audio
             RopeGunBus.Fired += OnRopeFired;
             RopeGunBus.Hit += OnRopeHit;
             RopeGunBus.RopeCancelled += OnRopeCancelled;
+            RopeGunBus.RopeReleased += OnRopeReleased;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -67,8 +76,25 @@ namespace Inkform.Audio
             RopeGunBus.Fired -= OnRopeFired;
             RopeGunBus.Hit -= OnRopeHit;
             RopeGunBus.RopeCancelled -= OnRopeCancelled;
+            RopeGunBus.RopeReleased -= OnRopeReleased;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
+        }
+
+        // Footsteps: PlayerState.Move only exists on the ground with move input (AnimStateResolver),
+        // so it already means "walking on the ground". Time.time stops while paused (timeScale 0).
+        // The dead check matters: PlayerHandler stops updating the state while dead, so it can stay Move
+        void Update()
+        {
+            if (PlayerBus.State != PlayerState.Move || LifeBus.IsDead)
+            {
+                nextFootstepTime = 0f;   // the next walk starts with a step right away
+                return;
+            }
+
+            if (Time.time < nextFootstepTime) return;
+            nextFootstepTime = Time.time + footstepInterval;
+            Play(footstep);              // the player's own sound, same stance as jump/land
         }
 
         // Explosions must only listen to Blast — Exploded fires per victim in a foreach, N victims = N sounds
@@ -83,7 +109,9 @@ namespace Inkform.Audio
         private void OnDashAttempted(Vector2 pos, bool succeeded)
         {
             Play(bombTick, pos);
-            if (succeeded) Play(blast, pos);
+            if (!succeeded) return;
+            Play(blast, pos);
+            Play(dashTrail, pos);   // the trail starts the same frame a successful dash does
         }
 
         // The rope's own sounds, always on the player — no position, same stance as jump/land
@@ -92,6 +120,8 @@ namespace Inkform.Audio
         private void OnRopeHit(Vector2 dir) => Play(ropeHit);
 
         private void OnRopeCancelled() => Play(ropeCancel);
+
+        private void OnRopeReleased() => Play(ropeRelease);
 
         private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
 

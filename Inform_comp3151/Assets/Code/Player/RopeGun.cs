@@ -15,15 +15,14 @@ namespace Inkform.Player
     /// ballistic solve behind the preview is exact: the reticle turns green when solid terrain
     /// intercepts the trajectory within range.
     ///
-        /// Firing is INSTANT: a green reticle means the preview already resolved the intercept — the
-        /// press anchors right there and the pull starts the same frame. No projectile flies, nothing
-        /// to wait for or miss. A red reticle fires too — a miss shot: the hook snaps out to the
-        /// cursor point, hangs there briefly (no anchor, no pull) and retracts with the cancel cue.
-        /// Along the fired
-    /// parabola two special hits resolve at the press moment, before the terrain anchor: carriable
-    /// objects become an eat-pull (swallow on arrival) — and the sweep stops at the first terrain
-    /// blocker, so carriables sitting behind a wall are unreachable. The hook is a plain static sprite at the anchor (no
-    /// rigidbody); the rope renders as a straight line, no Verlet simulation.
+    /// Firing is INSTANT: a green reticle means the preview already resolved the intercept — the
+    /// press anchors right there and the pull starts the same frame. No projectile flies, nothing
+    /// to wait for or miss. A red reticle fires too — a miss shot: the hook snaps out to the
+    /// cursor point, hangs there briefly (no anchor, no pull) and retracts with the cancel cue.
+    /// A carriable the preview locked (inside the range, in front of the first terrain blocker)
+    /// takes precedence over terrain and becomes an eat-pull (swallow on arrival). The hook is a
+    /// plain static sprite at the anchor (no rigidbody); the rope renders as a straight line, no
+    /// Verlet simulation.
     /// Pulling: hard-velocity straight-line pull toward the anchor (follows moving terrain);
     /// pressing fire or jump mid-pull releases the rope outright; reaching near the anchor
     /// releases automatically, keeping momentum.
@@ -129,7 +128,7 @@ namespace Inkform.Player
         // The preview's resolved target, refreshed every idle frame and consumed by TryFire:
         // a green reticle already knows where the shot anchors — a terrain intercept (previewHit)
         // or a carriable under the path probe (previewCarriable). Both are only valid when
-        // previewGreen; the probe order matches the fire-time sweep (carriables first).
+        // previewGreen; carriables are probed first, so they take precedence.
         private RaycastHit2D previewHit;
         private ICarriable previewCarriable;
         private bool previewGreen;
@@ -233,6 +232,14 @@ namespace Inkform.Player
             SettingsStore.Changed -= OnSettingsChanged;
         }
 
+        void OnDestroy()
+        {
+            // The rope and an active hook live outside the player hierarchy (see CreateRope /
+            // CreateHookAt), so they are not destroyed with it
+            if (ropeTf != null) Destroy(ropeTf.gameObject);
+            DespawnHook();
+        }
+
         private void OnSettingsChanged() => ApplySensitivity();
 
         private void ApplySensitivity()
@@ -288,21 +295,26 @@ namespace Inkform.Player
             Vector2 fireDir = EffectiveFireDir;
             RopeGunBus.RaiseFired(fireDir);
 
-            // Special hits resolve along the fired parabola at the press moment, before the
-            // terrain anchor: a carriable found on the way becomes an eat-pull (highest
-            // priority). A probe result for an object destroyed this frame (the physics scene
-            // lags destroys by a sync) reads non-null through the interface — drop it and fall
-            // through to the terrain anchor, same fake-null guard Finish uses.
-            if (SweepPathForSpecials(out ICarriable carriable)
-                && carriable as MonoBehaviour != null)
+            // The press consumes exactly what the preview resolved, so what the reticle shows is
+            // what the shot does: a green carriable lock becomes an eat-pull (highest priority).
+            // A carriable destroyed since the preview reads non-null through the interface (same
+            // fake-null guard Finish uses) — and previewHit was not refreshed on a carriable
+            // frame, so there is no terrain anchor to fall back on: that press is a miss shot.
+            bool carriableLost = false;
+            if (previewGreen && previewCarriable != null)
             {
-                Vector2 targetPos = carriable.transform.position;
-                CreateHookAt(targetPos, targetPos - playerBody.position);
-                StartPullingCarriable(carriable);
-                return;
+                if (previewCarriable as MonoBehaviour != null)
+                {
+                    ICarriable carriable = previewCarriable;
+                    Vector2 targetPos = carriable.transform.position;
+                    CreateHookAt(targetPos, targetPos - playerBody.position);
+                    StartPullingCarriable(carriable);
+                    return;
+                }
+                carriableLost = true;
             }
 
-            if (!previewGreen)
+            if (!previewGreen || carriableLost)
             {
                 // Miss shot: nothing intercepts along the path, so the hook snaps out to the
                 // cursor point and hangs there — no anchor, no pull, movement stays free. The
@@ -445,6 +457,14 @@ namespace Inkform.Player
             ropeRenderer.enabled = false;
         }
 
+        // A pull ending on its own (arrival, stuck timeout, failed swallow) — the counterpart of
+        // Cancel's deliberate break, so feedback can tell the two apart
+        private void ReleaseNaturally()
+        {
+            RopeGunBus.RaiseRopeReleased();
+            Finish();
+        }
+
         private void DespawnHook()
         {
             if (hookGo != null) Destroy(hookGo);
@@ -492,12 +512,14 @@ namespace Inkform.Player
 
                 if (PullStep(pullTarget, dt) <= swallowDistance)
                 {
-                    grapple.TrySwallowByRope(transform);   // cannot swallow (mouth full etc.): release the rope, do not stall
+                    // Cannot swallow (mouth full etc.): release the rope, do not stall. A successful
+                    // swallow already has its own feedback (ItemBus.ItemStored)
+                    if (!grapple.TrySwallowByRope(transform)) RopeGunBus.RaiseRopeReleased();
                     Finish();
                     return;
                 }
 
-                if (pullStuck >= stuckTime) Finish();   // target behind a wall and unreachable: timeout release
+                if (pullStuck >= stuckTime) ReleaseNaturally();   // target behind a wall and unreachable: timeout release
                 return;
             }
 
@@ -508,10 +530,10 @@ namespace Inkform.Player
             {
                 // Reached the contact point (blocked by a wall, the center sits ≈0.5 from it):
                 // release, keep momentum
-                Finish();
+                ReleaseNaturally();
                 return;
             }
-            if (pullStuck >= stuckTime) Finish();   // stuck fallback: sliding along a wall keeps distance dropping, not stuck
+            if (pullStuck >= stuckTime) ReleaseNaturally();   // stuck fallback: sliding along a wall keeps distance dropping, not stuck
         }
 
         // Single pull step (terrain Pulling and eat Pulling share it):
@@ -535,64 +557,6 @@ namespace Inkform.Player
             return dist;
         }
 
-        // One sweep along the fired parabola at the press moment, sampling the same fixed steps the
-        // preview walked: a carriable under the probe radius becomes an eat-pull target (returning
-        // true ends the sweep — the pull takes over). The sweep STOPS at the first terrain blocker
-        // (the same segment cast the preview runs), so a carriable behind a wall is unreachable,
-        // exactly as a physical hook that smacked into the wall would be.
-        private bool SweepPathForSpecials(out ICarriable carriable)
-        {
-            carriable = null;
-
-            Vector2 aim = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : Vector2.right;
-            Vector2 rangeCenter = playerBody.position;
-            Vector2 origin = rangeCenter + aim * muzzleOffset;
-            Vector2 target = rangeCenter + aimOffset;
-            Vector2 g = Physics2D.gravity * bulletGravityScale;
-
-            SolveBallistic(origin, target, launchSpeed, g, out Vector2 v0);
-
-            float stepDt = Time.fixedDeltaTime;
-            Vector2 last = origin;
-
-            for (float t = stepDt; ; t += stepDt)
-            {
-                Vector2 p = origin + v0 * t + 0.5f * g * t * t;
-                p = ClipSegmentToRange(rangeCenter, last, p, maxRange, out bool reachedRange);
-
-                // Layer-agnostic carriable probe (bombs etc. live on Default, which the preview's
-                // hitMask never sees): every collider resolves to its Interactable node, then the
-                // ICarriable part is requested from that node. Skipped when bombSnap is off — the
-                // press must never eat-pull a bomb the aim never promised
-                if (SettingsStore.RopeBombSnap)
-                {
-                    Collider2D[] probes = Physics2D.OverlapCircleAll(p, bombDetectRadius + bulletRadius);
-                    foreach (Collider2D probe in probes)
-                    {
-                        if (TryGetCarriable(probe, out carriable)) return true;
-                    }
-                }
-
-                // Terrain occlusion, deliberately AFTER the probe to mirror the preview's
-                // per-sample order (preview and fired path must stay the same walk): the segment
-                // this step just crossed is cast, and the first blocker ends the sweep — nothing
-                // beyond the wall is reachable. Without this the instant pass would tunnel straight
-                // through terrain.
-                Vector2 segVec = p - last;
-                float segLen = segVec.magnitude;
-                if (segLen > 0.0001f)
-                {
-                    int blocked = Physics2D.CircleCast(
-                        last, bulletRadius, segVec / segLen, previewFilter, previewCastHits, segLen);
-                    if (blocked > 0) return false;
-                }
-
-                if (reachedRange) break;
-                last = p;
-            }
-            return false;
-        }
-
         private static bool TryGetCarriable(Collider2D collider, out ICarriable carriable)
         {
             carriable = null;
@@ -605,15 +569,15 @@ namespace Inkform.Player
 
         // Aim prediction: the reticle is a free cursor and the trajectory is the parabola solved to pass
         // through it. Fixed-step samples walk the path: at each one a carriable probe (bombs etc.
-        // live on Default, which the terrain mask never sees) runs FIRST — matching the fire-time
-        // sweep — then a terrain circle cast. Whatever stops the walk is the snap target; only
-        // solid Terrain/Breakable colliders or a carriable make the reticle green.
+        // live on Default, which the terrain mask never sees) runs FIRST, then a terrain circle cast.
+        // Whatever stops the walk is the snap target; only solid Terrain/Breakable colliders or a
+        // carriable inside the range make the reticle green. TryFire consumes this result as-is.
         private void UpdatePreview()
         {
             Vector2 aim = aimOffset.sqrMagnitude > 0.0001f ? aimOffset.normalized : Vector2.right;
             Vector2 rangeCenter = playerBody.position;
 
-            // Muzzle origin identical to the instant shot's path sweep: preview and fired path strictly match
+            // Muzzle origin moved forward along the aim, avoids overlapping the player
             Vector2 origin = rangeCenter + aim * muzzleOffset;
             Vector2 target = rangeCenter + aimOffset;
             Vector2 g = Physics2D.gravity * bulletGravityScale;
@@ -624,6 +588,10 @@ namespace Inkform.Player
             Vector2 last = origin;
             bool hit = false;
 
+            // Re-resolved from scratch every frame: a terrain hit must not inherit last frame's
+            // carriable, or the reticle and TryFire would still treat that bomb as the target
+            previewCarriable = null;
+
             // The final segment is clipped before any query, so targets beyond the legal range can
             // never make the reticle green.
             for (float t = stepDt; ; t += stepDt)
@@ -631,7 +599,7 @@ namespace Inkform.Player
                 Vector2 p = origin + v0 * t + 0.5f * g * t * t;
                 p = ClipSegmentToRange(rangeCenter, last, p, maxRange, out bool reachedRange);
 
-                // Carriable probe first (same precedence as SweepPathForSpecials at fire time):
+                // Carriable probe first (TryFire consumes previewCarriable directly):
                 // finding one along the path means the press would eat-pull it. Skipped entirely
                 // when bombSnap is off — the reticle never gets hijacked by a bomb on the path,
                 // and the per-frame probes stop costing anything.
@@ -641,7 +609,12 @@ namespace Inkform.Player
                         p, bombDetectRadius + bulletRadius, previewProbeHits);
                     for (int i = 0; i < probeCount; i++)
                     {
-                        if (TryGetCarriable(previewProbeHits[i], out ICarriable carriable))
+                        // The probe circle reaches past the range circle by its own radius, so the
+                        // carriable itself must sit inside the range — otherwise walking away from a
+                        // locked bomb would keep the reticle stuck on it outside the circle
+                        if (TryGetCarriable(previewProbeHits[i], out ICarriable carriable)
+                            && ((Vector2)carriable.transform.position - rangeCenter).sqrMagnitude
+                                <= maxRange * maxRange)
                         {
                             previewCarriable = carriable;
                             hit = true;
@@ -813,6 +786,10 @@ namespace Inkform.Player
             // pull follows the moving collider (both synced manually; static terrain never moves)
             if (hookGo != null) hookGo.transform.position = pullTarget;
 
+            // The reticle is a child of the player and UpdatePreview only places it while idle:
+            // pin it to the hook, or it rides along with the player away from the anchor
+            reticle.position = pullTarget;
+
             // Rope rendering: a straight span between the two ends — the rope gun uses no rope
             // simulation, so the rope is always straight (no sag)
             Vector2 a = pullTarget;             // anchor: terrain hit point / carriable position
@@ -892,6 +869,10 @@ namespace Inkform.Player
         {
             ropeTf = CreateFx("Rope", out ropeRenderer,
                 ropeSegmentSprite != null ? ropeSegmentSprite : DiscSprite, ropeSortingOrder);
+            // World space, not a child of the player: LateUpdate sizes the rope in world units, and
+            // the player root's scale (1.2 on the prefab) would otherwise stretch it past both ends.
+            // Destroyed with the player in OnDestroy
+            ropeTf.SetParent(null, false);
             ropeRenderer.drawMode = SpriteDrawMode.Tiled;
             ropeRenderer.tileMode = SpriteTileMode.Continuous;  // trailing part-tile just clips; spacing stays exact
             // sharedMaterial, not material: nothing here writes to the material, so there is no reason
