@@ -9,8 +9,9 @@ using UnityEngine.UIElements;
 namespace Inkform.UI
 {
     /// <summary>
-    /// The tutorial hint line at the bottom of the screen: text with the action's button icons
-    /// inline, fading in while a TutorialHintPart zone holds it and out when the player leaves.
+    /// The tutorial hint line at the bottom of the screen: large text with the action's button
+    /// icons inline, no plate (a deep text shadow carries it over the level), fading in while a
+    /// TutorialHintPart zone holds it and out when the player leaves.
     ///
     /// Zones stack — the latest one entered wins, leaving it reveals the one beneath. A change of
     /// hint fades the old line out before the new one fades in. A device switch (pad face included)
@@ -21,7 +22,7 @@ namespace Inkform.UI
     public sealed class TutorialHintView
     {
         private const float FadeSeconds = 0.35f;
-        private const float RisePixels = 6f;   // fading in drifts the line up into place
+        private const float RisePixels = 10f;  // fading in drifts the line up into place
 
         private struct Request
         {
@@ -177,14 +178,14 @@ namespace Inkform.UI
             if (string.IsNullOrWhiteSpace(text)) return;
             string trimmed = text.Trim();
             var label = new Label(trimmed) { pickingMode = PickingMode.Ignore };
-            label.AddToClassList("hud-tutorial-text");
-            label.AddToClassList("outline");
+            label.AddToClassList("hud-tutorial-text");   // carries its own deeper shadow (Hud.uss)
             // ", hold to jump higher" follows its icon directly, like the comma would in prose
             if (char.IsPunctuation(trimmed[0])) label.style.marginLeft = 0f;
             panel.Add(label);
         }
 
-        // Same icon / keycap look as the menu prompts and the rebind table (Theme.uss .key-*)
-        private void AddGlyph(InputGlyphs.Glyph glyph) => panel.Add(GlyphElements.Create(glyph));
+        // Same icon / keycap look as the menu prompts and the rebind table (Theme.uss .key-*),
+        // at the large size to sit with the large text
+        private void AddGlyph(InputGlyphs.Glyph glyph) => panel.Add(GlyphElements.Create(glyph, GlyphSize.Large));
     }
 }

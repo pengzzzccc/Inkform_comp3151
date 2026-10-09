@@ -158,3 +158,5 @@
 .key-cap-label { font-size: 20px; color: var(--c-white); -unity-text-align: middle-center; padding: 0; margin: 0; }
 .key--small.key-cap { height: 32px; min-width: 32px; padding: 0 6px; border-radius: 5px; }
 .key--small > .key-cap-label { font-size: 16px; }
+.key--large.key-cap { height: 60px; min-width: 60px; padding: 0 12px; border-radius: 9px; border-width: 3px; }
+.key--large > .key-cap-label { font-size: 30px; }

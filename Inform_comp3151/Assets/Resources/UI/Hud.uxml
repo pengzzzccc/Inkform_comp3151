@@ -3,7 +3,7 @@
     <!-- Gameplay HUD. Everything picks nothing (picking-mode Ignore): the HUD must never eat a
          click meant for the world. Run stats top left (the run timer with its clock, the death
          count with its skull), FPS top right, inventory bottom right, "Saved" toast above it. The tutorial
-         hint line sits bottom centre (TutorialHintView fills and fades it). Visibility of the
+         hint line sits bottom centre, no plate (TutorialHintView fills and fades it). Visibility of the
          whole Gameplay layer is driven by Hud.SetGameplayVisible. -->
     <ui:VisualElement name="Hud" class="screen" picking-mode="Ignore">
         <ui:VisualElement name="Gameplay" class="hud-layer" picking-mode="Ignore">

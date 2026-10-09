@@ -103,7 +103,7 @@ namespace Inkform.UI
                     item.pickingMode = PickingMode.Ignore;
                 }
 
-                foreach (InputGlyphs.Glyph glyph in glyphs) item.Add(GlyphElements.Create(glyph, small: true));
+                foreach (InputGlyphs.Glyph glyph in glyphs) item.Add(GlyphElements.Create(glyph, GlyphSize.Small));
 
                 var label = new Label(entry.label) { pickingMode = PickingMode.Ignore };
                 label.AddToClassList("prompt-label");

@@ -57,16 +57,10 @@
 
 .hud-save-toast { position: absolute; right: var(--hud-margin); bottom: 138px; font-size: var(--fs-corner); color: rgba(240, 242, 248, 0.95); opacity: 0; -unity-text-align: middle-right; text-shadow: 0px 2px 5px rgba(6, 8, 20, 0.85); }   /* opacity driven by C# */
 
-/* Tutorial hint: bottom centre, text with button icons inline. Opacity, display and the rise are driven by C# (TutorialHintView). */
-.hud-tutorial { position: absolute; left: 0; right: 0; bottom: 9%; flex-direction: row; justify-content: center; opacity: 0; display: none; }
-.hud-tutorial-panel {
-    flex-direction: row;
-    align-items: center;
-    background-color: rgba(3, 4, 6, 0.75);
-    border-radius: 8px;
-    border-width: 2px;
-    border-color: rgba(0, 0, 0, 0.85);
-    padding: 8px 18px;
-}
-.hud-tutorial-text { font-size: 28px; color: var(--c-text); -unity-text-align: middle-center; margin: 0 6px; }
-/* Icons and keycaps come from the theme's .key-icon / .key-cap (GlyphElements.cs) */
+/* Tutorial hint: one large line at the bottom centre, the button icons inline at the large glyph size. No plate: a deep shadow under every
+   word keeps it readable over the level. Inside the safe margins; a line too long for them wraps
+   between words and icons. Opacity, display and the rise are driven by C# (TutorialHintView). */
+.hud-tutorial { position: absolute; left: var(--safe-x); right: var(--safe-x); bottom: 9%; flex-direction: column; align-items: center; opacity: 0; display: none; }
+.hud-tutorial-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 100%; }
+.hud-tutorial-text { font-size: 48px; color: var(--c-text); -unity-text-align: middle-center; margin: 0 10px; text-shadow: 0px 4px 12px rgba(6, 8, 20, 0.95); }
+/* Icons and keycaps come from the theme's .key-icon / .key-cap, at .key--large (GlyphElements.cs) */
