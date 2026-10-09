@@ -22,7 +22,7 @@ namespace Inkform.UI
     ///
     /// The old uGUI stack (UI Canvas, EventSystem, panel prefabs, GamepadCursor) is gone: sheets
     /// are UXML templates under Resources/UI, styled by Theme.uss, hosted in one UIDocument with
-    /// a #hud layer under a #menus layer. Gamepad/keyboard menu input is the Toolkit's own focus
+    /// the menu scene's cave backdrop under a #hud layer under a #menus layer. Gamepad/keyboard menu input is the Toolkit's own focus
     /// navigation (Celeste's way) — panels focus their first control on open, no virtual cursor.
     ///
     /// Panels never talk to each other or to the game: MainMenuPanel asks this class to load a
@@ -59,6 +59,7 @@ namespace Inkform.UI
         private Inkform.Level.SceneDirector sceneDirector;   // sibling on GameManager; owns the scene policy
         private UIDocument uiDocument;
         private VisualElement menusRoot;
+        private VisualElement backdrop;     // the menu scene's cave, under every sheet
         private Hud hud;
         private bool paused;
         private Coroutine menuMusicRoutine; // pending delayed menu music from FinishBoot, if any
@@ -94,6 +95,7 @@ namespace Inkform.UI
             if (gameTime == null) gameTime = gameObject.AddComponent<GameTimeController>();
 
             CreateDocument();
+            CreateBackdrop();
             CreateHud();
             CreatePanels();
             // Panels land hidden; a scene-landing pass below opens whichever sheet the scene wants.
@@ -164,13 +166,18 @@ namespace Inkform.UI
             // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
 
-            // Boot sheet up: Esc / pad B behave like the any-key gate (skip into the menu)
+            // Boot sheet up: Esc / pad B skip it like any other key (on to the title screen)
             if (IsOpen<BootPanel>()) { FinishBoot(); return; }
 
-            // Innermost sheet first, then outwards — Esc/B always back out one level. Settings
-            // backs out internally first (a category page returns to its ROOT list).
-            if (IsOpen<SettingsPanel>()
-                && GetPanel<SettingsPanel>()?.HandleBack() != true) { CloseSettings(); return; }
+            // Innermost sheet first, then outwards — Esc/B/Start always back out one level. Settings
+            // backs out internally first (a category page returns to its ROOT list), and owns the
+            // press either way: falling through would let Esc/Start also resume the paused game
+            // with the sheet still up.
+            if (IsOpen<SettingsPanel>())
+            {
+                if (GetPanel<SettingsPanel>()?.HandleBack() != true) CloseSettings();
+                return;
+            }
             if (IsOpen<SaveMenuPanel>()) { BackFromSaveMenu(); return; }
             // The end sheet has no inner level: Escape leaves the finished run for the main menu
             if (IsOpen<EndPanel>()) { ReturnToMainMenu(); return; }
@@ -296,7 +303,7 @@ namespace Inkform.UI
                 else
                 {
                     bootPlayed = true;
-                    Open<BootPanel>();     // session started here: studio card → game card → any key
+                    Open<BootPanel>();     // session started here: studio card → title screen → any key → menu
                 }
                 SetCursor(true);
             }
@@ -310,6 +317,10 @@ namespace Inkform.UI
             bool gameplay = !IsInMainMenu && !isEnd;
             if (gameplay) hud?.ResetLevelTimer();
             hud?.SetGameplayVisible(gameplay);
+
+            // The cave is the menu scene's set: the boot card covers it until it dissolves
+            if (backdrop != null)
+                backdrop.style.display = IsInMainMenu && !isEnd ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>Save menu's Back (BACK button / Esc / gamepad B): return to the main menu
@@ -336,13 +347,15 @@ namespace Inkform.UI
             AudioService.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
         }
 
-        /// <summary>The boot sequence's finish line — its own any-key gate, or Esc/pad B through
-        /// the Escape stack. Closes the boot card, slides the main menu in, and queues the menu
-        /// music: it starts MenuMusicDelaySeconds after the click, not with it.</summary>
+        /// <summary>The boot sequence's finish line — the studio card ending or being skipped, or
+        /// Esc/pad B through the Escape stack. Dissolves the boot card into the main menu's title
+        /// screen (logo + "Press any key" over the cave), and queues the menu music: it starts
+        /// MenuMusicDelaySeconds after the title screen, not with it.</summary>
         public void FinishBoot()
         {
             if (!IsOpen<BootPanel>()) return;
             Close<BootPanel>();
+            GetPanel<MainMenuPanel>()?.PrepareTitleScreen();
             Open<MainMenuPanel>();
             if (menuMusicRoutine != null) StopCoroutine(menuMusicRoutine);
             menuMusicRoutine = StartCoroutine(StartMenuMusicAfterDelay());
@@ -467,14 +480,17 @@ namespace Inkform.UI
             Resume();
         }
 
-        /// <summary>Settings' Back: close it and bring back the sheet it replaced — pause if the
-        /// run is paused, otherwise the main menu (single-panel navigation: the sheet beneath was
-        /// closed when settings opened, so "back" means reopening it).</summary>
+        /// <summary>Settings' Back: close it and bring back the sheet it replaced — the main menu
+        /// in the menu scene, the pause sheet anywhere else (single-panel navigation: the sheet
+        /// beneath was closed when settings opened, so "back" means reopening it). A level never
+        /// gets the main menu sheet: should the run somehow have resumed underneath, it pauses
+        /// again instead.</summary>
         public void CloseSettings()
         {
             Close<SettingsPanel>();
-            if (!IsInMainMenu && paused) Open<PausePanel>();
-            else Open<MainMenuPanel>();
+            if (IsInMainMenu) Open<MainMenuPanel>();
+            else if (paused) Open<PausePanel>();
+            else OpenPause();
         }
 
         // ---- Panel plumbing ----
@@ -651,6 +667,29 @@ namespace Inkform.UI
             menusRoot.style.bottom = 0f;
             menusRoot.pickingMode = PickingMode.Ignore;
             root.Add(menusRoot);
+        }
+
+        /// <summary>The menu scene's cave backdrop (Resources/UI/MenuBackdrop): a layer of its own
+        /// under the HUD and the sheets, so every menu-scene sheet sits on it and the sheets' own
+        /// slides never move it. ApplySceneState shows it in the menu scene only.</summary>
+        private void CreateBackdrop()
+        {
+            VisualTreeAsset tree = Resources.Load<VisualTreeAsset>("UI/MenuBackdrop");
+            if (tree == null)
+            {
+                Debug.LogWarning("UIManager: missing UXML at Resources/UI/MenuBackdrop — the main menu has no backdrop", this);
+                return;
+            }
+
+            backdrop = tree.Instantiate();
+            backdrop.style.position = Position.Absolute;
+            backdrop.style.left = 0f;
+            backdrop.style.top = 0f;
+            backdrop.style.right = 0f;
+            backdrop.style.bottom = 0f;
+            backdrop.pickingMode = PickingMode.Ignore;
+            backdrop.style.display = DisplayStyle.None;
+            uiDocument.rootVisualElement.Insert(0, backdrop);   // first child = drawn first, under everything
         }
 
         private void CreateHud()

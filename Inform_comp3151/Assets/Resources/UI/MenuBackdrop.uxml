@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="MenuBackdrop.uss" />
+    <!-- The main menu scene's cave: the four L1BG layers of Art/Background Layers stacked back
+         to front (sky and light shafts, far pillars, mid rock, the dark frame of stalactites and
+         crystals). A layer of its own under every sheet, shown by UIManager in the menu scene
+         only, so the title screen, the main menu, the save menu and the options all sit on it. -->
+    <ui:VisualElement name="MenuBackdrop" class="screen backdrop" picking-mode="Ignore">
+        <ui:VisualElement name="Layer4" class="screen backdrop-layer backdrop-layer4" picking-mode="Ignore" />
+        <ui:VisualElement name="Layer3" class="screen backdrop-layer backdrop-layer3" picking-mode="Ignore" />
+        <ui:VisualElement name="Layer2" class="screen backdrop-layer backdrop-layer2" picking-mode="Ignore" />
+        <ui:VisualElement name="Layer1" class="screen backdrop-layer backdrop-layer1" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>
