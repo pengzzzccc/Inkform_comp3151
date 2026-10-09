@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Inkform.Fx;
 using Inkform.Tool;
 using Inkform.UI;
 using UnityEngine;
@@ -56,11 +57,6 @@ namespace Inkform.Interactable.Parts
         private Interactable root;
         private readonly HashSet<Collider2D> players = new HashSet<Collider2D>();
 
-        private static readonly int FadeId = Shader.PropertyToID("_Fade");
-        private static readonly int OutlineWidthId = Shader.PropertyToID("_OutlineWidth");
-        private static readonly int SpriteRectId = Shader.PropertyToID("_SpriteRect");
-        private static readonly int SpriteScaleId = Shader.PropertyToID("_SpriteScale");
-        private static readonly int SpriteUvStepId = Shader.PropertyToID("_SpriteUvStep");
 
         private SpriteRenderer baseRenderer;
         private SpriteRenderer outlineRenderer;
@@ -152,8 +148,7 @@ namespace Inkform.Interactable.Parts
 
             // Glow breathes around its fade level; the icon fades without breathing (readability)
             float pulse = 1f - pulseStrength * 0.5f * (1f + Mathf.Sin(Time.time * pulseSpeed));
-            if (outlineMaterialInstance != null)
-                outlineMaterialInstance.SetFloat(FadeId, fade * pulse);
+            SpriteGlow.SetFade(outlineMaterialInstance, fade * pulse);
 
             canvasGroup.alpha = fade;
 
@@ -168,60 +163,9 @@ namespace Inkform.Interactable.Parts
         {
             if (promptRoot != null) return;
 
-            Sprite outlineSprite = baseRenderer != null ? baseRenderer.sprite : null;
-            if (baseRenderer != null && outlineMaterial != null
-                && TrySpriteUvRect(outlineSprite, out Vector4 spriteRect))
-            {
-                var outlineObject = new GameObject("Outline");
-                outlineObject.layer = baseRenderer.gameObject.layer;
-                // Parent to the renderer itself so all of its position, rotation and scale are
-                // inherited exactly once. Parenting to root and then adding the renderer's local
-                // position displaced root-level renderers by the object's world placement.
-                outlineObject.transform.SetParent(baseRenderer.transform, false);
-
-                // A sprite mesh has no pixels outside the silhouette, so the glow quad is scaled up
-                // by the padding and the shader remaps its UVs back into sprite space (_SpriteRect /
-                // _SpriteScale): the silhouette still renders at its original size and the ring
-                // around it becomes drawable band
-                float outlineScale = 1f + 2f * outlinePadding;
-                outlineObject.transform.localScale = Vector3.one * outlineScale;
-
-                // Sprite.bounds is available synchronously, unlike a newly-created renderer's
-                // localBounds. Account for SpriteRenderer flip when keeping an off-centre pivot fixed.
-                Vector2 spriteCenter = outlineSprite.bounds.center;
-                if (baseRenderer.flipX) spriteCenter.x = -spriteCenter.x;
-                if (baseRenderer.flipY) spriteCenter.y = -spriteCenter.y;
-                outlineObject.transform.localPosition = spriteCenter - outlineScale * spriteCenter;
-
-                // Configure the private material completely before the renderer is enabled, so the
-                // first 2D-renderer draw already has valid UV, texel and fade data.
-                Texture2D texture = outlineSprite.texture;
-                outlineMaterialInstance = new Material(outlineMaterial)
-                {
-                    name = $"{outlineMaterial.name} ({name})"
-                };
-                outlineMaterialInstance.SetVector(SpriteRectId, spriteRect);
-                outlineMaterialInstance.SetFloat(SpriteScaleId, outlineScale);
-                outlineMaterialInstance.SetVector(SpriteUvStepId, new Vector4(
-                    1f / texture.width, 1f / texture.height, texture.width, texture.height));
-                outlineMaterialInstance.SetFloat(OutlineWidthId,
-                    outlineWorldWidth * outlineSprite.pixelsPerUnit);
-                outlineMaterialInstance.SetFloat(FadeId, 0f);
-
-                outlineRenderer = outlineObject.AddComponent<SpriteRenderer>();
-                outlineRenderer.enabled = false;
-                outlineRenderer.sprite = outlineSprite;
-                outlineRenderer.sharedMaterial = outlineMaterialInstance;
-                outlineRenderer.sortingLayerID = baseRenderer.sortingLayerID;
-                outlineRenderer.sortingOrder = baseRenderer.sortingOrder + 1;
-                outlineRenderer.flipX = baseRenderer.flipX;
-                outlineRenderer.flipY = baseRenderer.flipY;
-                outlineRenderer.drawMode = baseRenderer.drawMode;
-                outlineRenderer.size = baseRenderer.size;
-                outlineRenderer.tileMode = baseRenderer.tileMode;
-                outlineRenderer.maskInteraction = baseRenderer.maskInteraction;
-                outlineRenderer.spriteSortPoint = baseRenderer.spriteSortPoint;
-            }
+            // The glow is prebuilt disabled at fade 0; contact enables it and the update drives the fade
+            outlineRenderer = SpriteGlow.Create(baseRenderer, outlineMaterial, outlinePadding,
+                outlineWorldWidth, "Outline", out outlineMaterialInstance);
 
             var canvasObject = new GameObject("Prompt Canvas", typeof(RectTransform));
             canvasObject.transform.SetParent(root.transform, false);
@@ -308,36 +252,7 @@ namespace Inkform.Interactable.Parts
             label.raycastTarget = false;
         }
 
-        /// <summary>The sprite's slice rectangle in texture UV space (x0, y0, x1, y1) — the region the
-        /// outline shader treats as "the sprite", masking everything outside it.</summary>
-        private static bool TrySpriteUvRect(Sprite sprite, out Vector4 uvRect)
-        {
-            uvRect = default;
-            if (sprite == null) return false;
-
-            Texture2D texture = sprite.texture;
-            if (texture == null || texture.width <= 0 || texture.height <= 0) return false;
-
-            Rect pixelRect = sprite.textureRect;
-            uvRect = new Vector4(
-                pixelRect.x / texture.width,
-                pixelRect.y / texture.height,
-                (pixelRect.x + pixelRect.width) / texture.width,
-                (pixelRect.y + pixelRect.height) / texture.height);
-            return true;
-        }
-
-        void OnDestroy()
-        {
-            // The per-renderer material copy is not released with the destroyed GameObject — drop it
-            // explicitly or it lingers until UnloadUnusedAssets (DestroyImmediate: edit-mode tests)
-            if (outlineMaterialInstance == null) return;
-#if UNITY_EDITOR
-            if (!Application.isPlaying) DestroyImmediate(outlineMaterialInstance);
-            else
-#endif
-                Destroy(outlineMaterialInstance);
-        }
+        void OnDestroy() => SpriteGlow.Release(outlineMaterialInstance);
 
         // ---- Scene-view gizmo ----
 

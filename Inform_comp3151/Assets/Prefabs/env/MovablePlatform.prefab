@@ -134,6 +134,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  loopCue: {fileID: 11400000, guid: 2a6ed06225957304d976a39f72c414df, type: 2}
 --- !u!19719996 &2058395896941935710
 TilemapCollider2D:
   m_ObjectHideFlags: 0
@@ -217,8 +218,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 1806310747
+  m_SortingLayer: 1
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: 0}

@@ -269,7 +269,8 @@ namespace Inkform.Tests
             {
                 Color color = new Color(1f, 0.8f, 0.3f, 0.95f);
                 wave = BlastWaveFx.Spawn(
-                    new Vector2(3f, 4f), 2f, color, 0.28f, 0.12f, 0.22f, 0.04f, 64, 100, 1f);
+                    new Vector2(3f, 4f), 2f, color, 0.28f, 0.12f, 0.22f, 0.04f, 64,
+                    SortingLayer.NameToID("player"), 2, 1f);
 
                 Assert.IsNotNull(wave);
                 AssertVector2(new Vector2(3f, 4f), wave.transform.position);
@@ -277,7 +278,8 @@ namespace Inkform.Tests
                 Assert.IsNotNull(line);
                 Assert.IsTrue(line.loop);
                 Assert.AreEqual(64, line.positionCount);
-                Assert.AreEqual(100, line.sortingOrder);
+                Assert.AreEqual(SortingLayer.NameToID("player"), line.sortingLayerID);
+                Assert.AreEqual(2, line.sortingOrder);
                 Assert.AreEqual(0, wave.GetComponents<Collider2D>().Length);
                 Assert.IsNull(wave.GetComponent<Rigidbody2D>());
                 Assert.AreEqual(0, blastCount, "the visual must not publish another Blast");
@@ -394,7 +396,8 @@ namespace Inkform.Tests
             Assert.AreEqual(0.22f, GetField<float>(director, "blastWaveStartWidth"), 0.0001f);
             Assert.AreEqual(0.04f, GetField<float>(director, "blastWaveEndWidth"), 0.0001f);
             Assert.AreEqual(64, GetField<int>(director, "blastWaveSegments"));
-            Assert.AreEqual(100, GetField<int>(director, "blastWaveSortingOrder"));
+            Assert.AreEqual("player", GetField<string>(director, "blastWaveSortingLayer"));
+            Assert.AreEqual(2, GetField<int>(director, "blastWaveSortingOrder"));
         }
 
         [Test]

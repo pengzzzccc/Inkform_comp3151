@@ -29099,7 +29099,8 @@ MonoBehaviour:
   blastWaveStartWidth: 0.22
   blastWaveEndWidth: 0.04
   blastWaveSegments: 64
-  blastWaveSortingOrder: 100
+  blastWaveSortingLayer: player
+  blastWaveSortingOrder: 2
 --- !u!114 &1995878792
 MonoBehaviour:
   m_ObjectHideFlags: 0
