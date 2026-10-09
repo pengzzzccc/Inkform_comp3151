@@ -59,7 +59,7 @@ namespace Inkform.UI
             new BindingRow("SpitBomb", "Spit Bomb", null, true),
         };
 
-        private OptionRow deviceRow, rumbleRow, unstuckRow, resetBindingsRow;
+        private OptionRow deviceRow, rumbleRow, triggerRow, unstuckRow, resetBindingsRow;
         private Slider mouseSlider, stickSlider;
         private Label mouseLabel, stickLabel;
         private VisualElement kbmSection, padSection;
@@ -89,7 +89,16 @@ namespace Inkform.UI
                 RefreshDeviceContent();
             };
 
-            rumbleRow = AddOnOffRow("Rumble", () => SettingsStore.Rumble, SettingsStore.SetRumble);
+            rumbleRow = AddOptionRow("Rumble", RumbleText(SettingsStore.RumbleLevel));
+            rumbleRow.Stepped += dir =>
+            {
+                var levels = (RumbleLevel[])Enum.GetValues(typeof(RumbleLevel));
+                int i = Array.IndexOf(levels, SettingsStore.RumbleLevel);
+                i = (i + dir + levels.Length) % levels.Length;
+                SettingsStore.SetRumbleLevel(levels[i]);
+                rumbleRow.Value = RumbleText(levels[i]);
+            };
+            triggerRow = AddOnOffRow("Trigger Effects", () => SettingsStore.TriggerEffects, SettingsStore.SetTriggerEffects);
 
             AddSubHeader("SENSITIVITY");
             mouseLabel = AddSliderRow("Mouse Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out mouseSlider);
@@ -138,7 +147,8 @@ namespace Inkform.UI
 
         public override void Refresh()
         {
-            rumbleRow.Value = OnOffText(SettingsStore.Rumble);
+            rumbleRow.Value = RumbleText(SettingsStore.RumbleLevel);
+            triggerRow.Value = OnOffText(SettingsStore.TriggerEffects);
             SetSlider(mouseSlider, SettingsStore.MouseSensitivity, mouseLabel, SensText);
             SetSlider(stickSlider, SettingsStore.StickSensitivity, stickLabel, SensText);
 
@@ -262,6 +272,14 @@ namespace Inkform.UI
             keySlot.Add(GlyphElements.Create(InputGlyphs.ResolvePath(
                 action.bindings[index].effectivePath, BindingTools.GetDisplay(action, index), scheme, glyphSet)));
         }
+
+        private static string RumbleText(RumbleLevel level) => level switch
+        {
+            RumbleLevel.Low => "LOW",
+            RumbleLevel.Medium => "MEDIUM",
+            RumbleLevel.High => "HIGH",
+            _ => "OFF",
+        };
 
         private static InputAction GetAction(string actionName)
         {
