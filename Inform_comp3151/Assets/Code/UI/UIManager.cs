@@ -614,18 +614,9 @@ namespace Inkform.UI
                     Debug.Log($"[UIManager] first layout: root={root.layout.width:0.#}x{root.layout.height:0.#} — viewport OK", this);
             });
 
-            // Font experiment: the first candidate that loads wins, and what actually applied is
-            // logged. Revert to the project pixel font by moving "UI/BombSlimeFonts" first in the
-            // array; the built-in LegacyRuntime (Arial metrics) is the final fallback.
-            // (The USS sets no font of its own, so this root style inherits to every label.)
-            Font uiFont = null;
-            foreach (string fontCandidate in new[] { "UI/LiberationSans", "UI/BombSlimeFonts" })
-            {
-                Font loaded = Resources.Load<Font>(fontCandidate);
-                if (loaded != null) { uiFont = loaded; break; }
-            }
-            if (uiFont == null)
-                uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // The game font (UiFonts picks it; what actually applied is logged). The USS sets no
+            // font of its own, so this root style inherits to every label.
+            Font uiFont = UiFonts.Primary;
             if (uiFont != null)
             {
                 root.style.unityFont = uiFont;

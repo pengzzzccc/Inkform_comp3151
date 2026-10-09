@@ -12,8 +12,8 @@ namespace Inkform.UI
     /// The gameplay HUD, rebuilt on the Toolkit tree from the old prefab's five components:
     /// GameTimer (top centre), FpsDisplay (top right), InventoryHud
     /// (bottom right), SaveIndicator (the "Saved" toast above it) and the HudRoot visibility
-    /// switch. Everything is picking-mode Ignore in the UXML — the HUD never eats a click meant
-    /// for the world.
+    /// switch — plus the tutorial hint line (bottom centre, TutorialHintView). Everything is
+    /// picking-mode Ignore in the UXML — the HUD never eats a click meant for the world.
     ///
     /// A plain object driven from UIManager.Update: timer rules are the old GameTimer's (advance
     /// only while Playing and not mid-transition), the toast and FPS counter run on unscaled time
@@ -33,6 +33,7 @@ namespace Inkform.UI
         private readonly VisualElement inventoryIcon;
         private readonly Label inventoryCount;
         private readonly Label saveToast;
+        private readonly TutorialHintView tutorialHint;
 
         private float elapsedTime;
         private bool timerRunning;
@@ -51,6 +52,7 @@ namespace Inkform.UI
             inventoryIcon = root.Q("InventoryIcon");
             inventoryCount = root.Q<Label>("InventoryCount");
             saveToast = root.Q<Label>("SaveToast");
+            tutorialHint = new TutorialHintView(root);
 
             UpdateTimerDisplay();
 
@@ -98,6 +100,9 @@ namespace Inkform.UI
                 toastRemaining = Mathf.Max(0f, toastRemaining - unscaledDelta);
                 saveToast.style.opacity = new StyleFloat(Mathf.Clamp01(toastRemaining / ToastFadeSeconds));
             }
+
+            // Tutorial hint fades on unscaled time too: hitstop must not stall it mid-fade
+            tutorialHint.Tick(unscaledDelta);
 
             // FPS readout: unscaled (hitstop must not zero the reading), smoothed and printed at
             // most twice a second (old FpsDisplay).
@@ -164,6 +169,7 @@ namespace Inkform.UI
             InventoryStore.Changed -= RefreshInventory;
             SettingsStore.Changed -= ApplyFpsVisibility;
             SaveStore.Saved -= ShowToast;
+            tutorialHint.Dispose();
         }
     }
 }

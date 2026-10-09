@@ -16,6 +16,17 @@ namespace Inkform.Bus
     /// click handler (ToolkitPanel.Bind) — do not route game logic through Clicked, which fires for
     /// every button on every panel and cannot say which one.
     /// </summary>
+    /// <summary>The control hints a tutorial zone can show (TutorialHintSet holds their copy).</summary>
+    public enum TutorialHint
+    {
+        Move,
+        Jump,
+        Hook,
+        Bomb,
+        Dash,
+        CeilingStick   // appended: zones serialize the enum's number
+    }
+
     public static class UiBus
     {
         /// <summary>Pointer entered a control, or navigation moved the selection onto it. Both are
@@ -38,6 +49,20 @@ namespace Inkform.Bus
 
         public static void RaiseToggled(bool on) => Toggled?.Invoke(on);
 
+        /// <summary>A tutorial zone wants its hint on screen. The owner (the zone) is the key the
+        /// matching TutorialHidden uses; maxSeconds &gt; 0 caps how long the hint stays up while the
+        /// player lingers, 0 keeps it for as long as the zone holds it.</summary>
+        public static event Action<object, TutorialHint, float> TutorialShown;
+
+        /// <summary>The zone that raised TutorialShown no longer holds its hint (player left, zone
+        /// disabled or destroyed).</summary>
+        public static event Action<object> TutorialHidden;
+
+        public static void RaiseTutorialShown(object owner, TutorialHint hint, float maxSeconds) =>
+            TutorialShown?.Invoke(owner, hint, maxSeconds);
+
+        public static void RaiseTutorialHidden(object owner) => TutorialHidden?.Invoke(owner);
+
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger (same reason as LifeBus.ResetStatics)
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -46,6 +71,8 @@ namespace Inkform.Bus
             Hovered = null;
             Clicked = null;
             Toggled = null;
+            TutorialShown = null;
+            TutorialHidden = null;
         }
     }
 }

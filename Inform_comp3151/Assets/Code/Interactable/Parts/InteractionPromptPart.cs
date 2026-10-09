@@ -242,7 +242,7 @@ namespace Inkform.Interactable.Parts
             }
 
             Text label = glyphObject.AddComponent<Text>();
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.font = UiFonts.Primary;
             label.fontSize = 44;
             label.alignment = TextAnchor.MiddleCenter;
             label.color = live == PromptScheme.Xbox ? xboxTint : glyphColor;

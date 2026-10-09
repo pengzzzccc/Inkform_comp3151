@@ -22,3 +22,31 @@
 .hud-inventory-count { flex-grow: 1; font-size: var(--fs-corner); color: var(--c-white); -unity-text-align: middle-center; }
 
 .hud-save-toast { position: absolute; right: 44px; bottom: 138px; font-size: var(--fs-corner); color: rgba(255, 255, 255, 0.92); opacity: 0; -unity-text-align: middle-right; }   /* opacity driven by C# */
+
+/* Tutorial hint: bottom centre, text with button icons inline. Opacity, display and the rise are driven by C# (TutorialHintView). */
+.hud-tutorial { position: absolute; left: 0; right: 0; bottom: 9%; flex-direction: row; justify-content: center; opacity: 0; display: none; }
+.hud-tutorial-panel {
+    flex-direction: row;
+    align-items: center;
+    background-color: rgba(3, 4, 6, 0.75);
+    border-radius: 8px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0.85);
+    padding: 8px 18px;
+}
+.hud-tutorial-text { font-size: 26px; color: var(--c-white); -unity-text-align: middle-center; margin: 0 6px; }
+.hud-tutorial-icon { -unity-background-scale-mode: scale-to-fit; margin: 0 4px; }   /* size set in C# from the sprite */
+/* Keyboard / mouse keys: a drawn keycap in the pad art's style (dark face, light rim, white legend) */
+.hud-tutorial-key {
+    height: 40px;
+    min-width: 40px;
+    padding: 0 8px;
+    margin: 0 4px;
+    justify-content: center;
+    align-items: center;
+    background-color: rgb(28, 28, 32);
+    border-radius: 6px;
+    border-width: 2px;
+    border-color: rgba(255, 255, 255, 0.85);
+}
+.hud-tutorial-key-label { font-size: 20px; color: var(--c-white); -unity-text-align: middle-center; padding: 0; margin: 0; }

@@ -21,8 +21,8 @@ namespace Inkform.UI
     /// coupling). The release that ends a completed hold is swallowed by the slot's click
     /// handler, which reads the live hold state (see the note there).
     ///
-    /// All captions are ASCII on purpose: UIManager's font candidates (LiberationSans, then
-    /// BombSlimeFonts) are only guaranteed to carry Latin glyphs.
+    /// Captions stay ASCII: the game font (Alibaba PuHuiTi, see UiFonts) covers CJK too, but its
+    /// fallbacks (LiberationSans, BombSlimeFonts) only guarantee Latin glyphs.
     /// </summary>
     public class SaveMenuPanel : ToolkitPanel
     {
