@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Inkform.UI
 {
     /// <summary>
-    /// Boot sequence content: the studio card, the game card and the sting that plays as the game
+    /// Boot sequence content: the studio card, the game card and the sting that plays as the studio
     /// card fades in. Every slot is deliberately optional — an empty sprite degrades to a text
     /// placeholder ("STUDIO LOGO" / gameTitle) and an empty sting stays silent, so the whole
     /// sequence runs before any art exists. Drop real assets into Resources/UI/BootLogos.asset
@@ -19,7 +19,7 @@ namespace Inkform.UI
         [Tooltip("Game card art. Empty = text placeholder built from gameTitle.")]
         public Sprite gameLogo;
 
-        [Tooltip("One-shot sting played as the game card starts fading in. Empty = silent.")]
+        [Tooltip("One-shot sting played as the studio card starts fading in. Empty = silent.")]
         public SoundCue sting;
 
         [Tooltip("Placeholder / fallback title text for the game card.")]
@@ -28,7 +28,7 @@ namespace Inkform.UI
         [Tooltip("Studio card: full-visible dwell before the fade-out, in seconds.")]
         public float studioHoldSeconds = 2f;
 
-        [Tooltip("Fade in/out length of each card, in seconds.")]
+        [Tooltip("Studio card fade in/out, skip hint fade-in and the sheet's closing fade, in seconds. The game card fades in over a fixed 0.5 s.")]
         public float fadeSeconds = 0.4f;
     }
 }

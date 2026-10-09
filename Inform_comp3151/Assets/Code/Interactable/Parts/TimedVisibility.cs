@@ -14,7 +14,7 @@ namespace Inkform.Interactable.Parts
     /// Implementation note: the flip only toggles Collider2D and Renderer enabled, **never SetActive** —
     /// deactivation would stop this component's own Update and it could never wake itself when the
     /// hidden phase ends. This is a project-wide rule (BreakablePart.SetBroken / RestorablePart.SetGone
-    /// / the former Bomb's SetVisible all toggle enabled). Works on Tilemaps too: TilemapRenderer is a Renderer.
+    /// / CarriablePart.SetVisible all toggle enabled). Works on Tilemaps too: TilemapRenderer is a Renderer.
     /// </summary>
     public class TimedVisibility : MonoBehaviour, IInteractablePart
     {
@@ -78,7 +78,7 @@ namespace Inkform.Interactable.Parts
             foreach (Renderer r in renderers) r.enabled = visible;
 
             // The loop follows visibility through AmbientSource's own documented contract: enabling
-            // registers a persistent voice, disabling releases it. That keeps AmbientSource the one
+            // plays its loop, disabling stops it. That keeps AmbientSource the one
             // component that owns looping world audio — no second audio implementation lives here
             if (loopSource != null) loopSource.enabled = visible;
         }

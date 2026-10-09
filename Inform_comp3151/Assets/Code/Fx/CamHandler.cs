@@ -28,7 +28,7 @@ namespace Inkform.Fx
         public FollowMode Mode => mode;
 
         [Header("Follow setting")]
-        [SerializeField] private Transform target;                  // drag in the Player, same as InputHandler
+        [SerializeField] private Transform target;                  // fallback follow target; PlayerBus.Player wins whenever one is registered
         [SerializeField] private FollowMode mode = FollowMode.Player;
         [SerializeField] private Vector2 followOffset = Vector2.zero;
         [SerializeField] private float followSmooth = 0.18f;        // SmoothDamp time for normal follow
@@ -228,9 +228,8 @@ namespace Inkform.Fx
             ReleaseHeldFollow();
         }
 
-        /// <summary>Returns control to normal following. With snap=false SmoothDamp starts at the
-        /// staged position; with snap=true the camera cuts directly to its live target.</summary>
-        public void ResumeFollow(bool snap)
+        /// <summary>Returns control to normal following; SmoothDamp starts at the staged position.</summary>
+        public void ResumeFollow()
         {
             followHeld = false;
             cursorGunCache = null;
@@ -238,7 +237,6 @@ namespace Inkform.Fx
             lookAheadVel = 0f;
             followBasePosition = transform.position;
             viewOrthoSize = baseOrthoSize;
-            if (snap) SnapToTarget();
         }
 
         private Vector2 CurrentFollowPosition()
@@ -384,7 +382,7 @@ namespace Inkform.Fx
         }
 
         // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
-        // Scaled by the user's FX intensity at request time (read-style like AudioManager's volume):
+        // Scaled by the user's FX intensity at request time (read once per request):
         // intensity 0 = the camera never shakes; a later change affects new requests, not current trauma.
         private void OnShake(float amount)
         {

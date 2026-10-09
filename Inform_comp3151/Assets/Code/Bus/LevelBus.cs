@@ -10,9 +10,9 @@ namespace Inkform.Bus
     /// Neither the exit trigger nor the director need to know the other — the trigger carries its
     /// own destination reference, the director decides whether and when to load it.
     ///
-    /// Started keeps a snapshot (Current) like PlayerBus — subscribers can sync on first enable without
-    /// needing a SceneDirector reference; ExitReached is a pure command-style signal (FxBus style): it
-    /// fires once per door, there is no "still exiting" state to read back.
+    /// Both are pure signals with no snapshot: Started fires once per load, and ExitReached is
+    /// command-style (FxBus style) — it fires once per door, there is no "still exiting" state to
+    /// read back.
     /// </summary>
     public static class LevelBus
     {
@@ -27,13 +27,8 @@ namespace Inkform.Bus
         /// text graph to resolve an exit id against anymore.</summary>
         public static event Action<RoomDefinition, string> ExitReached;
 
-        /// <summary>Current snapshot: the scene name of the active gameplay scene, null while in the
-        /// menu. Subscribers may read it anytime instead of tracking their own copy.</summary>
-        public static string Current { get; private set; }
-
         public static void RaiseStarted(string sceneName)
         {
-            Current = sceneName;
             Started?.Invoke(sceneName);
         }
 
@@ -49,7 +44,6 @@ namespace Inkform.Bus
         {
             Started = null;
             ExitReached = null;
-            Current = null;
         }
     }
 }

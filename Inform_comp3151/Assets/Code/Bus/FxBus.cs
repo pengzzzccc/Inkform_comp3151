@@ -6,7 +6,8 @@ namespace Inkform.Bus
     /// <summary>
     /// FX bus: command-style (not fact-style) — publishers say "give me a shake", nobody cares who
     /// shakes or how. Explosions therefore need no camera reference, and the camera does not know explosions exist.
-    /// How strong an effect each game event deserves is translated uniformly by FxDirector.
+    /// FxDirector translates the shared game events (explosions, breaks) into effect strengths;
+    /// a few publishers with their own tuning (the death strategies, RopeGun) raise effects directly.
     /// </summary>
     public static class FxBus
     {

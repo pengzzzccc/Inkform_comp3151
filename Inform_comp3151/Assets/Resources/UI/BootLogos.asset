@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63698b10949240e8a797ea65995a4f32, type: 3}
   m_Name: BootLogos
   m_EditorClassIdentifier: 
-  studioLogo: {fileID: 9217984117985679067, guid: b0a1a8187d4aa3048b655a18c4efd63c, type: 3}
+  studioLogo: {fileID: 21300000, guid: 713833334c3d1f94cbc4b4b283f70f4b, type: 3}
   gameLogo: {fileID: 1208040086343421634, guid: 8d20146f0bdd78b48ad1c110ba9c45b5, type: 3}
   sting: {fileID: 11400000, guid: 77a290bc8dae77e4ea7dcc87b50ef72e, type: 2}
   gameTitle: BOMB SLIME

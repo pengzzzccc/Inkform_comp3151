@@ -14,7 +14,6 @@ namespace Inkform.Player
         [SerializeField] private float spitSpeed = 24f;
 
         public int Count => InventoryStore.Count;
-        public int Capacity => InventoryStore.Capacity;
         public bool IsEmpty => InventoryStore.Count == 0;
 
         public bool TryStore(InventoryItemDefinition definition) => InventoryStore.TryAdd(definition);

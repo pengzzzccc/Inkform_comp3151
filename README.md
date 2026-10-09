@@ -84,25 +84,29 @@ Key architecture pieces in `Assets/Code/`:
 - **LevelMemento** — captures and restores the state of every restorable object on checkpoint/death,
   which is what makes shattered walls come back after respawn.
 
-## Audio spatial model
+## Audio
 
-Positional audio is **premixed in code, not delegated to Unity's 3D pipeline**: every pooled
-`AudioSource` runs at `spatialBlend = 0` and `AudioManager` writes the numbers itself each play
-(and every frame for looping emitters), so the engine's rolloff can never fight the designed curve.
+Audio runs on Unity's own pipeline and only uses what the WebGL backend supports, so desktop and
+WebGL builds sound the same: `AudioSource` volume/pitch/3D linear rolloff, `AudioMixer` group
+volumes, and `AudioListener` pause/volume. No audio filters, mixer effects or `panStereo`.
 
-- A `SoundCue` with **Spatial** on gets all three effects from the same distance, saturating at
-  `falloffRange` (= its audible radius): **volume** falls to `minVolume`, the **low-pass cutoff**
-  drops to `minCutoff`, and the emitter's **X offset pans** the sound left/right (hard pan at the
-  edge of the radius). Vertical position carries no stereo information.
-- The **AudioListener sits on the camera** — the listener is what you see from, so panning and
-  falloff follow the view, not the player.
-- **Audio zones** (`AudioZone` + profile) cap volume and cutoff for everything heard inside them
-  (strictest wins) and drive one global reverb filter on the listener; they do not pan.
-- Looping world sounds are one component: **`AmbientSource`** (cue + position + optional offset).
-  It can be gated by a `TimedVisibility` hazard, which drives its enabled state so the loop is
-  audible exactly while the hazard is visible.
-- **WebGL caveat:** the browser backend ignores `AudioSource.panStereo`, so a WebGL build keeps
-  volume and low-pass falloff but stays centred. Desktop standalone pans normally.
+- **`AudioService`** (on the GameManager) is the front door: `AudioService.Play(cue, position)`
+  for one-shots, `PlayMusic` / `StopMusic` for the crossfading music bed. All entry points are
+  null-safe. One-shots use a fixed set of voices; each `SoundCue` has a cooldown and a
+  concurrency cap, and when every voice is busy a post takes over the oldest voice of the same or
+  a less important `priority` lane, or is dropped.
+- **Mixer** — `Assets/Audio/Inkform.mixer`: `Master` → `Music`, `Sfx`. The settings sliders drive
+  its exposed `MasterVolume` / `MusicVolume` / `SfxVolume`. A Cue plays through its own `Output`
+  group, or the group its `Category` maps to.
+- **Spatial Cues** use Unity's 3D audio. Emitters sit on the world plane (z = 0), the
+  AudioListener rides the camera at z = -10, so a sideways offset pans naturally; the linear
+  rolloff is set so the sound is full under the camera and silent exactly at the Cue's
+  `falloffRange` on the plane (`AudioSpatial`).
+- Looping world sounds are **`AmbientSource`** (cue + optional offset), which owns its own
+  `AudioSource`; out-of-range loops are virtualized by Unity. A `TimedVisibility` hazard can gate
+  it by toggling its enabled state, so the loop is audible exactly while the hazard is visible.
+- **WebGL caveat:** browsers block audio until the first click or key press, so anything posted
+  before that (the boot sting) is not heard; music starts once the page has been interacted with.
 
 ## Scenes
 

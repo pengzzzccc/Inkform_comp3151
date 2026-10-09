@@ -5,7 +5,7 @@ namespace Inkform.Audio
 {
     /// <summary>
     /// Per-scene audio request: drop one in a scene and it wires two things up. The music cue
-    /// fades in when the scene loads (Start, not OnEnable: on the boot scene the AudioManager
+    /// fades in when the scene loads (Start, not OnEnable: on the boot scene the AudioService
     /// may not have run Awake yet, and ordering must not decide whether music plays). Scene
     /// transitions fall silent first — SceneDirector stops the music as the screen fades out —
     /// so this fade-in always starts from silence: each scene plays only its own track, and a
@@ -39,10 +39,8 @@ namespace Inkform.Audio
 
         void Start()
         {
-            if (AudioManager.Instance == null) return;
-
-            if (music != null) AudioManager.Instance.PlayMusic(music, fade);
-            else if (silenceWhenNoMusic) AudioManager.Instance.StopMusic(fade);
+            if (music != null) AudioService.PlayMusic(music, fade);
+            else if (silenceWhenNoMusic) AudioService.StopMusic(fade);
 
             if (ambient != null) ambientLoop = StartCoroutine(AmbientLoop());
         }
@@ -65,15 +63,15 @@ namespace Inkform.Audio
             while (true)
             {
                 yield return new WaitForSeconds(Random.Range(ambientInterval.x, ambientInterval.y));
-                AudioManager.Instance.Play(ambient);
+                AudioService.Play(ambient);
             }
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            // Tiny marker so a scene's audio request is visible in the hierarchy view
-            Gizmos.DrawIcon(transform.position, "AudioManager", true);
+            // Tiny marker so a scene's audio request is visible in the scene view
+            Gizmos.DrawWireCube(transform.position, Vector3.one * 0.5f);
         }
 #endif
     }

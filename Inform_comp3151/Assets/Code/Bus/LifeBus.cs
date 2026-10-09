@@ -9,8 +9,8 @@ namespace Inkform.Bus
     /// Life bus: death / respawn / checkpoints. Death is an instantaneous signal, while death count and
     /// "currently dead?" are persistent state — so it raises events and stores snapshots — like PlayerBus,
     /// the bus itself handles dedup.
-    /// The deceased claims itself via ctx.Victim; the publisher (Spike) never needs to know the player,
-    /// and the player never needs to know the Spike.
+    /// The deceased claims itself via ctx.Victim; the publisher (HarmOnTouch) never needs to know the
+    /// player, and the player never needs to know the hazard.
     /// </summary>
     public static class LifeBus
     {

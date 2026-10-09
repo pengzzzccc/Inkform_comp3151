@@ -1,5 +1,3 @@
-using Inkform.Ability;
-using Inkform.Audio;
 using Inkform.Bus;
 using Inkform.Tool;
 using UnityEngine;
@@ -7,12 +5,10 @@ using UnityEngine;
 namespace Inkform.Level
 {
     /// <summary>
-    /// Checkpoint: a timecard machine. Touching it with the checkpoint ability earned (granted by
-    /// picking up the timecard — a save-level unlock, not an inventory item anymore) stamps the card
-    /// and records the respawn position here; touching it without the ability only plays a denial
-    /// sound and changes nothing. The one with isStartPoint checked also serves as the level spawn
-    /// point — at startup RespawnDirector teleports the player there, so "spawn point" and
-    /// "checkpoint" remain the same kind of object, just gated behind the ability now.
+    /// Checkpoint: a timecard machine. Touching it stamps the card and records the respawn position
+    /// here (the checkpoint ability is a built-in default, so every player can stamp). The one with
+    /// isStartPoint checked also serves as the level spawn point — at startup RespawnDirector
+    /// teleports the player there, so "spawn point" and "checkpoint" remain the same kind of object.
     ///
     /// Machines are mutually exclusive: the respawn point is one place, so when a machine is stamped
     /// it announces itself on LifeBus.CheckpointSet and every other machine resets to its idle,
@@ -40,8 +36,6 @@ namespace Inkform.Level
         [Tooltip("Activation sequence: first frame = idle resident, last frame = stamped freeze-frame")]
         [SerializeField] private Sprite[] frames;
         [SerializeField] private float framesPerSecond = 12f;
-        [Tooltip("Played when a player without the checkpoint ability touches the machine")]
-        [SerializeField] private SoundCue deniedCue;
 
         private SpriteRenderer spriteRenderer;
         private Coroutine playingAnimation;
@@ -88,14 +82,6 @@ namespace Inkform.Level
             if (active) return;
             if (!other.CompareTag(Tags.Player)) return;
 
-            // No checkpoint ability: the machine refuses — a sound and nothing else. Re-entering
-            // replays it, which mirrors how a failed dash keeps its denied cue on every attempt.
-            if (!AbilityStore.Owns(AbilityIds.Checkpoint))
-            {
-                PlayCue(deniedCue);
-                return;
-            }
-
             active = true;
             LifeBus.RaiseCheckpointSet(SpawnPos);
             PlayActivationSequence();
@@ -104,7 +90,7 @@ namespace Inkform.Level
         private void PlayActivationSequence()
         {
             if (playingAnimation != null) StopCoroutine(playingAnimation);
-            // Coroutines need the player loop; play mode is also the only way this callback arrives
+            // Coroutines need the player loop (EditMode tests invoke the trigger directly)
             if (!Application.isPlaying) return;
             playingAnimation = StartCoroutine(PlayFrames());
         }
@@ -129,13 +115,6 @@ namespace Inkform.Level
             if (spriteRenderer == null) return;
             if (frames == null || frames.Length == 0) return;
             spriteRenderer.sprite = frames[Mathf.Clamp(index, 0, frames.Length - 1)];
-        }
-
-        // Same guard as AudioDirector: a missing cue or missing manager degrades to silence, not errors
-        private static void PlayCue(SoundCue cue)
-        {
-            if (cue == null || AudioManager.Instance == null) return;
-            AudioManager.Instance.Play(cue);
         }
 
         // OnDrawGizmos rather than ...Selected: while placing levels you must be able to scan all

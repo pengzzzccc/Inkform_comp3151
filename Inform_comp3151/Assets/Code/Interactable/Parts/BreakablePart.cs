@@ -82,7 +82,8 @@ namespace Inkform.Interactable.Parts
             foreach (Renderer r in renderers) r.enabled = !value;
         }
 
-        // Draws the slicing grid in the Scene view for tuning cellsX / cellsY in the Cue
+        // Draws the slicing grid for tuning cellsX / cellsY in the Cue. box is resolved in Attach,
+        // so this only draws in play mode
         void OnDrawGizmosSelected()
         {
             if (box == null || breakCue == null) return;

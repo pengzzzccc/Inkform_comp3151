@@ -21,8 +21,6 @@ namespace Inkform.UI
     /// </summary>
     public class BootPanel : ToolkitPanel
     {
-        private enum Phase { StudioIn, StudioHold, StudioOut, GameIn, Wait }
-
         private const string LogosPath = "UI/BootLogos";
         private const float GameFadeSeconds = 0.5f;
         private const float SkipArmedDelay = 0.25f;   // swallow the key that dismissed the engine splash
@@ -36,8 +34,8 @@ namespace Inkform.UI
         private readonly Label skipHint;
 
         private BootLogos logos;
-        private Phase phase = Phase.StudioIn;
-        private float holdUntil;        // end of the studio dwell (StudioHold only)
+        private bool studioHolding;     // studio card fully in, waiting out its dwell
+        private float holdUntil;        // end of the studio dwell (while studioHolding)
         private float skipArmedAt;      // real time before which stray inputs are swallowed
         private bool finished;          // one-way latch: FinishBoot fires exactly once
 
@@ -56,7 +54,7 @@ namespace Inkform.UI
 
         protected override void OnOpen()
         {
-            phase = Phase.StudioIn;
+            studioHolding = false;
             finished = false;
             skipArmedAt = Time.unscaledTime + SkipArmedDelay;
 
@@ -75,7 +73,7 @@ namespace Inkform.UI
             Fade(studioCard, 0f, 1f, FadeSeconds, () =>
             {
                 holdUntil = Time.unscaledTime + StudioHold;
-                phase = Phase.StudioHold;
+                studioHolding = true;
             });
         }
 
@@ -84,7 +82,8 @@ namespace Inkform.UI
             if (!IsOpen || finished) return;
 
             // The any-key gate. Armed a beat after open so the dismissal of the engine splash
-            // cannot punch straight through this sequence.
+            // cannot punch straight through this sequence. (Esc / pad B / Start reach FinishBoot
+            // through UIManager's Escape stack, which does not wait for this.)
             if (Time.unscaledTime >= skipArmedAt && AnyInputPressed())
             {
                 finished = true;
@@ -92,22 +91,19 @@ namespace Inkform.UI
                 return;
             }
 
-            if (phase == Phase.StudioHold && Time.unscaledTime >= holdUntil)
+            if (studioHolding && Time.unscaledTime >= holdUntil)
             {
-                phase = Phase.StudioOut;
+                studioHolding = false;
                 Fade(studioCard, 1f, 0f, FadeSeconds, BeginGameCard);
             }
         }
 
         private void BeginGameCard()
         {
-            phase = Phase.GameIn;
-
             // Silent by design: the sting already marked the studio card; the game card fades in
             // unaccompanied and the sequence waits for input.
             Fade(gameCard, 0f, 1f, GameFadeSeconds, () =>
             {
-                phase = Phase.Wait;
                 Fade(skipHint, 0f, 0.7f, FadeSeconds, null);
             });
         }

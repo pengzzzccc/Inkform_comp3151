@@ -22,7 +22,6 @@ namespace Inkform.Item
         public static IReadOnlyList<InventoryItemDefinition> Items => items;
         public static int Count => items.Count;
         public static int Capacity => capacity;
-        public static IReadOnlyCollection<string> CollectedCapacityPickupIds => collectedCapacityPickupIds;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -84,6 +83,17 @@ namespace Inkform.Item
             Notify();
             return true;
         }
+
+#if UNITY_EDITOR
+        /// <summary>Editor cheat: raw capacity bump, no pickup-id bookkeeping. Persists and
+        /// notifies like a real capacity pickup, so the HUD and the active save slot follow.</summary>
+        public static void AddCapacityForCheat(int increase)
+        {
+            if (increase <= 0 || capacity > int.MaxValue - increase) return;
+            capacity += increase;
+            Notify();
+        }
+#endif
 
         public static void Clear() => ClearInternal(true);
 

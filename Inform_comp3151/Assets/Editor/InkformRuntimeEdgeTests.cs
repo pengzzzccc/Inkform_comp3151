@@ -70,7 +70,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV1_MigratesToV3WithEmptyOneSlotInventory()
+        public void SaveV1_MigratesToCurrentWithEmptyOneSlotInventory()
         {
             string path = Path.Combine(Application.temporaryCachePath, $"inkform-v1-{Guid.NewGuid():N}.json");
             try
@@ -255,47 +255,6 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeRangeOverrides_UseMinimumAndRestoreBySource()
-        {
-            GameObject go = new GameObject("RopeGun range test");
-            go.SetActive(false);
-            go.AddComponent<Rigidbody2D>();
-            RopeGun gun = go.AddComponent<RopeGun>();
-            go.SetActive(true);
-            InitializeRopeGun(gun);
-            object wide = new object();
-            object narrow = new object();
-            try
-            {
-                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
-                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
-
-                RopeGunBus.RaiseRangeOverride(wide, 3f);
-                Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2.4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "a wider boundary must not push a free cursor outward");
-
-                RopeGunBus.RaiseRangeOverride(narrow, 2f);
-                Assert.AreEqual(2f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "a shorter range must pull an out-of-bounds cursor inward");
-
-                RopeGunBus.RaiseRangeRestored(narrow);
-                Assert.AreEqual(3f, GetField<float>(gun, "currentMaxRange"));
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f,
-                    "restoring range must preserve the free cursor distance");
-                RopeGunBus.RaiseRangeRestored(wide);
-                Assert.AreEqual(4f, GetField<float>(gun, "currentMaxRange"), 0.001f);
-                Assert.AreEqual(2f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
-            }
-            finally
-            {
-                ShutdownRopeGun(gun);
-                UnityEngine.Object.DestroyImmediate(go);
-            }
-        }
-
-        [Test]
         public void BlastWaveFx_ExpandsWithEaseOutThinsFadesAndRemainsPresentationOnly()
         {
             int blastCount = 0;
@@ -457,11 +416,11 @@ namespace Inkform.Tests
                 Assert.Less(movedDistance, 4f, "ordinary input must not force the cursor to max range");
 
                 SetField(gun, "aimOffset", new Vector2(0.1f, 0f));
-                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Invoke(gun, "ClampAimOffsetToRange");
                 Assert.AreEqual(0.7f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
 
                 SetField(gun, "aimOffset", new Vector2(10f, 0f));
-                Invoke(gun, "ClampAimOffsetToCurrentRange");
+                Invoke(gun, "ClampAimOffsetToRange");
                 Assert.AreEqual(4f, GetField<Vector2>(gun, "aimOffset").magnitude, 0.001f);
             }
             finally
@@ -528,7 +487,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV3_RestoresLargeCapacityPickupIdsAndKeepsSlotsIsolated()
+        public void Save_RestoresLargeCapacityPickupIdsAndKeepsSlotsIsolated()
         {
             string directory = Path.Combine(Application.temporaryCachePath, $"inkform-v3-{Guid.NewGuid():N}");
             Directory.CreateDirectory(directory);
@@ -782,7 +741,7 @@ namespace Inkform.Tests
             UIManager manager = prefab.GetComponent<UIManager>();
             Assert.IsNotNull(manager);
 
-            // The Toolkit migration kept the serialized cue slots (the UiBus -> AudioManager
+            // The Toolkit migration kept the serialized cue slots (the UiBus -> AudioService
             // pipeline is unchanged); losing them would silently mute every menu sound.
             SerializedObject serialized = new SerializedObject(manager);
             Assert.IsNotNull(serialized.FindProperty("hoverCue"));
@@ -912,7 +871,7 @@ namespace Inkform.Tests
                 Assert.AreEqual(new Vector3(12f, 8f, cameraGo.transform.position.z), cameraGo.transform.position);
 
                 Vector3 staged = cameraGo.transform.position;
-                handler.ResumeFollow(false);
+                handler.ResumeFollow();
                 Assert.IsFalse(handler.IsFollowHeld);
                 Assert.AreEqual(staged, cameraGo.transform.position,
                     "smooth resume must not cut to the player on the release frame");
@@ -1289,8 +1248,8 @@ namespace Inkform.Tests
         {
             GameObject go = new GameObject("Dash audio routing test");
             go.SetActive(false);
-            AudioManager manager = go.AddComponent<AudioManager>();
-            SetField(manager, "poolSize", 4);
+            AudioService manager = go.AddComponent<AudioService>();
+            SetField(manager, "voiceCount", 4);
             AudioDirector director = go.AddComponent<AudioDirector>();
             SoundCue trigger = ScriptableObject.CreateInstance<SoundCue>();
             SoundCue blast = ScriptableObject.CreateInstance<SoundCue>();
@@ -1304,9 +1263,9 @@ namespace Inkform.Tests
             blast.maxConcurrent = 4;
             SetField(director, "bombTick", trigger);
             SetField(director, "blast", blast);
+            InvokeStatic(typeof(AudioService), "ResetStatics");
             go.SetActive(true);
-            Invoke(manager, "Awake");
-            Invoke(manager, "OnEnable");
+            if (AudioService.Instance != manager) Invoke(manager, "Awake");
             Invoke(director, "OnEnable");
 
             int hazardBlasts = 0;
@@ -1315,12 +1274,12 @@ namespace Inkform.Tests
             try
             {
                 PlayerBus.RaiseDashAttempted(Vector2.zero, false);
-                Assert.AreEqual(1, trigger.activeCount);
-                Assert.AreEqual(0, blast.activeCount);
+                Assert.AreEqual(1, manager.ActiveCountOf(trigger));
+                Assert.AreEqual(0, manager.ActiveCountOf(blast));
 
                 PlayerBus.RaiseDashAttempted(Vector2.zero, true);
-                Assert.AreEqual(2, trigger.activeCount);
-                Assert.AreEqual(1, blast.activeCount);
+                Assert.AreEqual(2, manager.ActiveCountOf(trigger));
+                Assert.AreEqual(1, manager.ActiveCountOf(blast));
                 Assert.AreEqual(0, hazardBlasts,
                     "dash audio must not publish a gameplay explosion");
 
@@ -1329,8 +1288,8 @@ namespace Inkform.Tests
             {
                 HazardBus.Blast -= onHazardBlast;
                 Invoke(director, "OnDisable");
-                Invoke(manager, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(go);
+                InvokeStatic(typeof(AudioService), "ResetStatics");
                 UnityEngine.Object.DestroyImmediate(trigger);
                 UnityEngine.Object.DestroyImmediate(blast);
                 UnityEngine.Object.DestroyImmediate(triggerClip);
@@ -1350,8 +1309,8 @@ namespace Inkform.Tests
 
             GameObject go = new GameObject("Capacity pickup audio routing test");
             go.SetActive(false);
-            AudioManager manager = go.AddComponent<AudioManager>();
-            SetField(manager, "poolSize", 2);
+            AudioService manager = go.AddComponent<AudioService>();
+            SetField(manager, "voiceCount", 2);
             AudioDirector director = go.AddComponent<AudioDirector>();
             SoundCue cue = ScriptableObject.CreateInstance<SoundCue>();
             AudioClip clip = AudioClip.Create("capacity-pickup", 32, 1, 8000, false);
@@ -1359,20 +1318,20 @@ namespace Inkform.Tests
             cue.cooldown = 0f;
             cue.maxConcurrent = 2;
             SetField(director, "inventoryCapacityUpgrade", cue);
+            InvokeStatic(typeof(AudioService), "ResetStatics");
             go.SetActive(true);
-            Invoke(manager, "Awake");
-            Invoke(manager, "OnEnable");
+            if (AudioService.Instance != manager) Invoke(manager, "Awake");
             Invoke(director, "OnEnable");
             try
             {
                 ItemBus.RaiseInventoryCapacityUpgraded(new Vector2(3f, 4f), 1);
-                Assert.AreEqual(1, cue.activeCount);
+                Assert.AreEqual(1, manager.ActiveCountOf(cue));
             }
             finally
             {
                 Invoke(director, "OnDisable");
-                Invoke(manager, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(go);
+                InvokeStatic(typeof(AudioService), "ResetStatics");
                 UnityEngine.Object.DestroyImmediate(cue);
                 UnityEngine.Object.DestroyImmediate(clip);
             }
@@ -1808,15 +1767,15 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void AudioManager_DestroyedActiveSourceRepairsCountAndPool()
+        public void AudioService_DestroyedActiveVoiceRepairsCountAndCapacity()
         {
-            GameObject go = new GameObject("AudioManager recycle test");
+            GameObject go = new GameObject("AudioService recycle test");
             go.SetActive(false);
-            AudioManager manager = go.AddComponent<AudioManager>();
-            SetField(manager, "poolSize", 2);
+            AudioService manager = go.AddComponent<AudioService>();
+            SetField(manager, "voiceCount", 1);
+            InvokeStatic(typeof(AudioService), "ResetStatics");
             go.SetActive(true);
-            Invoke(manager, "Awake");
-            Invoke(manager, "OnEnable");
+            if (AudioService.Instance != manager) Invoke(manager, "Awake");
             SoundCue cue = ScriptableObject.CreateInstance<SoundCue>();
             AudioClip clip = AudioClip.Create("test", 32, 1, 8000, false);
             cue.clips = new[] { clip };
@@ -1824,21 +1783,23 @@ namespace Inkform.Tests
             cue.maxConcurrent = 1;
             try
             {
-                AudioSource first = manager.Play(cue);
-                Assert.IsNotNull(first);
-                Assert.AreEqual(1, cue.activeCount);
+                AudioService.Play(cue);
+                Assert.AreEqual(1, manager.ActiveCountOf(cue));
+                AudioSource first = Array.Find(manager.GetComponentsInChildren<AudioSource>(), s => s.clip == clip);
+                Assert.IsNotNull(first, "the voice carrying the clip");
                 UnityEngine.Object.DestroyImmediate(first.gameObject);
 
                 Invoke(manager, "Update");
-                Assert.AreEqual(0, cue.activeCount);
-                Assert.IsNotNull(manager.Play(cue), "a replacement source must restore the fixed pool capacity");
+                Assert.AreEqual(0, manager.ActiveCountOf(cue), "a destroyed voice gives its count back");
+                AudioService.Play(cue);
+                Assert.AreEqual(1, manager.ActiveCountOf(cue), "a replacement voice restores the fixed capacity");
             }
             finally
             {
-                Invoke(manager, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(cue);
                 UnityEngine.Object.DestroyImmediate(clip);
                 UnityEngine.Object.DestroyImmediate(go);
+                InvokeStatic(typeof(AudioService), "ResetStatics");
             }
         }
 

@@ -60,9 +60,8 @@ namespace Inkform.Interactable.Parts
         /// IRestorablePart on the node. Collecting the parts here rather than listing fields by hand is
         /// the point — a part added later is covered without anyone having to remember this method.
         ///
-        /// localScale is captured alongside position and rotation. It was missing, which meant a
-        /// restore could not undo the scale drift a swallow/spit cycle used to bake in (see
-        /// CarriablePart's SetParent notes) — the item came back at whatever size it had grown to.
+        /// localScale is captured alongside position and rotation, so a restore always brings the
+        /// item back at its captured size.
         /// </summary>
         public IMemento Capture()
         {
@@ -115,12 +114,6 @@ namespace Inkform.Interactable.Parts
             public void Restore()
             {
                 if (part == null) return;   // item gone (scene change etc.), skip silently
-
-                // A swallowed item may still be parented to the player at death; detach so the
-                // position restore is authoritative. worldPositionStays: false to match how
-                // CarriablePart parents it — the default true makes Unity rewrite localScale to
-                // preserve world scale, which is precisely the drift the scale restore below undoes.
-                if (!gone && part.transform.parent != null) part.transform.SetParent(null, false);
 
                 // Runs even for a gone item, where this used to early-return. Moving a hidden item is
                 // harmless (nothing renders or simulates it), and dropping the early return is what

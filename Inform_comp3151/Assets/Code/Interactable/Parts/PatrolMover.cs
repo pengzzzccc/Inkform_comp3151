@@ -53,9 +53,11 @@ namespace Inkform.Interactable.Parts
         [SerializeField, Min(0f)] private float speed = 2.2f;
         [Tooltip("Fixed mode: return movement speed, units/second. Zero uses Forward Speed")]
         [SerializeField, Min(0f)] private float returnSpeed;
-        [Tooltip("Random mode re-rolls a speed for every leg within this range")]
+        [Tooltip("Fixed: Forward / Return Speed. Random: every leg re-rolls a speed between the min and max below")]
         [SerializeField] private SpeedMode speedMode = SpeedMode.Fixed;
+        [Tooltip("Random mode: lowest speed a leg can roll, units/second")]
         [SerializeField, Min(0f)] private float randomSpeedMin = 1.5f;
+        [Tooltip("Random mode: highest speed a leg can roll, units/second")]
         [SerializeField, Min(0f)] private float randomSpeedMax = 3f;
 
         [Header("Endpoint Stops (fallback when Stop Times has no entry for a waypoint)")]

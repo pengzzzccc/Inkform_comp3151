@@ -4,20 +4,12 @@ using UnityEngine;
 namespace Inkform.Bus
 {
     /// <summary>
-    /// Rope gun bus: signals for "some other system must notify the rope gun", like range overrides.
-    /// Pure signal, no snapshot — an override is instantaneous; the rope gun tracks its own state.
-    /// RopeRangeZone raises RangeOverride/RangeRestored.
-    /// Fired / Hit are the rope gun announcing its own actions (direction-carrying facts), so any
-    /// system — haptics, FX, audio — can react without holding a RopeGun reference.
+    /// Rope gun bus: the rope gun announcing its own actions (direction-carrying facts), so any
+    /// system — haptics, FX, audio — can react without holding a RopeGun reference. Pure signals,
+    /// no snapshot.
     /// </summary>
     public static class RopeGunBus
     {
-        /// <summary>Range overridden (entered a special zone): range = max range the zone specifies.</summary>
-        public static event Action<object, float> RangeOverride;
-
-        /// <summary>Range override lifted (left the zone): the rope gun restores its own default range.</summary>
-        public static event Action<object> RangeRestored;
-
         /// <summary>Fired: dir = normalized fire direction (always exactly toward the reticle).</summary>
         public static event Action<Vector2> Fired;
 
@@ -29,9 +21,10 @@ namespace Inkform.Bus
         /// raise this; they are not cancellations.</summary>
         public static event Action RopeCancelled;
 
-        public static void RaiseRangeOverride(object source, float range) => RangeOverride?.Invoke(source, range);
-
-        public static void RaiseRangeRestored(object source) => RangeRestored?.Invoke(source);
+        /// <summary>Released: an active pull ended on its own — arrived at the anchor, stuck timeout,
+        /// or the grabbed carriable could not be swallowed. Not raised for a successful swallow
+        /// (ItemBus.ItemStored covers it), death, a destroyed target, or a miss retract.</summary>
+        public static event Action RopeReleased;
 
         public static void RaiseFired(Vector2 dir) => Fired?.Invoke(dir);
 
@@ -39,16 +32,17 @@ namespace Inkform.Bus
 
         public static void RaiseRopeCancelled() => RopeCancelled?.Invoke();
 
+        public static void RaiseRopeReleased() => RopeReleased?.Invoke();
+
         // Static fields do not clear on scene reload; with Domain Reload off, dead subscribers from
         // the previous run linger
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            RangeOverride = null;
-            RangeRestored = null;
             Fired = null;
             Hit = null;
             RopeCancelled = null;
+            RopeReleased = null;
         }
     }
 }
