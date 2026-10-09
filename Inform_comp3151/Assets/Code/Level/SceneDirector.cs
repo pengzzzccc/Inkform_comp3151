@@ -295,7 +295,7 @@ namespace Inkform.Level
             // fade, the incoming scene's own cue fades in after arrival (SceneMusic.Start /
             // PlayMenuMusic). A failed load therefore stays silent — the old scene's SceneMusic
             // never re-runs Start.
-            if (AudioManager.Instance != null) AudioManager.Instance.StopMusic(fadeOutSeconds);
+            AudioService.StopMusic(fadeOutSeconds);
 
             // Cover the screen first, so the load's first hiccup is already behind the curtain
             if (fader != null) yield return fader.FadeOut(fadeOutSeconds);

@@ -74,7 +74,7 @@ namespace Inkform.Level
 
             // This is a direct presentation post, not a LifeBus respawn: a fresh entrance must not
             // trigger death-respawn listeners merely to make its authored intro sound audible.
-            AudioManager.Instance?.Play(introCue);
+            AudioService.Play(introCue);
         }
 
         private void Update()

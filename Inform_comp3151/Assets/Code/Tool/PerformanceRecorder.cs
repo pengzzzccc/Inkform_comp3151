@@ -338,7 +338,7 @@ namespace Inkform.Tool
                 gcBytes / (1024f * 1024f), pos.x, pos.y, PlayerBus.State, PlayerBus.Face,
                 GameStateStore.Current, windowHitchCount, windowMaxFrameMs, gcAllocKb, gcCollects,
                 SceneDirector.LastLoadMs,
-                AudioManager.Instance != null ? AudioManager.Instance.ActiveVoiceCount : 0,
+                AudioService.Instance != null ? AudioService.Instance.ActiveVoiceCount : 0,
                 LifeBus.DeathCount,
                 rope != null ? rope.Phase.ToString() : "",
                 memento != null ? memento.RestorableCount : 0,

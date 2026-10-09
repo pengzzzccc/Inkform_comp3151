@@ -12,8 +12,8 @@ namespace Inkform.Level
     /// <summary>
     /// Respawn director: creates a missing scene player at the resolved arrival point, remembers the
     /// current checkpoint, and after death pauses briefly before putting the deceased back. It never
-    /// reloads for a respawn, so cross-scene singletons like AudioManager never need rebuilding.
-    /// Attach to GameManager (already the host of InputHandler / AudioDirector / AudioManager).
+    /// reloads for a respawn, so cross-scene singletons like AudioService never need rebuilding.
+    /// Attach to GameManager (already the host of InputHandler / AudioDirector / AudioService).
     /// </summary>
     public class RespawnDirector : MonoBehaviour
     {
@@ -37,7 +37,7 @@ namespace Inkform.Level
         // waiting forever
         private float respawnRemaining;
 
-        // Same lazy cache as PlayerBus.Player / AudioManager.Listener: after a scene change the old
+        // Same lazy cache as PlayerBus.Player: after a scene change the old
         // reference becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics needed
         private DeathDirector deathCache;
 
@@ -276,8 +276,8 @@ namespace Inkform.Level
         }
 
         // The no-sort-parameter overload is the current recommended API: the FindObjectsSortMode
-        // version is deprecated in Unity 6000.4, for the same reason as AudioManager — instance ID
-        // ordering was never stable, and order does not matter here
+        // version is deprecated in Unity 6000.4 — instance ID ordering was never stable, and order
+        // does not matter here
         private Checkpoint FindStartPoint()
         {
             Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();

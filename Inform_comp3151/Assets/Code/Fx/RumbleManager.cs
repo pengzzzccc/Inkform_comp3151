@@ -384,7 +384,7 @@ namespace Inkform.Fx
 
         // Player transform: the GameManager hosting this survives scene switches, so after a change
         // the old reference is a Unity fake-null and is re-looked-up on next use (same pattern as
-        // PlayerBus.Player / AudioManager.Listener)
+        // PlayerBus.Player)
         private static Transform playerCache;
 
         private static Transform Player

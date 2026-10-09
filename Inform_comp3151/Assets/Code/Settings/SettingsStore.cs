@@ -10,8 +10,8 @@ namespace Inkform.Settings
     ///
     /// Fully static — no scene object, no prefab wiring: values load automatically before the first
     /// scene loads (RuntimeInitializeOnLoadMethod) and every Set saves back. Readers use the static
-    /// properties directly: AudioManager reads volumes when a sound starts and subscribes to Changed
-    /// to retune its live voices, RopeGun applies sensitivity and subscribes to Changed to re-read
+    /// properties directly: AudioService writes the volumes to the mixer and subscribes to Changed
+    /// to follow slider edits, RopeGun applies sensitivity and subscribes to Changed to re-read
     /// after edits. The Settings panel is the main writer; InputHandler and UIManager also flip
     /// Device when they detect the active input family.
     ///
@@ -101,8 +101,7 @@ namespace Inkform.Settings
 
         /// <summary>
         /// Raised after any setting changes and was applied. Subscribers re-read the properties they
-        /// care about (RopeGun's sensitivities; AudioManager retunes every voice already playing —
-        /// its Plays read the volumes once, at start).
+        /// care about (RopeGun's sensitivities; AudioService re-applies the mixer volumes).
         /// </summary>
         public static event Action Changed;
 

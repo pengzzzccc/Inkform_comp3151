@@ -51,9 +51,8 @@ namespace Inkform.Life
             if (punch > 0f) FxBus.RaisePunch(punch, punchTime);
 
             // No position passed: death always happens on the player ≈ camera center. Empty slots
-            // or no AudioManager in the scene both skip silently
-            if (deathCue != null && AudioManager.Instance != null)
-                AudioManager.Instance.Play(deathCue);
+            // or no AudioService in the scene both skip silently
+            AudioService.Play(deathCue);
         }
     }
 }

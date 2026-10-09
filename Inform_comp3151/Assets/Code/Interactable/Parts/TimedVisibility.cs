@@ -78,7 +78,7 @@ namespace Inkform.Interactable.Parts
             foreach (Renderer r in renderers) r.enabled = visible;
 
             // The loop follows visibility through AmbientSource's own documented contract: enabling
-            // registers a persistent voice, disabling releases it. That keeps AmbientSource the one
+            // plays its loop, disabling stops it. That keeps AmbientSource the one
             // component that owns looping world audio — no second audio implementation lives here
             if (loopSource != null) loopSource.enabled = visible;
         }

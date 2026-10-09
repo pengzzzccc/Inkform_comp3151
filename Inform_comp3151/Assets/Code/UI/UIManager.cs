@@ -42,7 +42,7 @@ namespace Inkform.UI
         // rather than there because these are the menu layer's own feedback and this class
         // already is the menu layer's one gatekeeper. Toolkit controls raise the UiBus signals
         // (ToolkitPanel.Bind / OptionRow); nothing in the UI knows the audio system exists.
-        // Leaving a slot empty is legal — AudioManager skips silently.
+        // Leaving a slot empty is legal — AudioService skips silently.
         [Header("UI sound (drop clips into the Cue assets)")]
         [SerializeField] private SoundCue hoverCue;
         [SerializeField] private SoundCue clickCue;
@@ -194,12 +194,7 @@ namespace Inkform.UI
 
         /// <summary>Same guarded one-shot AudioDirector uses. No position: menu sounds are 2D, like
         /// the player's own, so there is nothing for SoundCue.spatial to measure against.</summary>
-        private void Play(SoundCue cue)
-        {
-            if (cue == null) return;                        // slot unconfigured, skip silently
-            if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Play(cue);
-        }
+        private static void Play(SoundCue cue) => AudioService.Play(cue);   // null-safe: an empty slot stays silent
 
         // ---- Pause state machine ----
 
@@ -337,8 +332,8 @@ namespace Inkform.UI
         /// the menu is a genuine restart, never a resume of gameplay's track.</summary>
         public void PlayMenuMusic()
         {
-            if (menuMusicCue == null || AudioManager.Instance == null) return;
-            AudioManager.Instance.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
+            if (menuMusicCue == null) return;
+            AudioService.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
         }
 
         /// <summary>The boot sequence's finish line — its own any-key gate, or Esc/pad B through

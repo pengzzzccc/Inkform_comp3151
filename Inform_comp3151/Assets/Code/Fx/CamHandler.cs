@@ -382,7 +382,7 @@ namespace Inkform.Fx
         }
 
         // Accumulate rather than overwrite: chain explosions hit harder instead of restarting each time.
-        // Scaled by the user's FX intensity at request time (read-style like AudioManager's volume):
+        // Scaled by the user's FX intensity at request time (read once per request):
         // intensity 0 = the camera never shakes; a later change affects new requests, not current trauma.
         private void OnShake(float amount)
         {

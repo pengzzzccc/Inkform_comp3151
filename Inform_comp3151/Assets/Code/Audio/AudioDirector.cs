@@ -9,7 +9,7 @@ namespace Inkform.Audio
     /// Audio director: translates "what happened in the game" into "which sound to play".
     /// Same pattern as FxDirector — subscribes to buses, centralizes which SoundCue each event maps to
     /// in this one Inspector; PlayerHandler / BreakablePart never need to know the audio system exists.
-    /// Leaving a slot empty is legal: AudioManager skips it silently; drop a Cue into the slot later and
+    /// Leaving a slot empty is legal: AudioService skips it silently; drop a Cue into the slot later and
     /// it sounds without touching code.
     /// </summary>
     public class AudioDirector : MonoBehaviour
@@ -151,17 +151,8 @@ namespace Inkform.Audio
             }
         }
 
-        // Position only says "where the sound happens"; whether and how attenuation applies is decided
-        // by SoundCue.spatial — Cues without it are unaffected by passing one.
-        // Note the underlying playback is always 2D: this is a 2D game — switching to Unity's 3D audio
-        // would use its default logarithmic falloff (minDistance 1), and since the camera sits at z = -10,
-        // its computed distance is always ≥10, crushing explosions to near inaudible. AudioManager
-        // computes distance on the XY plane itself, bypassing the issue.
-        private void Play(SoundCue cue, Vector3? position = null)
-        {
-            if (cue == null) return;                        // slot unconfigured, skip silently
-            if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Play(cue, position);
-        }
+        // Position only says "where the sound happens"; whether it pans and fades with distance is
+        // decided by SoundCue.spatial — Cues without it are unaffected by passing one
+        private static void Play(SoundCue cue, Vector2? position = null) => AudioService.Play(cue, position);
     }
 }
