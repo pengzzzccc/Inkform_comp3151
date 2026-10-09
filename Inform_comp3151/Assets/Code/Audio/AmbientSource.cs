@@ -18,14 +18,14 @@ namespace Inkform.Audio
         [Tooltip("Emitter offset from this transform, for placing the sound beside the visual")]
         [SerializeField] private Vector3 offset;
 
-        private AudioSource voice;
+        private int voice;          // AudioManager voice id; 0 = none
         private float retryAt;
 
         // Guarded like every other audio caller: a missing Cue slot or a scene without the
         // manager must never throw — silence is the degradation, not an error
         void OnEnable()
         {
-            voice = null;
+            voice = 0;
             retryAt = 0f;
             if (cue == null || AudioManager.Instance == null) return;
             voice = AudioManager.Instance.RegisterAmbient(cue, transform.position + offset);
@@ -40,7 +40,7 @@ namespace Inkform.Audio
             if (cue == null) return;
             AudioManager manager = AudioManager.Instance;
             if (manager == null) return;
-            if (voice != null && manager.IsVoiceActive(voice)) return;
+            if (voice != 0 && manager.IsVoiceActive(voice)) return;
             if (Time.unscaledTime < retryAt) return;
 
             voice = manager.RegisterAmbient(cue, transform.position + offset);
@@ -51,9 +51,9 @@ namespace Inkform.Audio
         // voice must return to the pool the moment this emitter leaves the scene, not linger
         void OnDisable()
         {
-            if (voice == null) return;
+            if (voice == 0) return;
             if (AudioManager.Instance != null) AudioManager.Instance.ReleaseAmbient(voice);
-            voice = null;
+            voice = 0;
         }
 
 #if UNITY_EDITOR

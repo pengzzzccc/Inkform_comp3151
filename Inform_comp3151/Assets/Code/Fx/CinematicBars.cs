@@ -1,4 +1,5 @@
 using System.Collections;
+using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -47,7 +48,7 @@ namespace Inkform.Fx
                 yield break;
             }
 
-            for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / seconds)
+            for (float t = 0f; t < 1f; t += PresentationTime.UnscaledStep / seconds)
             {
                 float height = Mathf.Lerp(start, target, t);
                 SetHeight(height);

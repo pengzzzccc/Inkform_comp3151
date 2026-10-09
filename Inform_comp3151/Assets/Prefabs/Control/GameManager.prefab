@@ -271,8 +271,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Level.SceneDirector
   world: {fileID: 11400000, guid: 2d7897771e2b41845b1712f21fccd9fe, type: 2}
-  fadeOutSeconds: 0.25
-  fadeInSeconds: 0.4
+  fadeOutSeconds: 0.6
+  fadeInSeconds: 0.6
 --- !u!114 &9903000014
 MonoBehaviour:
   m_ObjectHideFlags: 0

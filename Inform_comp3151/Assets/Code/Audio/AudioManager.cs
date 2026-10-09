@@ -79,7 +79,10 @@ namespace Inkform.Audio
             public bool persistent;     // loops refreshed per frame; never auto-recycled
             public Vector3 position;    // emitter position for the per-frame refresh
             public bool hasPosition;    // false means camera-centred playback, never a far spatial victim
+            public int id;              // unique per voice, never reused — see RegisterAmbient
         }
+
+        private int nextVoiceId;
 
         // Listener position. This component lives on a DontDestroyOnLoad object and does not follow the
         // camera, so it cannot use transform.position like FxDirector (which sits on the camera).
@@ -268,26 +271,37 @@ namespace Inkform.Audio
         /// every frame in Update until ReleaseAmbient, so its falloff and zone treatment track the
         /// listener live. The position is snapshotted here: emitters are expected to be static
         /// (a campfire does not walk); moving emitters would need their own per-frame push.
-        /// Returns null when the Cue is unconfigured or the pool is at its cap with nothing this
-        /// priority may steal.
+        /// Returns a voice id (0 = none: the Cue is unconfigured or the pool is at its cap with
+        /// nothing this priority may steal).
+        ///
+        /// An id, not the AudioSource: sources are pooled, so once this loop's voice is stolen its
+        /// source may already carry another sound. Holding the source, the emitter would then
+        /// believe it still plays — and its later release would stop that other sound (a laser
+        /// switching off cut Mine Cave 1's intro cue this way). Ids are never reused.
         /// </summary>
-        public AudioSource RegisterAmbient(SoundCue cue, Vector3 position)
+        public int RegisterAmbient(SoundCue cue, Vector3 position)
         {
-            if (cue == null) return null;
+            if (cue == null) return 0;
 
             if (seen.Add(cue)) { cue.activeCount = 0; cue.lastPlayTime = -999f; }
 
             AudioClip clip = cue.PickClip();
-            if (clip == null) return null;
+            if (clip == null) return 0;
 
             Source s = AcquireSource(cue.priority);
-            if (s.src == null) return null;
-            return StartVoice(s, cue, clip, cue.priority, position,
+            if (s.src == null) return 0;
+            StartVoice(s, cue, clip, cue.priority, position,
                 persistent: true, loop: true, zoned: !cue.ignoreListenerPause);
+            return nextVoiceId;   // StartVoice just issued it
         }
 
-        /// <summary>Returns an ambient loop's voice to the pool (AmbientSource.OnDisable).</summary>
-        public void ReleaseAmbient(AudioSource src) => Stop(src);
+        /// <summary>Returns an ambient loop's voice to the pool (AmbientSource.OnDisable). A voice
+        /// already stolen or recycled is simply gone — nothing else is touched.</summary>
+        public void ReleaseAmbient(int voiceId)
+        {
+            int i = IndexOfVoice(voiceId);
+            if (i >= 0) ReleaseAt(i);
+        }
 
         // Everything after source acquisition is shared by one-shots and ambient loops: configure
         // the source, premix the audible parameters, start playback, record the voice
@@ -322,6 +336,7 @@ namespace Inkform.Audio
                 persistent = persistent,
                 position = position.GetValueOrDefault(Vector3.zero),
                 hasPosition = position.HasValue,
+                id = ++nextVoiceId,
                 baseGain = AudioPremix.BaseGain(cue, t, listenerZone, emitterZone),
             };
             src.volume = SettingsVolume(voice.baseGain, cue);
@@ -506,12 +521,14 @@ namespace Inkform.Audio
         /// <summary>True while this source still carries a voice this pool owns. AmbientSource polls
         /// it because a loop can lose its voice without being told: stolen under pool pressure, or
         /// released by teardown. The emitter re-registers instead of staying silent for the scene.</summary>
-        public bool IsVoiceActive(AudioSource src)
+        public bool IsVoiceActive(int voiceId) => IndexOfVoice(voiceId) >= 0;
+
+        private int IndexOfVoice(int voiceId)
         {
-            if (src == null) return false;
+            if (voiceId == 0) return -1;
             for (int i = 0; i < active.Count; i++)
-                if (active[i].source.src == src) return true;
-            return false;
+                if (active[i].id == voiceId) return i;
+            return -1;
         }
 
         private void ReleaseAt(int i)
