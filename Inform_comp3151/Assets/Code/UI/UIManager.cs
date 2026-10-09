@@ -54,6 +54,7 @@ namespace Inkform.UI
 
         private readonly Dictionary<Type, ToolkitPanel> panels = new Dictionary<Type, ToolkitPanel>();
         private ToolkitPanel activePanel;   // the one sheet on stage: opening a panel closes the previous one
+        private readonly UiStick stick = new UiStick();
         private InputHandler inputHandler;
         private GameTimeController gameTime;
         private Inkform.Level.SceneDirector sceneDirector;   // sibling on GameManager; owns the scene policy
@@ -137,12 +138,13 @@ namespace Inkform.UI
 
         void Update()
         {
-            // Drive the sheets' per-frame logic and the HUD off one loop, unscaled for the menus
-            // (they must run while timeScale is 0) and scaled for the timer, whose rules live in Hud.
+            // Drive the sheets' per-frame logic and the HUD off one loop, unscaled: the menus must
+            // run while timeScale is 0, and the run clock's rules (play only) live in Hud.
             float unscaled = Time.unscaledDeltaTime;
             foreach (ToolkitPanel panel in panels.Values)
                 panel.Tick(unscaled);
-            hud?.Tick(Time.deltaTime, unscaled);
+            hud?.Tick(unscaled);
+            NavigateWithStick();
 
             // Pause is read directly rather than via an action in the input asset: adding a Pause
             // action would require regenerating the generated wrapper (the project treats it as
@@ -166,18 +168,13 @@ namespace Inkform.UI
             // The scene fader/RoomIntro owns input until the new room has handed gameplay back.
             if (sceneDirector != null && sceneDirector.IsTransitioning) return;
 
-            // Boot sheet up: Esc / pad B skip it like any other key (on to the title screen)
-            if (IsOpen<BootPanel>()) { FinishBoot(); return; }
+            // Boot sheet up: the studio card is not skippable — it hands over on its own
+            if (IsOpen<BootPanel>()) return;
 
             // Innermost sheet first, then outwards — Esc/B/Start always back out one level. Settings
-            // backs out internally first (a category page returns to its ROOT list), and owns the
-            // press either way: falling through would let Esc/Start also resume the paused game
-            // with the sheet still up.
-            if (IsOpen<SettingsPanel>())
-            {
-                if (GetPanel<SettingsPanel>()?.HandleBack() != true) CloseSettings();
-                return;
-            }
+            // (one page) owns the press: falling through would let Esc/Start also resume the
+            // paused game with the sheet still up.
+            if (IsOpen<SettingsPanel>()) { CloseSettings(); return; }
             if (IsOpen<SaveMenuPanel>()) { BackFromSaveMenu(); return; }
             // The end sheet has no inner level: Escape leaves the finished run for the main menu
             if (IsOpen<EndPanel>()) { ReturnToMainMenu(); return; }
@@ -186,6 +183,37 @@ namespace Inkform.UI
             if (IsInMainMenu) return;   // menu root: nothing left to back out of
             if (paused) Resume();
             else OpenPause();
+        }
+
+        // ---- Left-stick menu navigation ----
+
+        /// <summary>The left stick moves the selection on whichever sheet is on stage (the UI
+        /// map's Navigate only has the d-pad and keys): UiStick applies the menu dead zone and
+        /// the hold repeat, and each move goes to the focused control as a NavigationMoveEvent —
+        /// focus moves, option rows step, exactly as with the d-pad.</summary>
+        private void NavigateWithStick()
+        {
+            bool sheetUp = activePanel != null && activePanel.IsOpen && !(activePanel is BootPanel)
+                           && (sceneDirector == null || !sceneDirector.IsTransitioning);
+            Gamepad pad = Gamepad.current;
+            if (!sheetUp || pad == null)
+            {
+                stick.Reset();
+                return;
+            }
+
+            NavigationMoveEvent.Direction dir = stick.Update(pad.leftStick.ReadValue(), Time.unscaledTime);
+            if (dir == NavigationMoveEvent.Direction.None) return;
+
+            VisualElement focused = uiDocument.rootVisualElement.panel?.focusController.focusedElement as VisualElement;
+            if (focused == null || !menusRoot.Contains(focused))
+            {
+                activePanel.Refocus();
+                return;
+            }
+
+            using (NavigationMoveEvent move = NavigationMoveEvent.GetPooled(dir))
+                focused.SendEvent(move);
         }
 
         // ---- UI sound ----
@@ -314,8 +342,8 @@ namespace Inkform.UI
                 SetCursor(false);
             }
 
+            // The run clock is one number for the whole run: a new level does not reset it
             bool gameplay = !IsInMainMenu && !isEnd;
-            if (gameplay) hud?.ResetLevelTimer();
             hud?.SetGameplayVisible(gameplay);
 
             // The cave is the menu scene's set: the boot card covers it until it dissolves
@@ -347,8 +375,8 @@ namespace Inkform.UI
             AudioService.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
         }
 
-        /// <summary>The boot sequence's finish line — the studio card ending or being skipped, or
-        /// Esc/pad B through the Escape stack. Dissolves the boot card into the main menu's title
+        /// <summary>The boot sequence's finish line — the studio card ending (it cannot be
+        /// skipped). Dissolves the boot card into the main menu's title
         /// screen (logo + "Press any key" over the cave), and queues the menu music: it starts
         /// MenuMusicDelaySeconds after the title screen, not with it.</summary>
         public void FinishBoot()

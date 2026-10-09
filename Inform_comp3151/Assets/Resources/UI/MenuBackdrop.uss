@@ -1,17 +1,17 @@
-/* Main menu cave backdrop. The layers are 640x360 pixel art (point filtered, uncompressed in
-   their import settings): at the 1920x1080 reference they show at exactly 3x. Every layer covers
-   the screen with the same centred scale, so they stay registered on any aspect ratio. The
-   colour behind them is the frame layer's ink, for the instant before the art is up. */
+/* Main menu cave backdrop: Art/UI/MainMenuBackdrop.png, the menu art's final look baked into
+   one opaque 640x360 picture — Art/scene/Background L1BG_ Layer4, 3, 2, 1, then
+   Art/scene/Frontground/foreground7 on top, blended in sRGB like the reference shot. Baked
+   rather than stacked at runtime: the project renders in linear space, where the layers'
+   faint teal washes (alpha 56) would blend to a different tone than the reference.
 
-.backdrop { background-color: rgb(30, 31, 65); }
+   Pixel art, point filtered and uncompressed in its import settings: at the 1920x1080 reference
+   it shows at exactly 3x. It covers the screen centred on any aspect ratio. The colour behind it
+   is the frame's ink, for the instant before the art is up. */
 
-.backdrop-layer {
+.backdrop {
+    background-color: rgb(39, 43, 75);
+    background-image: url("project://database/Assets/Art/UI/MainMenuBackdrop.png?fileID=2800000&guid=b6396c7d3340468b8f5f1abd546ffcee&type=3#MainMenuBackdrop");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
 }
-
-.backdrop-layer4 { background-image: url("project://database/Assets/Art/Background%20Layers/L1BG_%20Layer4.png?fileID=2800000&guid=58082f85bec0be7488a93302c030d9b9&type=3#L1BG_ Layer4"); }
-.backdrop-layer3 { background-image: url("project://database/Assets/Art/Background%20Layers/L1BG_%20Layer3.png?fileID=2800000&guid=c2b3996c7baaa4d4d8f4d5cdaa04e713&type=3#L1BG_ Layer3"); }
-.backdrop-layer2 { background-image: url("project://database/Assets/Art/Background%20Layers/L1BG_%20Layer2.png?fileID=2800000&guid=cea40f33f131b934bbe1f35012b9bb1d&type=3#L1BG_ Layer2"); }
-.backdrop-layer1 { background-image: url("project://database/Assets/Art/Background%20Layers/L1BG_%20Layer1.png?fileID=2800000&guid=bfaeaa26f28038f4d808967c795dbc4d&type=3#L1BG_ Layer1"); }

@@ -22,7 +22,9 @@ namespace Inkform.UI
             Confirm,
             Back,
             Overwrite,
-            Change
+            Change,
+            Select,
+            Scroll
         }
 
         private struct Entry
@@ -78,6 +80,12 @@ namespace Inkform.UI
             host.Clear();
             foreach (Entry entry in entries)
             {
+                // A prompt with no control on this device (Change on a pad: the stick that
+                // selects also changes) is left out
+                glyphs.Clear();
+                ResolveKey(entry.key, scheme, glyphs);
+                if (glyphs.Count == 0) continue;
+
                 var item = new VisualElement();
                 item.AddToClassList("prompt");
                 if (entry.onClick != null)
@@ -95,8 +103,6 @@ namespace Inkform.UI
                     item.pickingMode = PickingMode.Ignore;
                 }
 
-                glyphs.Clear();
-                ResolveKey(entry.key, scheme, glyphs);
                 foreach (InputGlyphs.Glyph glyph in glyphs) item.Add(GlyphElements.Create(glyph, small: true));
 
                 var label = new Label(entry.label) { pickingMode = PickingMode.Ignore };
@@ -124,15 +130,27 @@ namespace Inkform.UI
                     into.Add(pad ? Pad("buttonNorth", scheme) : Kb("ctrl", "Ctrl", scheme));
                     break;
                 case Key.Change:
-                    if (pad)
-                    {
-                        into.Add(Pad("dpad", scheme));
-                    }
-                    else
+                    // On a pad the left stick both selects and changes (shown once, as Select)
+                    if (!pad)
                     {
                         into.Add(Kb("leftArrow", "←", scheme));
                         into.Add(Kb("rightArrow", "→", scheme));
                     }
+                    break;
+                case Key.Select:
+                    if (pad)
+                    {
+                        into.Add(Pad("leftStick", scheme));
+                    }
+                    else
+                    {
+                        into.Add(Kb("upArrow", "↑", scheme));
+                        into.Add(Kb("downArrow", "↓", scheme));
+                    }
+                    break;
+                case Key.Scroll:
+                    into.Add(pad ? Pad("rightStick", scheme)
+                        : InputGlyphs.ResolvePath("<Mouse>/scroll", "Wheel", scheme, set));
                     break;
             }
         }

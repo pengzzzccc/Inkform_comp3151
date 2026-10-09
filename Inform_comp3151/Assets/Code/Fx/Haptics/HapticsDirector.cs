@@ -31,11 +31,14 @@ namespace Inkform.Fx.Haptics
     ///    side.
     ///  - Triggers: the rope gun's and the jump trigger hold the same standing Bow while playing
     ///    (resistance, a break, a snap-back), plus short pulses (rope fired and take-off share
-    ///    one kick; hitting a ceiling). The sides follow the gamepad bindings, so a rebind moves
+    ///    one kick; hitting a ceiling), all scaled by the player's Trigger Effects level — a level
+    ///    of its own, so the triggers work with rumble off and the other way round. The sides follow the gamepad bindings, so a rebind moves
     ///    the feel with the action; a face-button binding gets none.
     ///
-    /// Timing is unscaled. While the game is frozen (pause / hitstop) the motors read zero and
-    /// every clip keeps its remaining time; menus and pause release the triggers. Lives on the
+    /// Timing is unscaled. While the game is frozen (pause / hitstop) the gameplay motors read
+    /// zero and every clip keeps its remaining time; the menus' own feedback (clicks, toggles, a
+    /// value bumping its end) has a mixer of its own that keeps running, so it is felt in the
+    /// pause menu too. Menus and pause release the triggers. Lives on the
     /// GameManager (the persistent host).
     /// </summary>
     public class HapticsDirector : MonoBehaviour
@@ -50,6 +53,8 @@ namespace Inkform.Fx.Haptics
         {
             new MotorCurve(0.35f, 0f), new MotorCurve(0.65f, 0f), new MotorCurve(1f, 0f),
         };
+        [Tooltip("Adaptive-trigger strength at the Trigger Effects level Low / Medium / High: scales resistance, snap-back and buzz amplitude. High = the tuned strengths as they are")]
+        [SerializeField] private float[] triggerLevels = { 0.35f, 0.65f, 1f };
 
         [Header("Contact (ground / ceiling / walls)")]
         [Tooltip("Touches slower than this (into the surface) do not rumble: sliding along a wall, a small step")]
@@ -78,7 +83,8 @@ namespace Inkform.Fx.Haptics
         [SerializeField, Range(0, 8)] private int triggerStart = 2;
         [Tooltip("The resistance breaks here; past it the trigger is free, and lets go with a snap-back")]
         [SerializeField, Range(1, 8)] private int triggerBreak = 5;
-        [SerializeField, Range(1, 8)] private int triggerStrength = 6;
+        [Tooltip("The resistance before the break, at High (Medium / Low scale it: 3 → 2 / 1)")]
+        [SerializeField, Range(1, 8)] private int triggerStrength = 3;
         [SerializeField, Range(1, 8)] private int triggerSnapForce = 5;
         [Tooltip("Trigger buzz when the rope fires / on take-off")]
         [SerializeField] private float kickDuration = 0.06f;
@@ -128,10 +134,13 @@ namespace Inkform.Fx.Haptics
         [SerializeField] private float upgradeStrength = 0.2f;     // capacity / ability — permanent progress
         [SerializeField] private float upgradeDuration = 0.25f;
 
-        [Header("UI")]
+        [Header("UI (plays in menus and through a pause)")]
         [SerializeField] private float uiStrength = 0.08f;
         [SerializeField] private float uiClickDuration = 0.1f;
         [SerializeField] private float uiToggleDuration = 0.1f;
+        [Tooltip("A value pushed past its end (option row / bar in the settings)")]
+        [SerializeField] private float uiBumpStrength = 0.3f;
+        [SerializeField] private float uiBumpDuration = 0.08f;
 
         [Header("Debug (read-only, refreshed in Play mode)")]
         [SerializeField] private string debugPad;
@@ -155,6 +164,7 @@ namespace Inkform.Fx.Haptics
 
 
         private readonly HapticMixer mixer = new HapticMixer();
+        private readonly HapticMixer uiMixer = new HapticMixer();   // menu feedback: never frozen
         private readonly List<IPadHaptics> retiring = new List<IPadHaptics>();
         private IPadHaptics output;
         private TriggerPulse leftPulse, rightPulse;
@@ -181,6 +191,7 @@ namespace Inkform.Fx.Haptics
             ItemBus.InventoryCapacityUpgraded += OnCapacityUpgraded;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
+            UiBus.Bumped += OnUiBumped;
         }
 
         void OnDisable()
@@ -201,6 +212,7 @@ namespace Inkform.Fx.Haptics
             ItemBus.InventoryCapacityUpgraded -= OnCapacityUpgraded;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
+            UiBus.Bumped -= OnUiBumped;
 
             SilenceAll();
         }
@@ -218,6 +230,7 @@ namespace Inkform.Fx.Haptics
         private void SilenceAll()
         {
             mixer.Clear();
+            uiMixer.Clear();
             leftPulse = rightPulse = default;
             output?.Silence();
             output = null;
@@ -237,6 +250,7 @@ namespace Inkform.Fx.Haptics
             float step = frozen ? 0f : dt;
 
             mixer.Tick(step, out float low, out float high);
+            uiMixer.Tick(dt, out float uiLow, out float uiHigh);   // menu feedback runs through a pause
             TickPulse(ref leftPulse, step);
             TickPulse(ref rightPulse, step);
 
@@ -250,11 +264,18 @@ namespace Inkform.Fx.Haptics
             }
 
             RefreshTriggerSides(dt);
-            TriggerEffect left = TriggerFor(Side.Left, leftPulse, frozen);
-            TriggerEffect right = TriggerFor(Side.Right, rightPulse, frozen);
+            // The trigger feel at the player's Trigger Effects level (Off never gets here: TriggerFor)
+            float triggerScale = TriggerScaleFor(SettingsStore.TriggerLevel);
+            TriggerEffect left = TriggerFor(Side.Left, leftPulse, frozen).Scaled(triggerScale);
+            TriggerEffect right = TriggerFor(Side.Right, rightPulse, frozen).Scaled(triggerScale);
 
-            // Pause / hitstop: motors read zero while every clip keeps its remaining time
+            // Pause / hitstop: gameplay motors read zero while every clip keeps its remaining
+            // time; the menus' own feedback plays on top either way
             if (frozen) low = high = 0f;
+            low = Mathf.Max(low, uiLow);
+            high = Mathf.Max(high, uiHigh);
+            // Rumble off with trigger effects on: the triggers alone
+            if (!SettingsStore.Rumble) low = high = 0f;
             output.Curve = CurveFor(SettingsStore.RumbleLevel);
             output.Apply(low, high, left, right, dt);
 
@@ -275,7 +296,8 @@ namespace Inkform.Fx.Haptics
         // (ActivePadTracker already holds the pad through a short keyboard grace)
         private void SelectPad()
         {
-            Gamepad target = SettingsStore.Rumble ? ActivePadTracker.Active : null;
+            // Motors and triggers have a level each: the pad is driven while either is on
+            Gamepad target = SettingsStore.Rumble || SettingsStore.TriggerEffects ? ActivePadTracker.Active : null;
 
             // Only a DualSense: every other pad belongs to GenericPadHaptics
             if (!(target is DualSenseGamepadHID)) target = null;
@@ -298,13 +320,20 @@ namespace Inkform.Fx.Haptics
                 if (retiring[i].Silence()) retiring.RemoveAt(i);
         }
 
-        // The player's rumble level on the DualSense's motors (Off never reaches here: SelectPad
-        // drops the output when rumble is off)
+        // The player's rumble level on the DualSense's motors (Off: Update zeroes the motors)
         private MotorCurve CurveFor(RumbleLevel level)
         {
             int index = (int)level - 1;
             if (dualSenseLevels == null || index < 0 || index >= dualSenseLevels.Length) return MotorCurve.Identity;
             return dualSenseLevels[index];
+        }
+
+        // The player's Trigger Effects level as a share of the tuned trigger strengths
+        private float TriggerScaleFor(RumbleLevel level)
+        {
+            int index = (int)level - 1;
+            if (triggerLevels == null || index < 0 || index >= triggerLevels.Length) return 1f;
+            return Mathf.Clamp01(triggerLevels[index]);
         }
 
         // ---- Triggers ----
@@ -485,9 +514,11 @@ namespace Inkform.Fx.Haptics
 
         private void OnCapacityUpgraded(Vector2 pos, int increase) => mixer.Add(upgradeStrength, upgradeStrength, upgradeDuration);
 
-        private void OnUiClicked() => mixer.Add(uiStrength, uiStrength, uiClickDuration);
+        private void OnUiClicked() => uiMixer.Add(uiStrength, uiStrength, uiClickDuration);
 
-        private void OnUiToggled(bool on) => mixer.Add(uiStrength, uiStrength, uiToggleDuration);
+        private void OnUiToggled(bool on) => uiMixer.Add(uiStrength, uiStrength, uiToggleDuration);
+
+        private void OnUiBumped() => uiMixer.Add(uiBumpStrength, uiBumpStrength, uiBumpDuration);
 
         // Directional events split the strength by the horizontal component of the direction
         private void AddDirectional(Vector2 dir, float strength, float duration)

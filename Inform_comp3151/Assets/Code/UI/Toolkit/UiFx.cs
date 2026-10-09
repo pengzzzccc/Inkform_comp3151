@@ -141,6 +141,33 @@ namespace Inkform.UI
             }, 0f, () => el.style.translate = StyleKeyword.Null);
         }
 
+        // ---- End-of-range shake ----
+
+        /// <summary>"No further": a quick decaying shake that first kicks the way the player pushed
+        /// (dir -1 = left, +1 = right), ±12px over 0.25s.</summary>
+        public static void Shake(VisualElement el, float dir)
+        {
+            float sign = dir < 0f ? -1f : 1f;
+            Tween(el, 0.25f, t => t, t =>
+            {
+                float offset = sign * 12f * Mathf.Sin(t * 4f * 2f * Mathf.PI) * (1f - t);
+                el.style.translate = new Translate(offset, 0f, 0f);
+            }, 0f, () => el.style.translate = StyleKeyword.Null);
+        }
+
+        // ---- HUD clock tick ----
+
+        /// <summary>A quick decaying rock about the element's transform origin (±10°, 0.3s) — the
+        /// HUD clock ticking over a second.</summary>
+        public static void Wobble(VisualElement el)
+        {
+            Tween(el, 0.3f, t => t, t =>
+            {
+                float angle = 10f * Mathf.Sin(t * 3f * 2f * Mathf.PI) * (1f - t);
+                el.style.rotate = new Rotate(Angle.Degrees(angle));
+            }, 0f, () => el.style.rotate = StyleKeyword.Null);
+        }
+
         // ---- Letter-drop title (Celeste AreaCompleteTitle) ----
 
         /// <summary>Builds a one-Label-per-letter title inside container and drops the letters in:
@@ -154,7 +181,8 @@ namespace Inkform.UI
             {
                 char c = text[i];
                 var letter = new Label(c == ' ' ? string.Empty : c.ToString());
-                letter.AddToClassList("outline");
+                letter.AddToClassList("header-outline");
+                letter.AddToClassList("title-font");
                 letter.style.fontSize = fontSize;
                 letter.style.marginRight = c == ' ' ? 22f : 6f;
                 if (c == ' ') letter.style.width = 22f;

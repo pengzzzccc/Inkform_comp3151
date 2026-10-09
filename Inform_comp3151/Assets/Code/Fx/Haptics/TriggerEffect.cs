@@ -61,6 +61,22 @@ namespace Inkform.Fx.Haptics
 
         public bool IsOff => kind == Kind.Off || strength == 0;
 
+        /// <summary>The same effect at a share of its strength (the player's Trigger Effects
+        /// level): resistance / amplitude and snap-back scale and round, but a felt effect never
+        /// drops below 1 — a lower level is lighter, not gone. Zones and frequency stay.</summary>
+        public TriggerEffect Scaled(float share)
+        {
+            if (IsOff || share >= 1f) return this;
+            return new TriggerEffect(kind, start, end, ScaleStep(strength, share), ScaleStep(snapForce, share), frequency);
+        }
+
+        private static int ScaleStep(byte value, float share)
+        {
+            if (value == 0) return 0;
+            int scaled = (int)System.Math.Round(value * (double)share, System.MidpointRounding.AwayFromZero);
+            return scaled < 1 ? 1 : scaled;
+        }
+
         /// <summary>Zone position as a fraction of trigger travel (what Gamepad.*Trigger reads).</summary>
         public static float ZoneToTravel(int zone) => zone / 9f;
 

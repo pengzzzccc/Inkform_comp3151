@@ -721,7 +721,11 @@ namespace Inkform.Tests
             VisualElement host = tree.Instantiate();
 
             Assert.IsNotNull(host.Q("Gameplay"));
+            Assert.IsNotNull(host.Q("TimerRow"), "Show Timer hides this row");
+            Assert.IsNotNull(host.Q("ClockIcon"));
             Assert.IsNotNull(host.Q<Label>("TimerLabel"));
+            Assert.IsNotNull(host.Q("DeathIcon"));
+            Assert.IsNotNull(host.Q<Label>("DeathLabel"));
             Assert.IsNotNull(host.Q<Label>("FpsLabel"));
             Assert.IsNotNull(host.Q("Inventory"));
             Assert.IsNotNull(host.Q("InventoryIcon"));
@@ -771,9 +775,9 @@ namespace Inkform.Tests
         [Test]
         public void ToolkitUi_ResourcesContainEverySheetAndTheme()
         {
-            // Panels the UIManager mounts, then the settings sub-pages the shell mounts itself
+            // Panels the UIManager mounts, plus the HUD and the menu scene's backdrop layer
             foreach (string sheet in new[] { "MainMenu", "SaveMenu", "PauseMenu", "Settings", "EndPanel", "Hud",
-                                             "SettingsRoot", "SettingsAudio", "SettingsVideo", "SettingsControls", "Boot" })
+                                             "Boot", "MenuBackdrop" })
             {
                 VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>($"Assets/Resources/UI/{sheet}.uxml");
                 Assert.IsNotNull(tree, $"missing Resources/UI/{sheet}.uxml — the UIManager logs a warning and loses that sheet");
@@ -1032,15 +1036,15 @@ namespace Inkform.Tests
             }
         }
 
-        [TestCase(0f, "00:00")]
-        [TestCase(59.99f, "00:59")]
-        [TestCase(60f, "01:00")]
-        [TestCase(3599f, "59:59")]
-        [TestCase(3600f, "01:00:00")]
-        [TestCase(3661f, "01:01:01")]
-        public void Hud_FormatsElapsedTime(float seconds, string expected)
+        [TestCase(0f, "00:00:000")]
+        [TestCase(-3f, "00:00:000")]
+        [TestCase(59.999f, "00:59:999")]
+        [TestCase(61.5f, "01:01:500")]
+        [TestCase(3599.5f, "59:59:500")]
+        [TestCase(4503.12f, "75:03:120")]
+        public void RunTime_FormatsMinutesSecondsMilliseconds(float seconds, string expected)
         {
-            Assert.AreEqual(expected, Hud.FormatElapsedTime(seconds));
+            Assert.AreEqual(expected, RunTimeFormat.Format(seconds));
         }
 
         [Test]

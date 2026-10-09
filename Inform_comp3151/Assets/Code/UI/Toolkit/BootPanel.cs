@@ -8,10 +8,9 @@ namespace Inkform.UI
     /// The boot sequence the player sees after the engine splash: the sting and the studio card
     /// start together (fade in, dwell, fade out) on black, then UIManager.FinishBoot takes over —
     /// the black sheet dissolves into the cave backdrop and the main menu's title screen (game
-    /// logo + "Press any key"), which is where the any-key gate now lives. An input during the
-    /// studio card skips straight there: the whole intro is dismissible, which is what players
-    /// expect (research round conclusion — the complaint is never "there is a logo", it is "I
-    /// cannot leave").
+    /// logo + "Press any key"), which is where the any-key gate lives. The studio card itself
+    /// cannot be skipped: it always plays its fade in, dwell and fade out (a few seconds, once
+    /// per session).
     ///
     /// Art, sting and timings come from the BootLogos asset (Resources/UI/BootLogos); an empty
     /// studio slot degrades to a text placeholder, an empty sting to silence. Fades ride
@@ -21,7 +20,6 @@ namespace Inkform.UI
     public class BootPanel : ToolkitPanel
     {
         private const string LogosPath = "UI/BootLogos";
-        private const float SkipArmedDelay = 0.25f;   // swallow the key that dismissed the engine splash
 
         private readonly VisualElement studioCard;
         private readonly VisualElement studioImage;
@@ -30,7 +28,6 @@ namespace Inkform.UI
         private BootLogos logos;
         private bool studioHolding;     // studio card fully in, waiting out its dwell
         private float holdUntil;        // end of the studio dwell (while studioHolding)
-        private float skipArmedAt;      // real time before which stray inputs are swallowed
         private bool finished;          // one-way latch: FinishBoot fires exactly once
 
         public BootPanel(VisualElement root, UIManager ui) : base(root, ui)
@@ -46,7 +43,6 @@ namespace Inkform.UI
         {
             studioHolding = false;
             finished = false;
-            skipArmedAt = Time.unscaledTime + SkipArmedDelay;
 
             // The sting and the studio card start together: this panel opens the moment the menu
             // scene loads, i.e. right after the engine splash — the sequence's first sound marks
@@ -65,15 +61,6 @@ namespace Inkform.UI
         protected internal override void Tick(float unscaledDelta)
         {
             if (!IsOpen || finished) return;
-
-            // Skip to the title screen. Armed a beat after open so the dismissal of the engine
-            // splash cannot punch straight through this sequence. (Esc / pad B / Start reach
-            // FinishBoot through UIManager's Escape stack, which does not wait for this.)
-            if (Time.unscaledTime >= skipArmedAt && AnyInputPressed())
-            {
-                Finish();
-                return;
-            }
 
             if (studioHolding && Time.unscaledTime >= holdUntil)
             {

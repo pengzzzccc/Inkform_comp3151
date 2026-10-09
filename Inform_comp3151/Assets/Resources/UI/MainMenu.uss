@@ -28,15 +28,24 @@
     white-space: nowrap;
 }
 
-/* Title screen prompt under the centred logo; MainMenuPanel shows it and drives its breathing */
+/* Title screen prompt under the centred logo (below the blob of the x18 logo); MainMenuPanel shows it and drives its breathing */
 .press-any-key {
     display: none;
     position: absolute;
     left: 50%;
-    top: 77%;
+    top: 87%;
     translate: -50% -50%;
     font-size: var(--fs-item);
     color: var(--c-white);
     -unity-text-align: middle-center;
     white-space: nowrap;
 }
+
+/* The game's name on the menu: display size, the game font (title colour and shadow come from
+   .page-title / .header-outline) */
+.main-title { font-size: var(--fs-display); letter-spacing: 4px; }
+
+/* The list hugs its items on the left margin; its plate sits behind them, reaching a little past
+   the text on every side (more on the right, where a selected item grows) */
+.main-menu-content > .menu-list { align-self: flex-start; position: relative; }
+.menu-plate { position: absolute; left: -36px; right: -56px; top: -20px; bottom: -20px; padding: 0; }

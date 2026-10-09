@@ -30,10 +30,11 @@ namespace Inkform.UI
         private const float MenuEnterFromX = -120f;
 
         // The logo's title-screen spot: centre as a share of the screen, size a whole multiple of
-        // the 64 px art (x6). Its spot beside the menu lives in MainMenu.uss (.main-logo, x7).
+        // the 64 px art (x18 — the art's own margins keep the blob itself inside the screen, clear
+        // of the prompt at 87%). Its spot beside the menu lives in MainMenu.uss (.main-logo, x7).
         private const float TitleLogoLeft = 50f;
-        private const float TitleLogoTop = 49f;
-        private const float TitleLogoSize = 384f;
+        private const float TitleLogoTop = 45f;
+        private const float TitleLogoSize = 1152f;
         private const float MenuLogoLeft = 74f;
         private const float MenuLogoTop = 44f;
         private const float MenuLogoSize = 448f;
@@ -66,7 +67,7 @@ namespace Inkform.UI
             VisualElement menuColumn = Q("MenuColumn");
             VisualElement footer = Q("Footer");
             menuGroups = new[] { titleBlock, menuColumn, footer };
-            menuParts = new[] { titleBlock, Q("Btn_Begin"), Q("Btn_Settings"), Q("Btn_Exit"), footer };
+            menuParts = new[] { titleBlock, Q("MenuPlate"), Q("Btn_Begin"), Q("Btn_Settings"), Q("Btn_Exit"), footer };
         }
 
         /// <summary>The next open shows the title screen (UIManager.FinishBoot, once per session).</summary>

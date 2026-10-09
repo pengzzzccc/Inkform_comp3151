@@ -6,22 +6,24 @@
            moves it to its spot right of the menu (.main-logo) as the menu slides in.
          - Frame: the shared page frame (Theme.uss .frame) — title top left on the safe margin,
            the menu list under it, version bottom left, device-aware prompts bottom right.
-         TitleBlock / MenuColumn / Footer are hidden on the title screen and slide in after it.
+         TitleBlock / MenuColumn / Footer are hidden on the title screen and slide in after it;
+         MenuPlate is the list's dark backing, a child of its own so it slides in ahead of them.
          The version text and the logo art are filled in by MainMenuPanel; the prompts by its
          DefinePrompts. -->
     <ui:VisualElement name="MainMenu" class="screen">
         <ui:VisualElement name="LogoLayer" class="screen" picking-mode="Ignore">
             <ui:VisualElement name="Logo" class="main-logo" picking-mode="Ignore">
-                <ui:Label name="LogoPlaceholder" text="BOMB SLIME" class="main-logo-placeholder" picking-mode="Ignore" />
+                <ui:Label name="LogoPlaceholder" text="BOMB SLIME" class="main-logo-placeholder title-font header-outline" picking-mode="Ignore" />
             </ui:VisualElement>
-            <ui:Label name="PressAnyKey" text="Press any key" class="press-any-key" picking-mode="Ignore" />
+            <ui:Label name="PressAnyKey" text="Press any key" class="press-any-key outline" picking-mode="Ignore" />
         </ui:VisualElement>
         <ui:VisualElement name="Frame" class="screen frame" picking-mode="Ignore">
             <ui:VisualElement name="TitleBlock" class="frame-header" picking-mode="Ignore">
-                <ui:Label name="TitleLabel" text="BOMB SLIME" class="page-title header-outline" picking-mode="Ignore" />
+                <ui:Label name="TitleLabel" text="BOMB SLIME" class="page-title main-title title-font header-outline" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:VisualElement class="frame-content main-menu-content" picking-mode="Ignore">
                 <ui:VisualElement name="MenuColumn" class="menu-list">
+                    <ui:VisualElement name="MenuPlate" class="plate menu-plate" picking-mode="Ignore" />
                     <ui:Button name="Btn_Begin" text="BEGIN" class="menu-item menu-begin floaty outline" />
                     <ui:Button name="Btn_Settings" text="OPTIONS" class="menu-item floaty outline" />
                     <ui:Button name="Btn_Exit" text="EXIT" class="menu-item floaty outline" />

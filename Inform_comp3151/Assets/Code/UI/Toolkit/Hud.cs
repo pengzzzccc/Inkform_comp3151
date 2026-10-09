@@ -9,15 +9,19 @@ using UnityEngine.UIElements;
 namespace Inkform.UI
 {
     /// <summary>
-    /// The gameplay HUD, rebuilt on the Toolkit tree from the old prefab's five components:
-    /// GameTimer (top centre), FpsDisplay (top right), InventoryHud
-    /// (bottom right), SaveIndicator (the "Saved" toast above it) and the HudRoot visibility
-    /// switch — plus the tutorial hint line (bottom centre, TutorialHintView). Everything is
-    /// picking-mode Ignore in the UXML — the HUD never eats a click meant for the world.
+    /// The gameplay HUD, rebuilt on the Toolkit tree from the old prefab's components: the run
+    /// stats (top left: the run timer beside its clock, the death count beside its skull),
+    /// FpsDisplay (top right), InventoryHud (bottom right), SaveIndicator (the "Saved" toast above
+    /// it) and the HudRoot visibility switch — plus the tutorial hint line (bottom centre,
+    /// TutorialHintView). Everything is picking-mode Ignore in the UXML — the HUD never eats a
+    /// click meant for the world.
     ///
-    /// A plain object driven from UIManager.Update: timer rules are the old GameTimer's (advance
-    /// only while Playing and not mid-transition), the toast and FPS counter run on unscaled time
-    /// (hitstop must not freeze them), exactly as before.
+    /// A plain object driven from UIManager.Update. The run has one clock, SaveStore.PlaySeconds
+    /// — the same number the save slot stores and the end sheet reports — and the HUD is what
+    /// advances it: every frame the player is in play (in a level, state Playing, no scene
+    /// transition), on unscaled time so hitstop counts and pause does not. The timer reads
+    /// minutes:seconds:milliseconds; Show Timer only hides it. The toast and FPS counter run on
+    /// unscaled time too (hitstop must not freeze them).
     /// </summary>
     public sealed class Hud
     {
@@ -27,7 +31,11 @@ namespace Inkform.UI
         private const float FpsSmoothing = 0.1f;        // exponential smoothing on the instant fps
 
         private readonly VisualElement gameplay;
+        private readonly VisualElement timerRow;
+        private readonly VisualElement clockIcon;
         private readonly Label timerLabel;
+        private readonly VisualElement deathIcon;
+        private readonly Label deathLabel;
         private readonly Label fpsLabel;
         private readonly VisualElement inventoryRoot;
         private readonly VisualElement inventoryIcon;
@@ -35,8 +43,9 @@ namespace Inkform.UI
         private readonly Label saveToast;
         private readonly TutorialHintView tutorialHint;
 
-        private float elapsedTime;
         private bool timerRunning;
+        private long shownWholeSecond = -1;   // the clock rocks as each new second comes up
+        private int shownDeaths = -1;         // the skull pops as the count goes up
 
         private float toastRemaining;
 
@@ -46,7 +55,11 @@ namespace Inkform.UI
         public Hud(VisualElement root)
         {
             gameplay = root.Q("Gameplay");
+            timerRow = root.Q("TimerRow");
+            clockIcon = root.Q("ClockIcon");
             timerLabel = root.Q<Label>("TimerLabel");
+            deathIcon = root.Q("DeathIcon");
+            deathLabel = root.Q<Label>("DeathLabel");
             fpsLabel = root.Q<Label>("FpsLabel");
             inventoryRoot = root.Q("Inventory");
             inventoryIcon = root.Q("InventoryIcon");
@@ -54,14 +67,14 @@ namespace Inkform.UI
             saveToast = root.Q<Label>("SaveToast");
             tutorialHint = new TutorialHintView(root);
 
-            UpdateTimerDisplay();
+            RefreshRunStats();
 
             InventoryStore.Changed += RefreshInventory;
-            SettingsStore.Changed += ApplyFpsVisibility;
+            SettingsStore.Changed += ApplyVisibility;
             SaveStore.Saved += ShowToast;
 
             RefreshInventory();
-            ApplyFpsVisibility();
+            ApplyVisibility();
         }
 
         // ---- Visibility (old HudRoot) ----
@@ -73,25 +86,19 @@ namespace Inkform.UI
             timerRunning = visible;
         }
 
-        public void ResetLevelTimer()
-        {
-            elapsedTime = 0f;
-            UpdateTimerDisplay();
-        }
-
         // ---- Per-frame (old GameTimer / FpsDisplay / SaveIndicator Update loops) ----
 
-        public void Tick(float scaledDelta, float unscaledDelta)
+        public void Tick(float unscaledDelta)
         {
-            // Timer advances only while the player can actively play (old GameTimer).
+            // The run's clock advances only while the player can actively play (old GameTimer's
+            // rule), on unscaled time: hitstop is play, the pause menu is not
             if (timerRunning
                 && GameStateStore.Current == GameStateStore.GameState.Playing
-                && !(SceneDirector.Instance != null && SceneDirector.Instance.IsTransitioning)
-                && scaledDelta > 0f)
+                && !(SceneDirector.Instance != null && SceneDirector.Instance.IsTransitioning))
             {
-                elapsedTime += scaledDelta;
-                UpdateTimerDisplay();
+                SaveStore.AdvancePlayTime(unscaledDelta);
             }
+            RefreshRunStats();
 
             // "Saved" toast: hold, then fade — unscaled, so Save & Quit's final save flashes the
             // same as any other even while the pause menu holds timeScale at 0 (old SaveIndicator).
@@ -118,28 +125,35 @@ namespace Inkform.UI
             }
         }
 
-        private void UpdateTimerDisplay()
+        // Timer text every frame (the milliseconds move), the clock's rock once a second, the
+        // death count only when it changes
+        private void RefreshRunStats()
         {
-            if (timerLabel != null) timerLabel.text = FormatElapsedTime(elapsedTime);
-        }
+            float seconds = SaveStore.PlaySeconds;
+            if (timerLabel != null) timerLabel.text = RunTimeFormat.Format(seconds);
 
-        public static string FormatElapsedTime(float secondsValue)
-        {
-            int totalSeconds = Mathf.Max(0, Mathf.FloorToInt(secondsValue));
-            int hours = totalSeconds / 3600;
-            int minutes = (totalSeconds % 3600) / 60;
-            int seconds = totalSeconds % 60;
-            return hours > 0
-                ? $"{hours:00}:{minutes:00}:{seconds:00}"
-                : $"{minutes:00}:{seconds:00}";
+            long whole = (long)seconds;
+            if (whole != shownWholeSecond)
+            {
+                if (shownWholeSecond >= 0 && clockIcon != null && SettingsStore.ShowTimer) UiFx.Wobble(clockIcon);
+                shownWholeSecond = whole;
+            }
+
+            int deaths = SaveStore.RunDeaths;
+            if (deaths == shownDeaths) return;
+            if (shownDeaths >= 0 && deaths > shownDeaths && deathIcon != null) UiFx.Bounce(deathIcon);
+            shownDeaths = deaths;
+            if (deathLabel != null) deathLabel.text = deaths.ToString();
         }
 
         // ---- Subscriptions ----
 
-        private void ApplyFpsVisibility()
+        private void ApplyVisibility()
         {
             if (fpsLabel != null)
                 fpsLabel.style.display = SettingsStore.ShowFps ? DisplayStyle.Flex : DisplayStyle.None;
+            if (timerRow != null)
+                timerRow.style.display = SettingsStore.ShowTimer ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         /// <summary>Compact readout for the next FIFO item and current count/capacity
@@ -167,7 +181,7 @@ namespace Inkform.UI
         public void Dispose()
         {
             InventoryStore.Changed -= RefreshInventory;
-            SettingsStore.Changed -= ApplyFpsVisibility;
+            SettingsStore.Changed -= ApplyVisibility;
             SaveStore.Saved -= ShowToast;
             tutorialHint.Dispose();
         }

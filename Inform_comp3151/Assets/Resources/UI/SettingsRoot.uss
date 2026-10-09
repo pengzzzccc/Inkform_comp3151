@@ -1,5 +1,0 @@
-/* Settings ROOT page — the category list. Everything but its own placement cascades from the
-   shell's Settings.uss and the theme's .menu-list. */
-
-.settings-menu { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
-.settings-reset { margin-top: 48px; font-size: var(--fs-value); }

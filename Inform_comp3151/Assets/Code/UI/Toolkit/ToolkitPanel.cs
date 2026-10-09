@@ -163,6 +163,9 @@ namespace Inkform.UI
             }
         }
 
+        /// <summary>The stick moved with nothing focused on this sheet: start from its first control.</summary>
+        internal void Refocus() => FocusFirst();
+
         private void ReleaseFocus()
         {
             if (Root.panel == null) return;
