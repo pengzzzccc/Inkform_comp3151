@@ -133,6 +133,9 @@ namespace Inkform.Fx.Haptics
         [SerializeField] private float releaseDuration = 0.1f;
         [SerializeField] private float upgradeStrength = 0.2f;     // capacity / ability — permanent progress
         [SerializeField] private float upgradeDuration = 0.25f;
+        [Tooltip("Touching a capacity crystal; the full upgrade rumble waits for it to land in the HUD")]
+        [SerializeField] private float capacityPickupStrength = 0.1f;
+        [SerializeField] private float capacityPickupDuration = 0.08f;
 
         [Header("UI (plays in menus and through a pause)")]
         [SerializeField] private float uiStrength = 0.08f;
@@ -189,6 +192,7 @@ namespace Inkform.Fx.Haptics
             ItemBus.ItemStored += OnItemStored;
             ItemBus.ItemReleased += OnItemReleased;
             ItemBus.InventoryCapacityUpgraded += OnCapacityUpgraded;
+            ItemBus.CapacityFlight += OnCapacityFlight;
             UiBus.Clicked += OnUiClicked;
             UiBus.Toggled += OnUiToggled;
             UiBus.Bumped += OnUiBumped;
@@ -210,6 +214,7 @@ namespace Inkform.Fx.Haptics
             ItemBus.ItemStored -= OnItemStored;
             ItemBus.ItemReleased -= OnItemReleased;
             ItemBus.InventoryCapacityUpgraded -= OnCapacityUpgraded;
+            ItemBus.CapacityFlight -= OnCapacityFlight;
             UiBus.Clicked -= OnUiClicked;
             UiBus.Toggled -= OnUiToggled;
             UiBus.Bumped -= OnUiBumped;
@@ -512,7 +517,16 @@ namespace Inkform.Fx.Haptics
         private void OnItemReleased(InventoryItemDefinition item, Vector2 pos, Vector2 velocity) =>
             mixer.Add(releaseStrength, releaseStrength, releaseDuration);
 
-        private void OnCapacityUpgraded(Vector2 pos, int increase) => mixer.Add(upgradeStrength, upgradeStrength, upgradeDuration);
+        // The capacity crystal freezes the world for its flight into the HUD, and the gameplay mixer
+        // holds still while frozen — so both of its beats go through the never-frozen UI mixer: a
+        // light tick on the touch, the upgrade rumble when the crystal lands
+        private void OnCapacityUpgraded(Vector2 pos, int increase) =>
+            uiMixer.Add(capacityPickupStrength, capacityPickupStrength, capacityPickupDuration);
+
+        private void OnCapacityFlight(CapacityFlightPhase phase, int increase)
+        {
+            if (phase == CapacityFlightPhase.Land) uiMixer.Add(upgradeStrength, upgradeStrength, upgradeDuration);
+        }
 
         private void OnUiClicked() => uiMixer.Add(uiStrength, uiStrength, uiClickDuration);
 

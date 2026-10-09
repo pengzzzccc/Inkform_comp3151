@@ -127,6 +127,15 @@ namespace Inkform.UI
                     () => el.style.scale = StyleKeyword.Null));
         }
 
+        /// <summary>Something arrived: a quick swell to 1.18 and an overshooting settle back — the
+        /// HUD backpack plate catching a capacity crystal.</summary>
+        public static void Pop(VisualElement el)
+        {
+            Tween(el, 0.08f, Easing.CubeOut, t => SetUniformScale(el, Mathf.Lerp(1f, 1.18f, t)), 0f, () =>
+                Tween(el, 0.25f, Easing.BackOut, t => SetUniformScale(el, Mathf.Lerp(1.18f, 1f, t)), 0f,
+                    () => el.style.scale = StyleKeyword.Null));
+        }
+
         private static void SetUniformScale(VisualElement el, float s) =>
             el.style.scale = new Scale(new Vector3(s, s, 1f));
 

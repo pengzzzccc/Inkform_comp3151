@@ -22,6 +22,10 @@ namespace Inkform.UI
     /// transition), on unscaled time so hitstop counts and pause does not. The timer reads
     /// minutes:seconds:milliseconds; Show Timer only hides it. The toast and FPS counter run on
     /// unscaled time too (hitstop must not freeze them).
+    ///
+    /// A capacity crystal flies into the backpack plate before its slot counts (CapacityUpgradeFlight):
+    /// from its Rise to its Land the readout keeps the old capacity, then the plate pops, the count
+    /// flashes green and "+1" floats up off the plate.
     /// </summary>
     public sealed class Hud
     {
@@ -40,12 +44,14 @@ namespace Inkform.UI
         private readonly VisualElement inventoryRoot;
         private readonly VisualElement inventoryIcon;
         private readonly Label inventoryCount;
+        private readonly Label inventoryPlus;
         private readonly Label saveToast;
         private readonly TutorialHintView tutorialHint;
 
         private bool timerRunning;
         private long shownWholeSecond = -1;   // the clock rocks as each new second comes up
         private int shownDeaths = -1;         // the skull pops as the count goes up
+        private int heldCapacity;             // capacity still flying in to the plate: shown when it lands
 
         private float toastRemaining;
 
@@ -64,12 +70,14 @@ namespace Inkform.UI
             inventoryRoot = root.Q("Inventory");
             inventoryIcon = root.Q("InventoryIcon");
             inventoryCount = root.Q<Label>("InventoryCount");
+            inventoryPlus = root.Q<Label>("InventoryPlus");
             saveToast = root.Q<Label>("SaveToast");
             tutorialHint = new TutorialHintView(root);
 
             RefreshRunStats();
 
             InventoryStore.Changed += RefreshInventory;
+            ItemBus.CapacityFlight += OnCapacityFlight;
             SettingsStore.Changed += ApplyVisibility;
             SaveStore.Saved += ShowToast;
 
@@ -166,7 +174,71 @@ namespace Inkform.UI
             Sprite icon = hasItem ? first.Icon : null;
             if (icon != null) inventoryIcon.style.backgroundImage = new StyleBackground(icon);
             inventoryIcon.style.display = icon != null ? DisplayStyle.Flex : DisplayStyle.None;
-            inventoryCount.text = $"{InventoryStore.Count}/{InventoryStore.Capacity}";
+            int shownCapacity = Mathf.Max(InventoryStore.Count, InventoryStore.Capacity - heldCapacity);
+            inventoryCount.text = $"{InventoryStore.Count}/{shownCapacity}";
+        }
+
+        // Rise comes the same frame the store grows (before the panel draws), so the new capacity
+        // never shows early. Cancel (the flight torn down) just stops holding it back.
+        private void OnCapacityFlight(CapacityFlightPhase phase, int increase)
+        {
+            switch (phase)
+            {
+                case CapacityFlightPhase.Rise:
+                    heldCapacity += increase;
+                    RefreshInventory();
+                    break;
+                case CapacityFlightPhase.Land:
+                    heldCapacity = Mathf.Max(0, heldCapacity - increase);
+                    RefreshInventory();
+                    CelebrateCapacity(increase);
+                    break;
+                case CapacityFlightPhase.Cancel:
+                    heldCapacity = Mathf.Max(0, heldCapacity - increase);
+                    RefreshInventory();
+                    break;
+            }
+        }
+
+        // The crystal hits the plate: the plate pops, the count flashes green, "+N" floats up
+        private void CelebrateCapacity(int increase)
+        {
+            if (inventoryRoot != null) UiFx.Pop(inventoryRoot);
+            if (inventoryCount != null)
+            {
+                inventoryCount.AddToClassList("hud-inventory-count--up");
+                inventoryCount.schedule.Execute(() => inventoryCount.RemoveFromClassList("hud-inventory-count--up"))
+                    .StartingIn(600);
+            }
+
+            if (inventoryPlus == null) return;
+            inventoryPlus.text = $"+{increase}";
+            UiFx.Tween(inventoryPlus, 0.7f, t => t, t =>
+            {
+                inventoryPlus.style.opacity = t < 0.15f ? t / 0.15f : 1f - Mathf.Clamp01((t - 0.55f) / 0.45f);
+                inventoryPlus.style.translate = new Translate(0f, -28f * Easing.CubeOut(t), 0f);
+            }, 0f, () => inventoryPlus.style.opacity = 0f);
+        }
+
+        /// <summary>The backpack plate's rectangle in screen pixels (origin bottom left) — where a
+        /// capacity crystal flies to. False while the gameplay HUD is hidden or not laid out yet.</summary>
+        public bool TryGetInventoryScreenRect(out Rect screenRect)
+        {
+            screenRect = default;
+            if (inventoryRoot?.panel == null) return false;
+            if (gameplay != null && gameplay.resolvedStyle.display == DisplayStyle.None) return false;
+
+            Rect plate = inventoryRoot.worldBound;
+            Rect panelRect = inventoryRoot.panel.visualTree.worldBound;
+            if (panelRect.width <= 0f || panelRect.height <= 0f || float.IsNaN(plate.x) || plate.width <= 0f)
+                return false;
+
+            // The panel covers the screen (ScaleWithScreenSize): panel units scale to pixels, and
+            // the panel's y runs down where the screen's runs up
+            float sx = Screen.width / panelRect.width;
+            float sy = Screen.height / panelRect.height;
+            screenRect = new Rect(plate.x * sx, Screen.height - plate.yMax * sy, plate.width * sx, plate.height * sy);
+            return true;
         }
 
         private void ShowToast()
@@ -181,6 +253,7 @@ namespace Inkform.UI
         public void Dispose()
         {
             InventoryStore.Changed -= RefreshInventory;
+            ItemBus.CapacityFlight -= OnCapacityFlight;
             SettingsStore.Changed -= ApplyVisibility;
             SaveStore.Saved -= ShowToast;
             tutorialHint.Dispose();

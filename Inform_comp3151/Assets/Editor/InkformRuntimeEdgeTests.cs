@@ -10,6 +10,7 @@ using Inkform.Interactable.Parts;
 using Inkform.Input;
 using Inkform.Item;
 using Inkform.Level;
+using Inkform.Life;
 using Inkform.Player;
 using Inkform.Save;
 using Inkform.Settings;
@@ -35,7 +36,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void Inventory_StartsAtOneAndUniquePickupsGrowBeyondFour()
+        public void Inventory_StartsEmptyAndUniquePickupsGrowBeyondFour()
         {
             InventoryStore.Clear();
             InventoryItemDefinition[] definitions = new InventoryItemDefinition[5];
@@ -47,11 +48,10 @@ namespace Inkform.Tests
                     SetField(definitions[i], "id", $"test-{i}");
                 }
 
-                Assert.AreEqual(1, InventoryStore.Capacity);
-                Assert.IsTrue(InventoryStore.TryAdd(definitions[0]));
-                Assert.IsFalse(InventoryStore.TryAdd(definitions[1]), "a second item must remain in the world before an upgrade");
+                Assert.AreEqual(0, InventoryStore.Capacity, "a new run has no backpack slots");
+                Assert.IsFalse(InventoryStore.TryAdd(definitions[0]), "an item must remain in the world before the first crystal");
 
-                for (int i = 1; i < definitions.Length; i++)
+                for (int i = 0; i < definitions.Length; i++)
                 {
                     Assert.IsTrue(InventoryStore.TryCollectCapacityPickup($"upgrade-{i}", 1));
                     Assert.IsTrue(InventoryStore.TryAdd(definitions[i]));
@@ -70,7 +70,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void SaveV1_MigratesToCurrentWithEmptyOneSlotInventory()
+        public void SaveV1_MigratesToCurrentWithAnEmptySlotlessInventory()
         {
             string path = Path.Combine(Application.temporaryCachePath, $"inkform-v1-{Guid.NewGuid():N}.json");
             try
@@ -83,7 +83,7 @@ namespace Inkform.Tests
                 Assert.AreEqual(SaveData.CurrentVersion, data.version);
                 Assert.IsNotNull(data.inventoryItemIds);
                 Assert.IsEmpty(data.inventoryItemIds);
-                Assert.AreEqual(1, data.inventoryCapacity);
+                Assert.AreEqual(InventoryStore.InitialCapacity, data.inventoryCapacity);
                 Assert.IsNotNull(data.collectedInventoryCapacityPickupIds);
                 Assert.IsEmpty(data.collectedInventoryCapacityPickupIds);
                 Assert.AreEqual("B2", data.sceneName);
@@ -446,11 +446,11 @@ namespace Inkform.Tests
                 Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("   ", 1));
                 Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("zero", 0));
                 Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("negative", -1));
-                Assert.AreEqual(1, InventoryStore.Capacity);
+                Assert.AreEqual(0, InventoryStore.Capacity);
                 Assert.AreEqual(0, changed);
 
                 Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("valid", 2));
-                Assert.AreEqual(3, InventoryStore.Capacity);
+                Assert.AreEqual(2, InventoryStore.Capacity);
                 Assert.AreEqual(1, changed, "one capacity transaction must publish one inventory change");
                 Assert.IsFalse(InventoryStore.TryCollectCapacityPickup("valid", 2));
                 Assert.AreEqual(1, changed);
@@ -586,17 +586,18 @@ namespace Inkform.Tests
                 Assert.IsFalse((object)part is IRestorablePart,
                     "permanent inventory upgrades must not participate in death/checkpoint restoration");
                 Assert.IsTrue(part.HandleContact(ContactPhase.Enter, playerCollider));
-                Assert.AreEqual(3, InventoryStore.Capacity);
+                Assert.AreEqual(2, InventoryStore.Capacity);
                 Assert.IsTrue(InventoryStore.IsCapacityPickupCollected("cave-capacity-01"));
                 Assert.AreEqual(1, upgradeEvents);
                 Assert.AreEqual(2, reportedIncrease);
                 Assert.AreEqual(new Vector2(3f, 4f), reportedPosition);
+                // Edit mode: no flight into the HUD (CapacityUpgradeFlight plays only in Play mode)
                 Assert.IsTrue(pickup == null, "a collected world pickup must be destroyed immediately");
 
                 reloadedPickup = CreateCapacityPickup("cave-capacity-01", 2, out _);
                 Assert.IsTrue(reloadedPickup == null,
                     "an already collected scene instance must remove itself as soon as it attaches");
-                Assert.AreEqual(3, InventoryStore.Capacity, "scene reload must not grant capacity again");
+                Assert.AreEqual(2, InventoryStore.Capacity, "scene reload must not grant capacity again");
                 Assert.AreEqual(1, upgradeEvents, "a duplicate pickup must not replay the collection sound event");
             }
             finally
@@ -657,7 +658,7 @@ namespace Inkform.Tests
             SetField(second, "id", "fifo-second");
             try
             {
-                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fifo-release-capacity", 1));
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fifo-release-capacity", 2));
                 Assert.IsTrue(inventory.TryStore(first));
                 Assert.IsTrue(inventory.TryStore(second));
 
@@ -699,9 +700,11 @@ namespace Inkform.Tests
             {
                 Label count = host.Q<Label>("InventoryCount");
                 VisualElement icon = host.Q("InventoryIcon");
-                Assert.AreEqual("0/1", count.text);
+                Assert.AreEqual("0/0", count.text);
                 Assert.AreEqual(DisplayStyle.None, icon.style.display.value);
 
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("hud-head-capacity", 1));
+                Assert.AreEqual("0/1", count.text);
                 Assert.IsTrue(InventoryStore.TryAdd(item));
                 Assert.AreEqual("1/1", count.text);
                 Assert.AreEqual(item.Icon, icon.style.backgroundImage.value.sprite);
@@ -709,6 +712,109 @@ namespace Inkform.Tests
             finally
             {
                 hud.Dispose();
+                UnityEngine.Object.DestroyImmediate(item);
+            }
+        }
+
+        [Test]
+        public void Hud_HoldsTheNewCapacityBackUntilTheCrystalLands()
+        {
+            VisualTreeAsset tree = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/Resources/UI/Hud.uxml");
+            Assert.IsNotNull(tree, "missing Resources/UI/Hud.uxml");
+            VisualElement host = tree.Instantiate();
+            Hud hud = new Hud(host);
+            try
+            {
+                Label count = host.Q<Label>("InventoryCount");
+                Assert.IsNotNull(host.Q<Label>("InventoryPlus"), "the landing \"+1\" label");
+                Assert.AreEqual("0/0", count.text);
+
+                // The pickup's order: the store grows, then the flight rises — the same frame
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("hud-crystal", 1));
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Rise, 1);
+                Assert.AreEqual("0/0", count.text, "the old capacity stays up while the crystal flies");
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Hold, 1);
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Fly, 1);
+                Assert.AreEqual("0/0", count.text);
+
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Land, 1);
+                Assert.AreEqual("0/1", count.text, "landing shows the new capacity");
+
+                // A flight torn down early releases its hold too
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("hud-crystal-2", 1));
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Rise, 1);
+                Assert.AreEqual("0/1", count.text);
+                ItemBus.RaiseCapacityFlight(CapacityFlightPhase.Cancel, 1);
+                Assert.AreEqual("0/2", count.text);
+            }
+            finally
+            {
+                hud.Dispose();
+            }
+        }
+
+        [Test]
+        public void InventoryStore_ClearItemsKeepsTheCapacityAndTheCollectedCrystals()
+        {
+            InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(item, "id", "clear-items-bomb");
+            try
+            {
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("clear-items-crystal", 2));
+                Assert.IsTrue(InventoryStore.TryAdd(item));
+                Assert.IsTrue(InventoryStore.TryAdd(item));
+                int notifications = 0;
+                Action onChanged = () => notifications++;
+                InventoryStore.Changed += onChanged;
+                try
+                {
+                    InventoryStore.ClearItems();
+                    Assert.AreEqual(0, InventoryStore.Count);
+                    Assert.AreEqual(2, InventoryStore.Capacity);
+                    Assert.IsTrue(InventoryStore.IsCapacityPickupCollected("clear-items-crystal"));
+                    Assert.AreEqual(1, notifications);
+
+                    InventoryStore.ClearItems();
+                    Assert.AreEqual(1, notifications, "an empty backpack has nothing to clear or save");
+                }
+                finally
+                {
+                    InventoryStore.Changed -= onChanged;
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(item);
+            }
+        }
+
+        [Test]
+        public void PlayerInventory_EmptiesTheBackpackOnlyOnItsOwnDeath()
+        {
+            GameObject player = new GameObject("Death clears backpack player");
+            PlayerInventory inventory = player.AddComponent<PlayerInventory>();
+            GameObject other = new GameObject("Some other victim");
+            InventoryItemDefinition item = ScriptableObject.CreateInstance<InventoryItemDefinition>();
+            SetField(item, "id", "death-clear-bomb");
+            MethodInfo onDied = typeof(PlayerInventory).GetMethod("OnDied", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(onDied, "PlayerInventory listens for LifeBus.Died");
+            try
+            {
+                Assert.IsTrue(InventoryStore.TryCollectCapacityPickup("death-clear-crystal", 2));
+                Assert.IsTrue(InventoryStore.TryAdd(item));
+                Assert.IsTrue(InventoryStore.TryAdd(item));
+
+                onDied.Invoke(inventory, new object[] { new DeathContext(other, Vector2.zero, DeathCause.Spike) });
+                Assert.AreEqual(2, InventoryStore.Count, "someone else's death leaves the backpack alone");
+
+                onDied.Invoke(inventory, new object[] { new DeathContext(player, Vector2.zero, DeathCause.Spike) });
+                Assert.AreEqual(0, InventoryStore.Count, "the player's death empties the backpack");
+                Assert.AreEqual(2, InventoryStore.Capacity, "the crystals' capacity is permanent");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(player);
+                UnityEngine.Object.DestroyImmediate(other);
                 UnityEngine.Object.DestroyImmediate(item);
             }
         }
@@ -730,6 +836,7 @@ namespace Inkform.Tests
             Assert.IsNotNull(host.Q("Inventory"));
             Assert.IsNotNull(host.Q("InventoryIcon"));
             Assert.IsNotNull(host.Q<Label>("InventoryCount"));
+            Assert.IsNotNull(host.Q<Label>("InventoryPlus"));
             Assert.IsNotNull(host.Q<Label>("SaveToast"));
 
             // The old prefab asserted raycastTarget == false on every Graphic; the Toolkit shape
@@ -1062,7 +1169,7 @@ namespace Inkform.Tests
             SetField(fuelB, "dashFuel", true);
             try
             {
-                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fuel-test-capacity", 2));
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("fuel-test-capacity", 3));
                 Assert.IsTrue(inventory.TryStore(normal));
                 Assert.IsTrue(inventory.TryStore(fuelA));
                 Assert.IsTrue(inventory.TryStore(fuelB));
@@ -1125,6 +1232,7 @@ namespace Inkform.Tests
             PlayerBus.DashAttempted += onDashAttempted;
             try
             {
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("dash-fuel-capacity", 1));
                 Assert.IsTrue(inventory.TryStore(fuel));
                 player.Dash();
                 Assert.AreEqual(0, inventory.Count);
@@ -1206,6 +1314,7 @@ namespace Inkform.Tests
             HazardBus.Blast += onBlast;
             try
             {
+                Assert.IsTrue(inventory.TryCollectCapacityUpgrade("dash-break-capacity", 1));
                 Assert.IsTrue(inventory.TryStore(fuel));
 
                 go.SetActive(true);

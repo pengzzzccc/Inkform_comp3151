@@ -20,7 +20,8 @@
             </ui:VisualElement>
             <ui:VisualElement name="Inventory" class="hud-inventory" picking-mode="Ignore">
                 <ui:Image name="InventoryIcon" class="hud-inventory-icon" picking-mode="Ignore" />
-                <ui:Label name="InventoryCount" text="0/1" class="hud-inventory-count outline" picking-mode="Ignore" />
+                <ui:Label name="InventoryCount" text="0/0" class="hud-inventory-count outline" picking-mode="Ignore" />
+                <ui:Label name="InventoryPlus" text="+1" class="hud-inventory-plus outline" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Label name="SaveToast" text="Saved" class="hud-save-toast outline" picking-mode="Ignore" />
             <ui:VisualElement name="TutorialHint" class="hud-tutorial" picking-mode="Ignore">

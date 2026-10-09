@@ -41,6 +41,19 @@
 }
 .hud-inventory-icon { width: 54px; height: 54px; -unity-background-scale-mode: scale-to-fit; }
 .hud-inventory-count { flex-grow: 1; font-size: var(--fs-corner); color: var(--c-white); -unity-text-align: middle-center; }
+/* A capacity crystal just landed (Hud.CelebrateCapacity): the count flashes green for 0.6s and
+   "+1" floats up off the plate's top edge — opacity and the rise are driven by C#. */
+.hud-inventory-count--up { color: var(--c-green); }
+.hud-inventory-plus {
+    position: absolute;
+    left: 0; right: 0; bottom: 100%;
+    margin-bottom: 4px;
+    font-size: var(--fs-value);
+    color: var(--c-green);
+    -unity-text-align: lower-center;
+    opacity: 0;
+    text-shadow: 0px 2px 6px rgba(6, 8, 20, 0.9);
+}
 
 .hud-save-toast { position: absolute; right: var(--hud-margin); bottom: 138px; font-size: var(--fs-corner); color: rgba(240, 242, 248, 0.95); opacity: 0; -unity-text-align: middle-right; text-shadow: 0px 2px 5px rgba(6, 8, 20, 0.85); }   /* opacity driven by C# */
 

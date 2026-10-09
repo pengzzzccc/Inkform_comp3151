@@ -85,6 +85,14 @@ namespace Inkform.UI
         public bool IsPaused => paused;
         public bool IsInMainMenu { get; private set; }
 
+        /// <summary>The HUD backpack plate in screen pixels — the capacity crystal's landing spot
+        /// (CapacityUpgradeFlight). False while the gameplay HUD is hidden.</summary>
+        public bool TryGetHudInventoryRect(out Rect screenRect)
+        {
+            screenRect = default;
+            return hud != null && hud.TryGetInventoryScreenRect(out screenRect);
+        }
+
         void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
