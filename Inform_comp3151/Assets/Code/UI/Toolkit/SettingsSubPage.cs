@@ -9,7 +9,7 @@ namespace Inkform.UI
     /// Base class for one settings sub-page. Each page owns its own triple of files — a UXML
     /// template under Resources/UI, its USS, and a Page class — instantiated by the base
     /// constructor and mounted into the Settings shell by SettingsPanel, which routes between
-    /// the pages (ShowTab) and forwards Refresh/Reset.
+    /// the pages (ShowTab) and forwards Refresh.
     ///
     /// The shared row vocabulary (option rows, slider rows, sub-headers) lives here so every
     /// page builds rows the same way; the row STYLES cascade from the shell's Settings.uss
@@ -67,15 +67,19 @@ namespace Inkform.UI
         /// <summary>Pull SettingsStore's current values into this page's live controls.</summary>
         public virtual void Refresh() { }
 
+        /// <summary>Per-frame while this page is on stage (unscaled, from the shell).</summary>
+        public virtual void Tick() { }
+
         // ---- Shared row vocabulary (identical to the old single-panel factories) ----
 
-        protected void AddSubHeader(string text)
+        protected Label AddSubHeader(string text)
         {
             var header = new Label(text);
             header.AddToClassList("subheader");
             header.AddToClassList("outline");
             header.pickingMode = PickingMode.Ignore;
             rows?.Add(header);
+            return header;
         }
 
         protected OptionRow AddOptionRow(string labelText, string initial)

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Inkform.Bus;
+using Inkform.Fx.Haptics;
 using Inkform.Player;
 using Inkform.Settings;
 
@@ -40,8 +41,9 @@ namespace Inkform.Input
         // Held-button actions feeding the device auto-detection (a held button = deliberate input)
         private InputAction[] pressButtons;
 
-        // Get player
-        [SerializeField] private PlayerHandler player;
+        // The current scene's player, rebound from PlayerBus (never serialized: the persistent
+        // GameManager outlives every scene's player)
+        private PlayerHandler player;
 
         // A keyboard is discrete 0/±1; here we synthesize analog stick strength from press duration:
         // the longer a key is held the closer to full strength (rampUpTime), recentering on release
@@ -63,10 +65,9 @@ namespace Inkform.Input
         {
             EnsureActionsInitialized();
 
-            // The serialized reference (scene instance override on the GameManager prefab) only points
-            // at the scene the GameManager was spawned in. The GameManager itself survives scene
-            // switches via PersistentGameRoot's DontDestroyOnLoad, so after a change the old player
-            // becomes a Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
+            // The GameManager survives scene switches via PersistentGameRoot's DontDestroyOnLoad, so a
+            // held player reference goes stale after a change (a Unity fake-null that `?.` cannot
+            // intercept) — always bind to the current scene's player.
             ResolvePlayer();
             // No warning when this leaves player null: the boot scene (the menu) legitimately has
             // none, and rooms with a runtime-spawned player bind later — sceneLoaded re-resolves,
@@ -98,12 +99,12 @@ namespace Inkform.Input
         void OnDestroy()
         {
             // No Dispose here: the wrapper is the shared InputActions instance, releasing it would
-            // kill the asset under UIManager's UI module too. It is static and ends with play mode.
+            // kill it under every other consumer. It is static and ends with play mode.
             gameplayInputLockOwners.Clear();
         }
 
         // The persistent GameManager survives scene switches (PersistentGameRoot calls DontDestroyOnLoad
-        // on its host), so the serialized player reference goes stale the moment the scene changes —
+        // on its host), so a held player reference goes stale the moment the scene changes —
         // a destroyed UnityEngine.Object reads non-null to C# `?.`, letting the call chain run all the
         // way into a dead PlayerHandler/RopeGun (MissingReferenceException). sceneLoaded fires after the
         // new scene's objects are all instantiated, so re-binding here always finds the live player.
@@ -193,6 +194,8 @@ namespace Inkform.Input
 
         private static void SwitchTo(InputDevice device)
         {
+            // The pad that just moved is the one haptics go to (only one pad ever rumbles)
+            ActivePadTracker.Note(device);
             SettingsStore.InputDevice expected = device is Gamepad
                 ? SettingsStore.InputDevice.Gamepad
                 : SettingsStore.InputDevice.KeyboardMouse;

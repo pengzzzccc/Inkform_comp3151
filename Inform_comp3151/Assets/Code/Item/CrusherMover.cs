@@ -14,7 +14,7 @@ namespace Inkform.Item
     /// Cycle: hover at the top → slam down → linger at the bottom → rise back, forever. The placed
     /// position acts as the top for the opening leg (same as PatrolMover's first-leg semantics);
     /// every later rise returns exactly to start + Top Offset. Each leg's start plays its SoundCue
-    /// (fall cue on the slam, rise cue on the return) through the shared AudioManager pool.
+    /// (fall cue on the slam, rise cue on the return) through the shared AudioService.
     /// </summary>
     public class CrusherMover : MonoBehaviour
     {
@@ -164,12 +164,8 @@ namespace Inkform.Item
             phase = MotionPhase.Waiting;
         }
 
-        // Same cue pattern as the death strategies: null-safe, through the shared AudioManager pool
-        private void PlayCue(SoundCue cue)
-        {
-            if (cue != null && AudioManager.Instance != null)
-                AudioManager.Instance.Play(cue, target.position);
-        }
+        // Same cue pattern as the death strategies: null-safe, through the shared AudioService voices
+        private void PlayCue(SoundCue cue) => AudioService.Play(cue, (Vector2)target.position);
 
         // The project sets m_AutoSyncTransforms = 0: write the rigidbody too when present, or its
         // physics collider trails behind the sprite

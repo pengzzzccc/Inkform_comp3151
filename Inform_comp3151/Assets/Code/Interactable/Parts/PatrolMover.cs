@@ -1,3 +1,4 @@
+using Inkform.Audio;
 using UnityEngine;
 
 namespace Inkform.Interactable.Parts
@@ -53,9 +54,11 @@ namespace Inkform.Interactable.Parts
         [SerializeField, Min(0f)] private float speed = 2.2f;
         [Tooltip("Fixed mode: return movement speed, units/second. Zero uses Forward Speed")]
         [SerializeField, Min(0f)] private float returnSpeed;
-        [Tooltip("Random mode re-rolls a speed for every leg within this range")]
+        [Tooltip("Fixed: Forward / Return Speed. Random: every leg re-rolls a speed between the min and max below")]
         [SerializeField] private SpeedMode speedMode = SpeedMode.Fixed;
+        [Tooltip("Random mode: lowest speed a leg can roll, units/second")]
         [SerializeField, Min(0f)] private float randomSpeedMin = 1.5f;
+        [Tooltip("Random mode: highest speed a leg can roll, units/second")]
         [SerializeField, Min(0f)] private float randomSpeedMax = 3f;
 
         [Header("Endpoint Stops (fallback when Stop Times has no entry for a waypoint)")]
@@ -69,6 +72,10 @@ namespace Inkform.Interactable.Parts
         [SerializeField] private AnimationCurve forwardCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
         [Tooltip("Normalized time to normalized distance while moving in descending-index direction")]
         [SerializeField] private AnimationCurve returnCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
+
+        [Header("Sound")]
+        [Tooltip("Constant looping sound carried along with the mover (like a laser hum). Always positional: full volume up close, fading to silence at the Cue's Falloff Range. Empty = silent")]
+        [SerializeField] private SoundCue loopCue;
 
         private Interactable root;
         private Rigidbody2D body;       // when a rigidbody exists, sync its position so players standing on top get carried
@@ -97,6 +104,10 @@ namespace Inkform.Interactable.Parts
             this.root = root;
             body = root.GetComponent<Rigidbody2D>();
             startPos = root.transform.position;
+
+            // The loop rides an AmbientSource on the moving root, so it follows the patrol (same
+            // component the laser hum uses). Added here so a Cue in the slot is all a prefab needs
+            if (loopCue != null) root.gameObject.AddComponent<AmbientSource>().Play(loopCue);
 
             // Resolve the route: explicit waypoints, or the legacy pointA/pointB pair — pre-asset
             // prefabs keep their serialized data and their exact old behavior

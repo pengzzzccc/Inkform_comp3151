@@ -19,9 +19,10 @@ namespace Inkform.Level
     ///
     /// Transition pipeline, the same shape the official Unity samples use: lock + fade out → async
     /// Single-mode load → resolve the current room → fade in → hand input back. The lock makes every
-    /// entry point (doors, new game, continue, quit-to-menu) mutually exclusive, and sceneLoaded
-    /// only sets a flag because it fires before this coroutine's AsyncOperation continuation
-    /// (clearing state there has crashed the coroutine before — see OnSceneLoaded).
+    /// entry point (doors, new game, continue, quit-to-menu) mutually exclusive. sceneLoaded fires
+    /// before this coroutine's AsyncOperation continuation, so it only does per-scene setup (flag,
+    /// hitstop clear, intro staging) and never touches the transition state (clearing state there
+    /// has crashed the coroutine before — see OnSceneLoaded).
     /// </summary>
     public class SceneDirector : MonoBehaviour
     {
@@ -33,16 +34,14 @@ namespace Inkform.Level
         [SerializeField] private WorldDefinition world;
 
         [Header("Transition")]
-        [Tooltip("Seconds of fade to black before a scene switch")]
-        [SerializeField] private float fadeOutSeconds = 0.25f;
-        [Tooltip("Seconds of fade back to clear after the new scene is active")]
-        [SerializeField] private float fadeInSeconds = 0.4f;
+        [Tooltip("Seconds the staircase curtain takes to cover the screen before a scene switch")]
+        [SerializeField] private float fadeOutSeconds = 0.6f;
+        [Tooltip("Seconds the staircase curtain takes to clear after the new scene is active")]
+        [SerializeField] private float fadeInSeconds = 0.6f;
 
-        private RoomDefinition currentRoom;
         private bool worldMissingWarned;
         private bool sceneInitPending;
         private bool transitionInProgress;
-        private AsyncOperation loadOperation;
 
         private string pendingSpawnId;
         private Vector2? pendingSpawnPos;
@@ -57,15 +56,13 @@ namespace Inkform.Level
 
         public bool IsTransitioning => transitionInProgress;
 
-        public SceneArrivalType PendingArrivalType => pendingArrivalType;
-
         void Awake()
         {
             if (Instance != null && Instance != this) { enabled = false; return; }
             Instance = this;
 
-            // Self-installed like UIManager's GamepadCursor / InventoryHud: the fader exists without
-            // anyone having to add it to the GameManager prefab by hand
+            // Self-installed: the fader exists without anyone having to add it to the GameManager
+            // prefab by hand
             fader = GetComponent<SceneFader>();
             if (fader == null) fader = gameObject.AddComponent<SceneFader>();
         }
@@ -117,7 +114,7 @@ namespace Inkform.Level
         private void InitForScene()
         {
             string scene = SceneManager.GetActiveScene().name;
-            currentRoom = world != null ? world.FindBySceneName(scene) : null;
+            RoomDefinition currentRoom = world != null ? world.FindBySceneName(scene) : null;
 
             // Null means the menu or an unregistered scene (an editor cold start into a test level) —
             // either way no room is running, which is all Started's subscribers need to know
@@ -298,9 +295,9 @@ namespace Inkform.Level
             // fade, the incoming scene's own cue fades in after arrival (SceneMusic.Start /
             // PlayMenuMusic). A failed load therefore stays silent — the old scene's SceneMusic
             // never re-runs Start.
-            if (AudioManager.Instance != null) AudioManager.Instance.StopMusic(fadeOutSeconds);
+            AudioService.StopMusic(fadeOutSeconds);
 
-            // Fade to black first, so the load's first hiccup is already behind the curtain
+            // Cover the screen first, so the load's first hiccup is already behind the curtain
             if (fader != null) yield return fader.FadeOut(fadeOutSeconds);
 
             // Never unload a scene from inside the trigger/physics callback that requested it.
@@ -311,7 +308,6 @@ namespace Inkform.Level
             try
             {
                 operation = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Single);
-                loadOperation = operation;
             }
             catch (System.Exception exception)
             {
@@ -331,13 +327,20 @@ namespace Inkform.Level
             yield return operation;
 
             LastLoadMs = (Time.realtimeSinceStartup - loadStart) * 1000f;
-            loadOperation = null;
             GameStateStore.Set(GameStateStore.GameState.Transition);
 
             RoomIntro intro = FindAnyObjectByType<RoomIntro>();
             RespawnDirector respawn = GetComponent<RespawnDirector>();
             bool playIntro = pendingArrivalType == SceneArrivalType.NewGame && intro != null;
             if (playIntro) intro.PrepareBeforeReveal(respawn);
+
+            // The first frames of a freshly activated scene hitch hard; let them pass behind the
+            // closed curtain so the reveal plays smoothly from its first frame
+            yield return WaitForSettledFrames();
+
+            // The intro cue starts with the reveal, not after it: it is authored to play under the
+            // still-dark opening and land with the spawn, which counts from this same moment
+            if (playIntro) intro.BeginHold();
 
             // Normal arrivals are initialized by RespawnDirector during this fade. A new-game intro
             // has explicitly held that initializer, so the revealed shot remains empty.
@@ -357,12 +360,28 @@ namespace Inkform.Level
             pendingArrivalType = SceneArrivalType.None;
         }
 
+        // Waits for SettledFramesNeeded consecutive smooth frames, capped at MaxSettleSeconds of real
+        // time so a machine that never settles still gets its scene revealed
+        private const float SettledFrameSeconds = 0.05f;
+        private const int SettledFramesNeeded = 2;
+        private const float MaxSettleSeconds = 1f;
+
+        private static IEnumerator WaitForSettledFrames()
+        {
+            float deadline = Time.realtimeSinceStartup + MaxSettleSeconds;
+            int smooth = 0;
+            while (smooth < SettledFramesNeeded && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+                smooth = Time.unscaledDeltaTime < SettledFrameSeconds ? smooth + 1 : 0;
+            }
+        }
+
         private void HandleLoadFailure()
         {
             transitionInProgress = false;
             pendingArrivalType = SceneArrivalType.None;
             SetGameStateFromActiveScene();
-            loadOperation = null;
             pendingSpawnId = null;
             pendingSpawnPos = null;
             if (!SaveStore.AbortNewRun()) SaveStore.EndRun();

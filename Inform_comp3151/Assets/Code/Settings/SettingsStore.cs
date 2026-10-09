@@ -10,9 +10,10 @@ namespace Inkform.Settings
     ///
     /// Fully static — no scene object, no prefab wiring: values load automatically before the first
     /// scene loads (RuntimeInitializeOnLoadMethod) and every Set saves back. Readers use the static
-    /// properties directly: AudioManager reads volumes when a sound starts and subscribes to Changed
-    /// to retune its live voices, RopeGun applies sensitivity and subscribes to Changed to re-read
-    /// after edits. The Settings panel is the only writer.
+    /// properties directly: AudioService writes the volumes to the mixer and subscribes to Changed
+    /// to follow slider edits, RopeGun applies sensitivity and subscribes to Changed to re-read
+    /// after edits. The Settings panel is the main writer; InputHandler and UIManager also flip
+    /// Device when they detect the active input family.
     ///
     /// Static (over a GameManager component) because settings are cross-domain infrastructure like the
     /// buses — Audio / Player / UI all touch them — and a static API needs zero scene or prefab edits.
@@ -20,12 +21,16 @@ namespace Inkform.Settings
     /// RuntimeInitializeOnLoadMethod loads persisted values (a plain static default would be wiped by
     /// the ResetStatics pass that must run for the event).
     /// </summary>
+    /// <summary>Gamepad rumble strength. Each pad family maps the levels onto its own motors:
+    /// HapticsDirector's table for the DualSense, GenericPadHaptics' shares for every other pad.</summary>
+    public enum RumbleLevel { Off, Low, Medium, High }
+
     public static class SettingsStore
     {
         /// <summary>Which input device family gameplay input is filtered to (InputHandler).</summary>
         public enum InputDevice { KeyboardMouse, Gamepad }
 
-        // Sensitivity is a plain multiplier shown as 0%~500% in the UI; 1.0 (=100%) means no change.
+        // Sensitivity is a plain multiplier, shown as such in the UI (e.g. "2.5"); 1.0 means no change.
         public const float MinSensitivity = 0f;
         public const float MaxSensitivity = 5f;
 
@@ -62,9 +67,17 @@ namespace Inkform.Settings
         /// PerfIntervals never get in through the setter.</summary>
         public static float PerfInterval { get; private set; } = 1f;
 
-        /// <summary>Gamepad rumble on/off; RumbleManager reads this live. Strengths are tuned at
-        /// half-motor-power in the manager itself, so there is no middle setting to feel through.</summary>
-        public static bool Rumble { get; private set; } = true;
+        /// <summary>Gamepad rumble on/off; HapticsDirector reads this live. Strengths are tuned at
+        /// half-motor-power in the director itself, so there is no middle setting to feel through.
+        /// Off silences every haptic, trigger effects included.</summary>
+        public static RumbleLevel RumbleLevel { get; private set; } = RumbleLevel.High;
+
+        /// <summary>Any rumble at all (level above Off).</summary>
+        public static bool Rumble => RumbleLevel != RumbleLevel.Off;
+
+        /// <summary>Trigger feel on/off: DualSense adaptive-trigger resistance (other pads have no
+        /// trigger feel). HapticsDirector reads this live.</summary>
+        public static bool TriggerEffects { get; private set; } = true;
 
         // ---- Grapping hook (rope gun) aim feel; RopeGun reads these live ----
 
@@ -90,18 +103,17 @@ namespace Inkform.Settings
         /// deliberately untouched — same for gamepad rumble, which is haptic, not visual.</summary>
         public static float FxIntensity { get; private set; } = 1f;
 
-        /// <summary>Frame cap options offered by the Graphics tab; 0 = uncapped. The current pick
+        /// <summary>Frame cap options offered by the Video page; 0 = uncapped. The current pick
         /// lives in FpsCap; this list only feeds the UI's left/right stepping.</summary>
         public static readonly int[] FpsOptions = { 30, 60, 120, 0 };
 
-        /// <summary>Performance recorder sampling intervals (seconds) the Graphics tab steps
+        /// <summary>Performance recorder sampling intervals (seconds) the Video page steps
         /// through; shown to the player as their reciprocal in Hz (10 Hz .. 0.2 Hz).</summary>
         public static readonly float[] PerfIntervals = { 0.1f, 0.5f, 1f, 2f, 5f };
 
         /// <summary>
         /// Raised after any setting changes and was applied. Subscribers re-read the properties they
-        /// care about (RopeGun's sensitivities; AudioManager retunes every voice already playing —
-        /// its Plays read the volumes once, at start).
+        /// care about (RopeGun's sensitivities; AudioService re-applies the mixer volumes).
         /// </summary>
         public static event Action Changed;
 
@@ -142,7 +154,9 @@ namespace Inkform.Settings
         private const string KeyFxIntensity = "Inkform.fxIntensity";
         private const string KeyPerfRecording = "Inkform.perfRecording";
         private const string KeyPerfInterval = "Inkform.perfInterval";
-        private const string KeyRumble = "Inkform.rumbleOn";
+        private const string KeyRumbleLevel = "Inkform.rumbleLevel";
+        private const string KeyRumbleLegacy = "Inkform.rumbleOn";     // pre-levels on/off switch, migrated on load
+        private const string KeyTriggerEffects = "Inkform.triggerEffectsOn";
         private const string KeyRopeWallSnap = "Inkform.ropeWallSnap";
         private const string KeyRopeBombSnap = "Inkform.ropeBombSnap";
         private const string KeyRopeDeadZone = "Inkform.ropeSnapDeadZone";
@@ -162,12 +176,13 @@ namespace Inkform.Settings
             Device = InputDevice.KeyboardMouse;
             ResolutionWidth = ResolutionHeight = 0;
             Fullscreen = true;
-            FpsCap = 60;
+            FpsCap = 120;
             VSync = false;
             ShowFps = false;
             PerfRecording = false;
             PerfInterval = 1f;
-            Rumble = true;
+            RumbleLevel = RumbleLevel.High;
+            TriggerEffects = true;
             RopeWallSnap = true;
             RopeBombSnap = true;
             RopeSnapDeadZone = 0.3f;
@@ -204,7 +219,15 @@ namespace Inkform.Settings
             ShowFps = PlayerPrefs.GetInt(KeyShowFps, 0) != 0;
             PerfRecording = PlayerPrefs.GetInt(KeyPerfRecording, 0) != 0;
             PerfInterval = PlayerPrefs.GetFloat(KeyPerfInterval, 1f);
-            Rumble = PlayerPrefs.GetInt(KeyRumble, 1) != 0;
+            RumbleLevel = MigrateRumbleLevel(
+                PlayerPrefs.HasKey(KeyRumbleLevel), PlayerPrefs.GetInt(KeyRumbleLevel, (int)RumbleLevel.High),
+                PlayerPrefs.HasKey(KeyRumbleLegacy), PlayerPrefs.GetInt(KeyRumbleLegacy, 1));
+            if (PlayerPrefs.HasKey(KeyRumbleLegacy))
+            {
+                PlayerPrefs.SetInt(KeyRumbleLevel, (int)RumbleLevel);
+                PlayerPrefs.DeleteKey(KeyRumbleLegacy);
+            }
+            TriggerEffects = PlayerPrefs.GetInt(KeyTriggerEffects, 1) != 0;
             RopeWallSnap = PlayerPrefs.GetInt(KeyRopeWallSnap, 1) != 0;
             RopeBombSnap = PlayerPrefs.GetInt(KeyRopeBombSnap, 1) != 0;
             RopeSnapDeadZone = PlayerPrefs.GetFloat(KeyRopeDeadZone, 0.3f);
@@ -222,7 +245,7 @@ namespace Inkform.Settings
             }
         }
 
-        // ---- Setters (panel is the only writer) ----
+        // ---- Setters ----
 
         // Each Set: guard on change (skip the PlayerPrefs write and the Changed storm when the slider
         // value did not actually move), clamp to the legal range, persist, then notify.
@@ -357,7 +380,7 @@ namespace Inkform.Settings
         }
 
         /// <summary>Performance recorder sampling interval in seconds. Only the PerfIntervals
-        /// values are accepted — the Graphics stepper cycles exactly those, and an off-list value
+        /// values are accepted — the Video page stepper cycles exactly those, and an off-list value
         /// would desync its display.</summary>
         public static void SetPerfInterval(float value)
         {
@@ -368,11 +391,30 @@ namespace Inkform.Settings
             Changed?.Invoke();
         }
 
-        public static void SetRumble(bool value)
+        public static void SetRumbleLevel(RumbleLevel value)
         {
-            if (Rumble == value) return;
-            Rumble = value;
-            PlayerPrefs.SetInt(KeyRumble, value ? 1 : 0);
+            if (RumbleLevel == value) return;
+            RumbleLevel = value;
+            PlayerPrefs.SetInt(KeyRumbleLevel, (int)value);
+            Changed?.Invoke();
+        }
+
+        /// <summary>The stored rumble level: the levels key when present, else the old on/off
+        /// switch (off stays Off, on becomes High — the strength the switch used to give), else
+        /// the default. Out-of-range stored values clamp. Pure so tests can pin the migration.</summary>
+        public static RumbleLevel MigrateRumbleLevel(bool hasLevel, int level, bool hasLegacy, int legacyOn)
+        {
+            if (hasLevel)
+                return (RumbleLevel)System.Math.Max((int)RumbleLevel.Off, System.Math.Min((int)RumbleLevel.High, level));
+            if (hasLegacy) return legacyOn != 0 ? RumbleLevel.High : RumbleLevel.Off;
+            return RumbleLevel.High;
+        }
+
+        public static void SetTriggerEffects(bool value)
+        {
+            if (TriggerEffects == value) return;
+            TriggerEffects = value;
+            PlayerPrefs.SetInt(KeyTriggerEffects, value ? 1 : 0);
             Changed?.Invoke();
         }
 
@@ -423,7 +465,8 @@ namespace Inkform.Settings
             ShowFps = false;
             PerfRecording = false;
             PerfInterval = 1f;
-            Rumble = true;
+            RumbleLevel = RumbleLevel.High;
+            TriggerEffects = true;
             RopeWallSnap = true;
             RopeBombSnap = true;
             RopeSnapDeadZone = 0.3f;
@@ -453,7 +496,9 @@ namespace Inkform.Settings
             PlayerPrefs.DeleteKey(KeyFxIntensity);
             PlayerPrefs.DeleteKey(KeyPerfRecording);
             PlayerPrefs.DeleteKey(KeyPerfInterval);
-            PlayerPrefs.DeleteKey(KeyRumble);
+            PlayerPrefs.DeleteKey(KeyRumbleLevel);
+            PlayerPrefs.DeleteKey(KeyRumbleLegacy);
+            PlayerPrefs.DeleteKey(KeyTriggerEffects);
             PlayerPrefs.DeleteKey(KeyRopeWallSnap);
             PlayerPrefs.DeleteKey(KeyRopeBombSnap);
             PlayerPrefs.DeleteKey(KeyRopeDeadZone);
@@ -468,10 +513,9 @@ namespace Inkform.Settings
 
         /// <summary>
         /// Lands Muted on the audio engine. Goes through the global AudioListener.volume rather than
-        /// the AudioManager's per-Play volume maths: Play reads the volume properties once, when a
-        /// sound starts (AudioManager.Play), so a mute routed through them would leave every already-
-        /// playing loop audible until it ended. The listener volume takes effect on the same frame for
-        /// everything. Nothing else in the project touches this global.
+        /// the per-voice volume maths: one global switch silences every voice and the music on the
+        /// same frame, and unmuting restores the exact mix without recomputing anything. Nothing
+        /// else in the project touches this global.
         /// </summary>
         private static void ApplyAudio()
         {
@@ -496,7 +540,7 @@ namespace Inkform.Settings
             Application.targetFrameRate = VSync ? -1 : FpsCap;
         }
 
-        // ---- Resolution list for the Graphics tab ----
+        // ---- Resolution list for the Video page ----
 
         private static List<Resolution> cachedResolutions;
 

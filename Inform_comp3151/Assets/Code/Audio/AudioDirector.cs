@@ -9,7 +9,7 @@ namespace Inkform.Audio
     /// Audio director: translates "what happened in the game" into "which sound to play".
     /// Same pattern as FxDirector — subscribes to buses, centralizes which SoundCue each event maps to
     /// in this one Inspector; PlayerHandler / BreakablePart never need to know the audio system exists.
-    /// Leaving a slot empty is legal: AudioManager skips it silently; drop a Cue into the slot later and
+    /// Leaving a slot empty is legal: AudioService skips it silently; drop a Cue into the slot later and
     /// it sounds without touching code.
     /// </summary>
     public class AudioDirector : MonoBehaviour
@@ -30,6 +30,14 @@ namespace Inkform.Audio
         [SerializeField] private SoundCue ropeFire;    // grapple fired (instant anchor follows the same frame)
         [SerializeField] private SoundCue ropeHit;     // grapple anchored on terrain / grabbed a carriable
         [SerializeField] private SoundCue ropeCancel;  // pull deliberately broken (re-press, dash, jump off)
+        [SerializeField] private SoundCue ropeRelease; // pull ended on its own (arrived, stuck, swallow failed)
+        [SerializeField] private SoundCue dashTrail;   // afterimage trail on a successful dash (DashAfterimage)
+        [Tooltip("Played every Footstep Interval while walking on the ground; the Cue picks a random clip each step")]
+        [SerializeField] private SoundCue footstep;
+        [Tooltip("Seconds between two footsteps while walking on the ground")]
+        [SerializeField] private float footstepInterval = 0.3f;
+
+        private float nextFootstepTime;
 
         // Death sounds are not here: they dispatch by cause rather than by concern (spiked vs fallen
         // should sound different), so the Cue lives on the DeathStrategy asset and is played by the strategy.
@@ -50,6 +58,7 @@ namespace Inkform.Audio
             RopeGunBus.Fired += OnRopeFired;
             RopeGunBus.Hit += OnRopeHit;
             RopeGunBus.RopeCancelled += OnRopeCancelled;
+            RopeGunBus.RopeReleased += OnRopeReleased;
             LifeBus.Respawned += OnRespawned;
             LifeBus.CheckpointSet += OnCheckpointSet;
         }
@@ -67,8 +76,25 @@ namespace Inkform.Audio
             RopeGunBus.Fired -= OnRopeFired;
             RopeGunBus.Hit -= OnRopeHit;
             RopeGunBus.RopeCancelled -= OnRopeCancelled;
+            RopeGunBus.RopeReleased -= OnRopeReleased;
             LifeBus.Respawned -= OnRespawned;
             LifeBus.CheckpointSet -= OnCheckpointSet;
+        }
+
+        // Footsteps: PlayerState.Move only exists on the ground with move input (AnimStateResolver),
+        // so it already means "walking on the ground". Time.time stops while paused (timeScale 0).
+        // The dead check matters: PlayerHandler stops updating the state while dead, so it can stay Move
+        void Update()
+        {
+            if (PlayerBus.State != PlayerState.Move || LifeBus.IsDead)
+            {
+                nextFootstepTime = 0f;   // the next walk starts with a step right away
+                return;
+            }
+
+            if (Time.time < nextFootstepTime) return;
+            nextFootstepTime = Time.time + footstepInterval;
+            Play(footstep);              // the player's own sound, same stance as jump/land
         }
 
         // Explosions must only listen to Blast — Exploded fires per victim in a foreach, N victims = N sounds
@@ -83,7 +109,9 @@ namespace Inkform.Audio
         private void OnDashAttempted(Vector2 pos, bool succeeded)
         {
             Play(bombTick, pos);
-            if (succeeded) Play(blast, pos);
+            if (!succeeded) return;
+            Play(blast, pos);
+            Play(dashTrail, pos);   // the trail starts the same frame a successful dash does
         }
 
         // The rope's own sounds, always on the player — no position, same stance as jump/land
@@ -93,13 +121,15 @@ namespace Inkform.Audio
 
         private void OnRopeCancelled() => Play(ropeCancel);
 
+        private void OnRopeReleased() => Play(ropeRelease);
+
         private void OnItemEaten(InventoryItemDefinition item) => Play(itemEaten);
 
         private void OnInventoryCapacityUpgraded(Vector2 pos, int capacityIncrease) =>
             Play(inventoryCapacityUpgrade, pos);
 
         // Both of these are "the player's own sounds", always at the camera center, so like
-        // attack/jump/land they pass no position. The matching Cue assets should keep spatial off —
+        // jump/land they pass no position. The matching Cue assets should keep spatial off —
         // see the Tooltip in SoundCue.cs
         private void OnRespawned(GameObject victim, Vector2 pos) => Play(respawn);
 
@@ -121,17 +151,8 @@ namespace Inkform.Audio
             }
         }
 
-        // Position only says "where the sound happens"; whether and how attenuation applies is decided
-        // by SoundCue.spatial — Cues without it are unaffected by passing one.
-        // Note the underlying playback is always 2D: this is a 2D game — switching to Unity's 3D audio
-        // would use its default logarithmic falloff (minDistance 1), and since the camera sits at z = -10,
-        // its computed distance is always ≥10, crushing explosions to near inaudible. AudioManager
-        // computes distance on the XY plane itself, bypassing the issue.
-        private void Play(SoundCue cue, Vector3? position = null)
-        {
-            if (cue == null) return;                        // slot unconfigured, skip silently
-            if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Post(new AudioPost(cue, position));
-        }
+        // Position only says "where the sound happens"; whether it pans and fades with distance is
+        // decided by SoundCue.spatial — Cues without it are unaffected by passing one
+        private static void Play(SoundCue cue, Vector2? position = null) => AudioService.Play(cue, position);
     }
 }

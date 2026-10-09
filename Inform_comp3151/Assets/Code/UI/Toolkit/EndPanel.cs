@@ -25,11 +25,15 @@ namespace Inkform.UI
             int deaths = data != null ? data.deaths : 0;
             float seconds = data != null ? data.playSeconds : 0f;
 
-            Q<Label>("Lbl_Deaths").text = $"Deaths  {deaths}";
-            Q<Label>("Lbl_Time").text = $"Total time  {SaveMenuPanel.FormatDuration(seconds)}";
+            Q<Label>("Lbl_Deaths").text = deaths.ToString();
+            Q<Label>("Lbl_Time").text = SaveMenuPanel.FormatDuration(seconds);
 
-            UiFx.DropTitle(Q<VisualElement>("TitleRow"), "RUN COMPLETE", 76f);
+            UiFx.DropTitle(Q<VisualElement>("TitleRow"), "RUN COMPLETE", 72f);   // --fs-title
         }
+
+        // Esc leaves for the main menu too, exactly like CONFIRM — one prompt says it all
+        protected override void DefinePrompts(PromptBar bar) =>
+            bar.Add(PromptBar.Key.Confirm, "Confirm", UI.ReturnToMainMenu);
 
         private void OnBackClicked() => UI.ReturnToMainMenu();
     }

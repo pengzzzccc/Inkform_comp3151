@@ -67,11 +67,7 @@ namespace Inkform.WorldTools
                     findings.Add(new Finding("Error", $"{room.name}: scene '{room.SceneName}' is NOT in the Build Settings — Tools > Inkform > World > Sync Build Settings"));
             }
 
-            if (!world.MenuScene.IsSet)
-            {
-                // covered above
-            }
-            else
+            if (world.MenuScene.IsSet)   // an unset menu scene is reported above
             {
                 string menuPath = AssetDatabase.GetAssetPath(world.MenuScene.SceneAsset);
                 if (!string.IsNullOrEmpty(menuPath) && SceneUtility.GetBuildIndexByScenePath(menuPath) != 0)
@@ -84,8 +80,8 @@ namespace Inkform.WorldTools
 
         // One pass over every room scene: doors must have a destination and a matching arrival
         // checkpoint; spawn ids must be unique per scene. Door→spawn cross-checking needs the
-        // destination scene's checkpoint list, so each scene's ids are collected and checked in a
-        // second loop from memory.
+        // destination scene's checkpoint list, so the first loop collects every scene's ids and the
+        // second loop re-opens each scene to check its doors against them.
         private static void ValidateDoors(WorldDefinition world, List<Finding> findings)
         {
             var spawnIdsByScene = new Dictionary<string, HashSet<string>>();
@@ -99,7 +95,7 @@ namespace Inkform.WorldTools
                 string path = AssetDatabase.GetAssetPath(room.Scene.SceneAsset);
                 if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
 
-                Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
                 var ids = new HashSet<string>();
                 foreach (Checkpoint checkpoint in Object.FindObjectsByType<Checkpoint>(FindObjectsInactive.Include))
                 {
@@ -121,14 +117,14 @@ namespace Inkform.WorldTools
                 }
             }
 
-            // Second pass from memory: each door's targetSpawnId must exist in its destination scene
+            // Second pass: each door's targetSpawnId must exist in its destination scene
             foreach (RoomDefinition room in world.Rooms)
             {
                 if (room == null || !room.IsSet) continue;
                 string path = AssetDatabase.GetAssetPath(room.Scene.SceneAsset);
                 if (string.IsNullOrEmpty(path) || !File.Exists(path)) continue;
 
-                Scene scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+                EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
                 foreach (LevelExit exit in Object.FindObjectsByType<LevelExit>(FindObjectsInactive.Include))
                 {
                     if (exit.Destination == null || string.IsNullOrEmpty(exit.TargetSpawnId)) continue;

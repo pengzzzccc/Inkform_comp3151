@@ -8,14 +8,14 @@ namespace Inkform.UI
     /// One Celeste TextMenu.Option row: label on the left, current value right-aligned between
     /// a pair of chevrons. The row itself is the focusable control.
     ///
-    /// Left/right navigation is intercepted while the row has focus (PreventDefault stops the
-    /// focus controller from moving on) and reported as Stepped — the Celeste "arrows change the
-    /// value, up/down still move the selection" behaviour. A click or Submit steps forward, same
-    /// as the old two-arrow rows where both arrows flipped two-state values.
+    /// Left/right navigation is intercepted while the row has focus (StopImmediatePropagation
+    /// stops the focus controller from moving on) and reported as Stepped — the Celeste "arrows
+    /// change the value, up/down still move the selection" behaviour. A click steps forward and
+    /// raises Confirmed. Only ClickEvent is registered: keyboard Enter / pad Submit do not reach
+    /// a plain VisualElement as a click.
     ///
     /// Value switches play the Celeste value nudge (UiFx.Nudge) and raise UiBus.Toggled so the
-    /// UIManager's toggleOn/toggleOff cues fire — right step = on, left step = off, exactly what
-    /// UiToggleFx used to raise.
+    /// UIManager's toggleOn/toggleOff cues fire — right step = on, left step = off.
     /// </summary>
     public class OptionRow : VisualElement
     {
@@ -26,7 +26,7 @@ namespace Inkform.UI
         /// <summary>The value was stepped by the given direction: -1 = left, +1 = right/click.</summary>
         public event Action<int> Stepped;
 
-        /// <summary>The row was clicked / submitted. Distinct from Stepped so click-only rows
+        /// <summary>The row was clicked. Distinct from Stepped so click-only rows
         /// (Unstuck, Reset Bindings) have something to wire.</summary>
         public event Action Confirmed;
 

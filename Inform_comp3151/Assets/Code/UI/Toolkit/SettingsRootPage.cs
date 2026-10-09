@@ -19,9 +19,10 @@ namespace Inkform.UI
             BindPageButton("Btn_ResetAll", owner.ResetAll);
         }
 
-        // Page buttons skip the shell's open-grace guard on purpose: the worst a stray click on
-        // ROOT can do is open a category, and Esc backs right out — the grace exists to stop a
-        // stray input from executing the pause sheet's RESUME, not navigation.
+        // Page buttons skip the shell's open-grace guard: a stray click on ROOT mostly opens a
+        // category, and Esc backs right out — the grace exists to stop a stray input from
+        // executing the pause sheet's RESUME. Note RESET ALL rides this same path, so it has no
+        // grace window either.
         private void BindPageButton(string name, System.Action onClick)
         {
             Button button = Root.Q<Button>(name);

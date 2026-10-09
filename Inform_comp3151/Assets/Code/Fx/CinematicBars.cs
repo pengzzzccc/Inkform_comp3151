@@ -1,4 +1,5 @@
 using System.Collections;
+using Inkform.Tool;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -21,9 +22,6 @@ namespace Inkform.Fx
         [SerializeField] private float barHeightFraction = 0.1f;   // each bar, as a fraction of screen height
 
         private RectTransform top, bottom;
-
-        /// <summary>Slides both bars in from the screen edges; completes when fully in.</summary>
-        public IEnumerator Show(float seconds) => Animate(barHeightFraction, seconds);
 
         /// <summary>Slides both bars back out; completes when gone.</summary>
         public IEnumerator Hide(float seconds) => Animate(0f, seconds);
@@ -50,7 +48,7 @@ namespace Inkform.Fx
                 yield break;
             }
 
-            for (float t = 0f; t < 1f; t += Time.unscaledDeltaTime / seconds)
+            for (float t = 0f; t < 1f; t += PresentationTime.UnscaledStep / seconds)
             {
                 float height = Mathf.Lerp(start, target, t);
                 SetHeight(height);

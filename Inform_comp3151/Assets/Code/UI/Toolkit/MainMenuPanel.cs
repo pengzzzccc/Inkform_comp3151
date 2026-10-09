@@ -4,8 +4,8 @@ using UnityEngine.UIElements;
 namespace Inkform.UI
 {
     /// <summary>
-    /// Main menu sheet, Celeste OuiMainMenu layout: title block and a menu column on the left —
-    /// a big BEGIN above the smaller OPTIONS / EXIT. This panel only reports button presses to
+    /// Main menu sheet, Celeste OuiMainMenu layout on the shared page frame: title and a menu
+    /// list on the left safe margin — a big BEGIN above the smaller OPTIONS / EXIT. This panel only reports button presses to
     /// the UIManager, which decides everything (same stance as the old uGUI MainMenuPanel): Play
     /// goes through the save menu, Settings opens the options sheet, Exit quits.
     /// </summary>
@@ -22,6 +22,9 @@ namespace Inkform.UI
             Label version = Q<Label>("Lbl_Version");
             if (version != null) version.text = $"v{Application.version}";
         }
+
+        // The menu root has nothing to back out of (UIManager ignores Esc here): Confirm only
+        protected override void DefinePrompts(PromptBar bar) => bar.Add(PromptBar.Key.Confirm, "Confirm");
 
         private void OnBegin()
         {

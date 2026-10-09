@@ -156,7 +156,6 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Interactable.Parts.AbilityPickupPart
   abilityId: ropegun
-  collectCue: {fileID: 11400000, guid: 30a2cbb46c36e734a9a7dba2f705f70e, type: 2}
 --- !u!114 &20000000009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -179,5 +178,3 @@ MonoBehaviour:
   promptOffset: {x: 0, y: 0.18}
   keycapColor: {r: 0.05, g: 0.06, b: 0.1, a: 0.85}
   glyphColor: {r: 1, g: 1, b: 1, a: 1}
-  playStationTint: {r: 0.35, g: 0.85, b: 0.45, a: 1}
-  xboxTint: {r: 0.95, g: 0.8, b: 0.25, a: 1}

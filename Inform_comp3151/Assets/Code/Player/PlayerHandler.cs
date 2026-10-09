@@ -12,14 +12,10 @@ namespace Inkform.Player
     /// derivation), PlayerInventory (carrying). The rope gun (RopeGun) is an optional fifth component:
     /// the game plays fine without it; with it, wiring happens via TryGetComponent.
     ///
-    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly:
-    /// ① InputHandler.player is wired in the GameManager prefab's scene instance override; changing
-    ///    the **class name** would silently break the link (it is a field reference serialized by
-    ///    component type); the input entries below are plain C# calls, renaming them just requires
-    ///    changing both sides and the compiler catches it;
-    /// ② the subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
-    ///    Update order among components on one object — a single driver must order it explicitly, and
-    ///    that is this class.
+    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly: the
+    /// subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
+    /// Update order among components on one object — a single driver must order it explicitly, and
+    /// that is this class. InputHandler finds it through PlayerBus.Player.
     /// </summary>
     // Rigidbody2D needs no declaration here: PlayerMotor already RequiresComponent on it
     [RequireComponent(typeof(ContactSensor))]
@@ -29,13 +25,14 @@ namespace Inkform.Player
     {
         private ContactSensor contact;
         private PlayerMotor motor;
+        private readonly ContactEdges contactEdges = new ContactEdges();
+        private static readonly System.Action<ContactSide, float> RaiseContact = PlayerBus.RaiseContact;
         private AnimStateResolver anim;
         private PlayerInventory inventory; // may be null: levels without item gameplay need not attach it
         private RopeGun ropeGun;        // may be null: levels without the rope gun play fine
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
 
-        public PlayerInventory Inventory => inventory;
 
         void Awake()
         {
@@ -79,7 +76,10 @@ namespace Inkform.Player
             // Order must not move: animation reads contact and velocity from this same frame,
             // otherwise it lags a frame and flashes the wrong animation on landing/jumping moments
             contact.Tick();
+            // "Just touched" moments for haptics, judged against last frame's velocity
+            contactEdges.Detect(contact.OnGround, contact.OnCeiling, contact.OnLeftWall, contact.OnRightWall, RaiseContact);
             motor.Tick();
+            contactEdges.RememberVelocity(new Vector2(motor.VelocityX, motor.VelocityY));
             if (motor.ConsumeJumpStarted()) anim.OnJumpStarted();
             anim.Tick();
             // Dash smashing lives in DashBreaker's own Update (RopeGun-style independent loop):
@@ -143,7 +143,7 @@ namespace Inkform.Player
                 else
                     dir = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
 
-                // The dash takes over motion: release any active rope (flying hook or mid-pull)
+                // The dash takes over motion: release any active rope (mid-pull or miss dangle)
                 // first, or the pull's per-physics-step velocity writes would fight the dash
                 if (ropeGun != null) ropeGun.Cancel();
 
@@ -223,6 +223,7 @@ namespace Inkform.Player
             // counts as "just landed" and plays a Land animation and landing sound for nothing
             contact.Tick();
             anim.SyncContactBaseline();
+            contactEdges.SyncBaseline(contact.OnGround, contact.OnCeiling, contact.OnLeftWall, contact.OnRightWall);
         }
     }
 }

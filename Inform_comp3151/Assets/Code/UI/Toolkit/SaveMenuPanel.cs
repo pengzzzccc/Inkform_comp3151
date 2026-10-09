@@ -21,8 +21,8 @@ namespace Inkform.UI
     /// coupling). The release that ends a completed hold is swallowed by the slot's click
     /// handler, which reads the live hold state (see the note there).
     ///
-    /// All captions are ASCII on purpose: the sheet renders in BombSlimeFonts.ttf, which carries
-    /// Latin glyphs only.
+    /// Captions stay ASCII: the game font (Alibaba PuHuiTi, see UiFonts) covers CJK too, but its
+    /// fallbacks (LiberationSans, BombSlimeFonts) only guarantee Latin glyphs.
     /// </summary>
     public class SaveMenuPanel : ToolkitPanel
     {
@@ -35,6 +35,7 @@ namespace Inkform.UI
 
         private readonly Button[] slots;
         private readonly Label[] slotTitles;
+        private readonly Label[] slotLevels;
         private readonly Label[] slotInfos;
         private readonly VisualElement[] holdFills;
 
@@ -53,6 +54,7 @@ namespace Inkform.UI
             int count = SaveStore.SlotCount;
             slots = new Button[count];
             slotTitles = new Label[count];
+            slotLevels = new Label[count];
             slotInfos = new Label[count];
             holdFills = new VisualElement[count];
 
@@ -62,6 +64,7 @@ namespace Inkform.UI
 
                 slots[i] = Q<Button>($"Slot{i}");
                 slotTitles[i] = Q<Label>($"SlotTitle{i}");
+                slotLevels[i] = Q<Label>($"SlotLevel{i}");
                 slotInfos[i] = Q<Label>($"SlotInfo{i}");
                 holdFills[i] = Q<VisualElement>($"HoldFill{i}");
 
@@ -94,10 +97,14 @@ namespace Inkform.UI
                 slots[i].RegisterCallback<PointerUpEvent>(_ => EndHold());
             }
 
-            Bind(Q<Button>("Btn_Back"), "Btn_Back", OnBack);
         }
 
-        private void OnBack() => UI.BackFromSaveMenu();
+        // Back = Esc / pad B (UIManager.BackFromSaveMenu); the hold prompt names the key the
+        // Tick polls (Ctrl / pad North)
+        protected override void DefinePrompts(PromptBar bar) => bar
+            .Add(PromptBar.Key.Confirm, "Continue")
+            .Add(PromptBar.Key.Overwrite, "Hold to overwrite")
+            .Add(PromptBar.Key.Back, "Back", UI.BackFromSaveMenu);
 
         protected override void PlayEnter()
         {
@@ -250,30 +257,45 @@ namespace Inkform.UI
         {
             for (int i = 0; i < slots.Length; i++)
             {
-                string caption = CaptionFor(i);
-                // "Slot 1" on the title line, the run details underneath — the postcard layout.
-                int separator = caption.IndexOf('\n');
-                if (slotTitles[i] != null)
-                    slotTitles[i].text = separator >= 0 ? caption[..separator] : caption;
-                if (slotInfos[i] != null)
-                    slotInfos[i].text = separator >= 0 ? caption[(separator + 1)..] : string.Empty;
+                Caption caption = CaptionFor(i);
+                if (slotTitles[i] != null) slotTitles[i].text = caption.slot;
+                if (slotLevels[i] != null) slotLevels[i].text = caption.level;
+                if (slotInfos[i] != null) slotInfos[i].text = caption.details;
             }
         }
 
-        private string CaptionFor(int slot)
+        /// <summary>One card's text: slot number and level on the left, the run's details in the
+        /// bottom-right corner.</summary>
+        private struct Caption
         {
-            string head = $"Slot {slot + 1}";
+            public string slot;
+            public string level;
+            public string details;
+        }
 
-            if (confirmSlot == slot) return $"{head} - Overwrite with a new game?\nTap again to confirm";
+        private Caption CaptionFor(int slot)
+        {
+            var caption = new Caption { slot = $"SLOT {slot + 1}", details = string.Empty };
+
+            if (confirmSlot == slot)
+            {
+                caption.level = "Overwrite with a new game?";
+                caption.details = "Tap again to confirm";
+                return caption;
+            }
 
             SaveData data = SaveStore.Get(slot);
-            if (data.IsEmpty) return $"{head} - New Game";
+            if (data.IsEmpty)
+            {
+                caption.level = "New Game";
+                return caption;
+            }
 
-            string level = UIManager.Instance != null
+            caption.level = UIManager.Instance != null
                 ? UIManager.Instance.LevelDisplayName(data.sceneName)
                 : data.sceneName;
-
-            return $"{head} - {level}\n{data.sceneName}   {FormatDuration(data.playSeconds)}   {data.deaths} deaths   {FormatSavedAt(data.savedAtUtc)}";
+            caption.details = $"{FormatDuration(data.playSeconds)}   {data.deaths} deaths\n{FormatSavedAt(data.savedAtUtc)}";
+            return caption;
         }
 
         /// <summary>Shared with EndPanel: one duration format across every sheet that shows a

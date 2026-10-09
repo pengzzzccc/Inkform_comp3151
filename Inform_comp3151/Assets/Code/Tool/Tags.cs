@@ -9,6 +9,5 @@ namespace Inkform.Tool
     public static class Tags
     {
         public const string Player = "Player";
-        public const string BreakAble = "BreakAble";
     }
 }

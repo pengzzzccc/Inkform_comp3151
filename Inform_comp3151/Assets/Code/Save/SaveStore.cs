@@ -21,8 +21,8 @@ namespace Inkform.Save
         public static event Action Changed;
 
         /// <summary>Raised only after a slot file has actually been written to disk — the
-        /// "your progress is safe" signal for the SaveIndicator toast. Changed also fires for
-        /// in-memory updates (BeginNewRun, Delete, restore paths) that write nothing.</summary>
+        /// "your progress is safe" signal for the HUD's "Saved" toast (Hud.ShowToast). Changed also
+        /// fires for in-memory updates (BeginNewRun, restore paths) that write nothing.</summary>
         public static event Action Saved;
 
         private static SaveData[] slots;
@@ -236,24 +236,6 @@ namespace Inkform.Save
             ActiveSlot = -1;
         }
 
-        public static void Delete(int slot)
-        {
-            EnsureLoaded();
-            if (!IsValidSlot(slot)) return;
-
-            bool deletedActiveRun = ActiveSlot == slot;
-            slots[slot] = new SaveData();
-            DeleteFiles(slot);
-            if (deletedActiveRun)
-            {
-                ActiveSlot = -1;
-                InventoryStore.ClearWithoutSaving();
-                AbilityStore.ClearWithoutSaving();
-            }
-            if (pendingNewSlot == slot) ClearPending();
-            Changed?.Invoke();
-        }
-
         private static void CaptureInventory(SaveData data)
         {
             data.inventoryItemIds = InventoryStore.SnapshotIds();
@@ -422,21 +404,6 @@ namespace Inkform.Save
             {
                 Debug.LogWarning($"SaveStore: could not atomically write slot {slot} ({e.Message})");
                 return false;
-            }
-        }
-
-        private static void DeleteFiles(int slot)
-        {
-            foreach (string path in new[] { PathFor(slot), TempPathFor(slot), BackupPathFor(slot) })
-            {
-                try
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"SaveStore: could not delete '{path}' ({e.Message})");
-                }
             }
         }
 

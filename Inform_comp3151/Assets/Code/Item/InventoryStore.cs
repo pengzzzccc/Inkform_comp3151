@@ -22,7 +22,6 @@ namespace Inkform.Item
         public static IReadOnlyList<InventoryItemDefinition> Items => items;
         public static int Count => items.Count;
         public static int Capacity => capacity;
-        public static IReadOnlyCollection<string> CollectedCapacityPickupIds => collectedCapacityPickupIds;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()

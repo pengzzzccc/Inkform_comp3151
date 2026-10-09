@@ -12,7 +12,7 @@ namespace Inkform.Player
     ///
     /// Note this is not a transition state machine but a **derivative** one: everything recomputed
     /// from scratch each frame, no "from A only to B" edges. So a priority chain fits here rather
-    /// than the State pattern — splitting the 13 states into 13 classes would only scatter one chain
+    /// than the State pattern — splitting the 11 states into 11 classes would only scatter one chain
     /// across 13 files, making the priority harder to read.
     ///
     /// [SerializeField] defaults likewise come from Player.prefab's actual values (landAnimTime etc.).
@@ -56,8 +56,8 @@ namespace Inkform.Player
         public void OnJumpStarted() => jumpUpTimer.Set(jumpUpAnimTime);
 
         /// <summary>Clears one-shot animations accumulated before death on respawn.
-        /// With dash no longer playing an animation, only land/ceiling-stick one-shots remain; the call
-        /// site stays in case more are added later.</summary>
+        /// With dash no longer playing an animation, the jump-up, land and ceiling-stick one-shots
+        /// remain.</summary>
         public void ResetForRespawn()
         {
             landAnimTimer.Clear();

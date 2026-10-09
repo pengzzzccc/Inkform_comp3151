@@ -59,7 +59,7 @@ namespace Inkform.WorldTools
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             foreach ((string room, _) in legacy.rooms)
             {
-                Scene scene = EditorSceneManager.OpenScene(roomPaths[room], OpenSceneMode.Single);
+                EditorSceneManager.OpenScene(roomPaths[room], OpenSceneMode.Single);
                 foreach (LevelExit exit in Object.FindObjectsByType<LevelExit>(FindObjectsInactive.Include))
                 {
                     string exitId = ReadLegacyExitId(exit);
@@ -173,8 +173,6 @@ namespace Inkform.WorldTools
             SerializedProperty property = so.FindProperty("legacyExitId");
             return property != null ? property.stringValue : "";
         }
-
-        // ---- Build settings ----
 
         // ---- Missing doors & spawns ----
 
@@ -476,7 +474,6 @@ namespace Inkform.WorldTools
                 EditorUtility.DisplayDialog("World migration", $"Menu scene '{legacy.menu}' not found — aborting.", "OK");
                 return false;
             }
-            paths["__menu__"] = menuPath;
 
             foreach ((string room, _) in legacy.rooms)
             {

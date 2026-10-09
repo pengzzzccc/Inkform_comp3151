@@ -1,18 +1,22 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <Style src="Settings.uss" />
-    <!-- Settings shell: header + the page mount + the always-present BACK. Each sub-page
-         (ROOT category list / AUDIO / VIDEO / CONTROLS) is its own UXML/USS/Page triple,
-         instantiated by SettingsPanel into #Pages and display-toggled by its router. Row
-         styles cascade from this sheet to every mounted page. -->
-    <ui:VisualElement name="Settings" class="screen dim">
-        <ui:VisualElement class="settings-header" picking-mode="Ignore">
-            <ui:Label name="Title" text="OPTIONS" class="menu-title header-outline" picking-mode="Ignore" />
+    <!-- Settings shell on the page frame: kicker + title top left (a category page shows
+         "OPTIONS" above its own name), the page mount as the centred content column, prompts
+         bottom right. Each sub-page (ROOT category list / AUDIO / VIDEO / CONTROLS) is its own
+         UXML/USS/Page triple, instantiated by SettingsPanel into #Pages and display-toggled by
+         its router. Row styles cascade from this sheet to every mounted page. -->
+    <ui:VisualElement name="Settings" class="screen dim frame">
+        <ui:VisualElement class="frame-header" picking-mode="Ignore">
+            <ui:Label name="Kicker" text="OPTIONS" class="page-kicker outline" picking-mode="Ignore" />
+            <ui:Label name="Title" text="OPTIONS" class="page-title header-outline" picking-mode="Ignore" />
         </ui:VisualElement>
 
-        <ui:VisualElement name="Pages" class="settings-pages" />
+        <ui:VisualElement class="frame-content">
+            <ui:VisualElement name="Pages" class="content-column settings-pages" />
+        </ui:VisualElement>
 
-        <ui:VisualElement class="settings-bottom">
-            <ui:Button name="Btn_Back" text="BACK" class="menu-item floaty outline" />
+        <ui:VisualElement class="frame-footer" picking-mode="Ignore">
+            <ui:VisualElement name="PromptBar" class="prompt-bar" picking-mode="Ignore" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

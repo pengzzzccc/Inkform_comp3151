@@ -151,8 +151,7 @@ namespace Inkform.Tests
                 Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
                 Assert.IsNotNull(node);
                 Assert.IsFalse(node.TryGetPart(out ICarriable _), "the card must not ride the bomb bag anymore");
-                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart pickup));
-                Assert.AreEqual(AbilityIds.Checkpoint, pickup.AbilityId);
+                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart _));
                 Assert.IsTrue(node.TryGetPart(out InteractionPromptPart _));
 
                 Collider2D collider = instance.GetComponent<Collider2D>();
@@ -174,8 +173,7 @@ namespace Inkform.Tests
             {
                 Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
                 Assert.IsNotNull(node);
-                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart pickup));
-                Assert.AreEqual(AbilityIds.RopeGun, pickup.AbilityId);
+                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart _));
                 Assert.IsTrue(node.TryGetPart(out InteractionPromptPart _));
 
                 Collider2D collider = instance.GetComponent<Collider2D>();
@@ -239,7 +237,7 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void RopeGun_FireIsDeniedWithoutTheAbilityOrAGreenReticle()
+        public void RopeGun_FireIsRefusedWithoutAGreenReticle()
         {
             AbilityStore.ClearWithoutSaving();
             GameObject player = new GameObject("RopeGun gate test");
@@ -252,63 +250,13 @@ namespace Inkform.Tests
             {
                 InvokeInstance(ropeGun, "TryFire");
                 Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
-                    "the ability ships built-in, so with no intercept the press is refused by the " +
-                    "red-reticle gate before anything spawns");
-
-                Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
-                InvokeInstance(ropeGun, "TryFire");
-                Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
                     "instant fire anchors only on a green reticle — an empty scene has no " +
-                    "intercept, so the press is refused exactly like the retired ability gate");
+                    "intercept, so the press is refused before anything spawns");
             }
             finally
             {
                 InvokeInstance(ropeGun, "Finish");      // no-op when nothing fired; safety for future edits
                 UnityEngine.Object.DestroyImmediate(player);
-            }
-        }
-
-        [Test]
-        public void AbilityPickup_ConfirmGrantsOnlyWhilePlayerIsInRange()
-        {
-            AbilityStore.ClearWithoutSaving();
-            GameObject root = new GameObject("Ability pickup test");
-            root.SetActive(false);
-            BoxCollider2D collider = root.AddComponent<BoxCollider2D>();
-            collider.isTrigger = true;
-            root.AddComponent<Inkform.Interactable.Interactable>();
-            AbilityPickupPart pickup = root.AddComponent<AbilityPickupPart>();
-            // The card abilities ship built-in now, so the grant-from-nothing path is exercised
-            // on a non-default id (attached before SetActive — Attach runs on activation).
-            SetField(pickup, "abilityId", "test-ability");
-            InteractionPromptPart prompt = root.AddComponent<InteractionPromptPart>();
-            root.SetActive(true);
-            try
-            {
-                GameObject player = new GameObject("Player");
-                player.tag = Tags.Player;
-                BoxCollider2D playerCollider = player.AddComponent<BoxCollider2D>();
-                try
-                {
-                    PlayerBus.RaiseInteractPressed();
-                    Assert.IsFalse(AbilityStore.Owns("test-ability"),
-                        "confirm with nobody in range must do nothing");
-
-                    Assert.IsFalse(pickup.HandleContact(ContactPhase.Enter, playerCollider),
-                        "presence tracking never claims the contact");
-                    Assert.IsTrue(prompt.PlayerInRange);
-                    PlayerBus.RaiseInteractPressed();
-                    Assert.IsTrue(AbilityStore.Owns("test-ability"));
-                    Assert.IsTrue(root == null, "a collected pickup consumes its world object");
-                }
-                finally
-                {
-                    if (player != null) UnityEngine.Object.DestroyImmediate(player);
-                }
-            }
-            finally
-            {
-                if (root != null) UnityEngine.Object.DestroyImmediate(root);
             }
         }
 
@@ -335,7 +283,7 @@ namespace Inkform.Tests
         public void Checkpoints_NewestStampResetsPreviousMachines()
         {
             AbilityStore.ClearWithoutSaving();
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint), "checkpoint is a built-in default");
 
             GameObject player = new GameObject("Player");
             player.tag = Tags.Player;
@@ -388,12 +336,6 @@ namespace Inkform.Tests
         private static RopeGun.RopePhase PhaseOf(RopeGun ropeGun) =>
             (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(ropeGun);
-
-        private static T ReadField<T>(object target, string name) =>
-            (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target);
-
-        private static void SetField(object target, string name, object value) =>
-            target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);

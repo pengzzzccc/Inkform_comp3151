@@ -1,5 +1,4 @@
 #if UNITY_EDITOR
-using Inkform.Ability;
 using Inkform.Item;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -8,11 +7,11 @@ namespace Inkform.Tool
 {
     /// <summary>
     /// Editor-only cheat toggles, never compiled into builds: F1 infinite bombs, F2 flight,
-    /// F3 invincibility, F4 both card abilities (timecard + rope gun), F5 +1 backpack capacity.
+    /// F3 invincibility, F5 +1 backpack capacity.
     /// A hidden always-on listener flips the static flags; every gameplay consumer reads a flag
     /// behind its own #if UNITY_EDITOR at one choke point each.
     ///
-    /// F1-F4 are toggles; F5 is cumulative — every press adds +1 capacity (mash for more), it has
+    /// F1-F3 are toggles; F5 is cumulative — every press adds +1 capacity (mash for more), it has
     /// no off state, the HUD and the save slot just follow the number.
     ///
     /// Every toggle announces itself in the console — a stray cheat left on must never
@@ -23,7 +22,6 @@ namespace Inkform.Tool
         public static bool InfiniteBombs { get; private set; }
         public static bool Flight { get; private set; }
         public static bool Invincible { get; private set; }
-        public static bool CardsGranted { get; private set; }
 
         private static Driver driver;
 
@@ -32,7 +30,7 @@ namespace Inkform.Tool
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset()
         {
-            InfiniteBombs = Flight = Invincible = CardsGranted = false;
+            InfiniteBombs = Flight = Invincible = false;
             if (driver == null) driver = Driver.Create();
         }
 
@@ -65,12 +63,6 @@ namespace Inkform.Tool
                 {
                     Invincible = !Invincible;
                     Debug.Log($"[cheat] invincible {(Invincible ? "ON" : "off")}");
-                }
-                if (keyboard.f4Key.wasPressedThisFrame)
-                {
-                    CardsGranted = !CardsGranted;
-                    AbilityStore.SetCardsForCheat(CardsGranted);
-                    Debug.Log($"[cheat] timecard + ropegun {(CardsGranted ? "ON" : "off")}");
                 }
                 if (keyboard.f5Key.wasPressedThisFrame)
                 {

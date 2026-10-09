@@ -42,7 +42,7 @@ namespace Inkform.UI
         // rather than there because these are the menu layer's own feedback and this class
         // already is the menu layer's one gatekeeper. Toolkit controls raise the UiBus signals
         // (ToolkitPanel.Bind / OptionRow); nothing in the UI knows the audio system exists.
-        // Leaving a slot empty is legal — AudioManager skips silently.
+        // Leaving a slot empty is legal — AudioService skips silently.
         [Header("UI sound (drop clips into the Cue assets)")]
         [SerializeField] private SoundCue hoverCue;
         [SerializeField] private SoundCue clickCue;
@@ -82,17 +82,6 @@ namespace Inkform.UI
 
         public bool IsPaused => paused;
         public bool IsInMainMenu { get; private set; }
-
-        /// <summary>True while any panel is open. Nothing else needs to know about the menus.</summary>
-        public bool AnyPanelOpen
-        {
-            get
-            {
-                foreach (ToolkitPanel panel in panels.Values)
-                    if (panel.IsOpen) return true;
-                return false;
-            }
-        }
 
         void Awake()
         {
@@ -205,12 +194,7 @@ namespace Inkform.UI
 
         /// <summary>Same guarded one-shot AudioDirector uses. No position: menu sounds are 2D, like
         /// the player's own, so there is nothing for SoundCue.spatial to measure against.</summary>
-        private void Play(SoundCue cue)
-        {
-            if (cue == null) return;                        // slot unconfigured, skip silently
-            if (AudioManager.Instance == null) return;      // no AudioManager in the scene yet
-            AudioManager.Instance.Play(cue);
-        }
+        private static void Play(SoundCue cue) => AudioService.Play(cue);   // null-safe: an empty slot stays silent
 
         // ---- Pause state machine ----
 
@@ -272,7 +256,7 @@ namespace Inkform.UI
 
         // ---- Navigation ----
 
-        /// <summary>Menu scene loaded: show the main menu (Save menu / settings stay closed).</summary>
+        /// <summary>Any scene loaded: apply that scene's menu / end / gameplay UI state.</summary>
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             ApplySceneState(scene);
@@ -348,8 +332,8 @@ namespace Inkform.UI
         /// the menu is a genuine restart, never a resume of gameplay's track.</summary>
         public void PlayMenuMusic()
         {
-            if (menuMusicCue == null || AudioManager.Instance == null) return;
-            AudioManager.Instance.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
+            if (menuMusicCue == null) return;
+            AudioService.PlayMusic(menuMusicCue, MenuMusicFadeSeconds);
         }
 
         /// <summary>The boot sequence's finish line — its own any-key gate, or Esc/pad B through
@@ -400,8 +384,8 @@ namespace Inkform.UI
         }
 
         /// <summary>Resumes the run held in a save slot. Callback for the Save menu's occupied
-        /// slots. A slot that turns out to be empty falls through to a fresh run inside
-        /// SceneDirector.</summary>
+        /// slots. A save SceneDirector refuses (empty, or naming an unknown room) logs a warning
+        /// and leaves the menu as it is.</summary>
         public void ContinueGame(int slot)
         {
             SetPaused(false);
@@ -630,18 +614,9 @@ namespace Inkform.UI
                     Debug.Log($"[UIManager] first layout: root={root.layout.width:0.#}x{root.layout.height:0.#} — viewport OK", this);
             });
 
-            // Font experiment: the first candidate that loads wins, and what actually applied is
-            // logged. Revert to the project pixel font by moving "UI/BombSlimeFonts" first in the
-            // array; the built-in LegacyRuntime (Arial metrics) is the final fallback.
-            // (The USS sets no font of its own, so this root style inherits to every label.)
-            Font uiFont = null;
-            foreach (string fontCandidate in new[] { "UI/LiberationSans", "UI/BombSlimeFonts" })
-            {
-                Font loaded = Resources.Load<Font>(fontCandidate);
-                if (loaded != null) { uiFont = loaded; break; }
-            }
-            if (uiFont == null)
-                uiFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // The game font (UiFonts picks it; what actually applied is logged). The USS sets no
+            // font of its own, so this root style inherits to every label.
+            Font uiFont = UiFonts.Primary;
             if (uiFont != null)
             {
                 root.style.unityFont = uiFont;

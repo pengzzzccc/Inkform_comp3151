@@ -1,5 +1,4 @@
-/* Main menu sheet — title block and menu column pinned to the left. */
+/* Main menu — the shared page frame does the placement; this sheet only drops the menu list
+   a little below the title (about 40% of the screen height). */
 
-.menu-title-block { position: absolute; left: 150px; top: 64px; }
-.menu-column { position: absolute; left: 150px; top: 210px; width: 640px; flex-direction: column; align-items: stretch; }
-.version-label { position: absolute; left: 80px; bottom: 28px; color: var(--c-header); }
+.main-menu-content { justify-content: flex-start; padding-top: 140px; }

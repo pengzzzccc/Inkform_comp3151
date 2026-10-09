@@ -2,7 +2,8 @@
     <Style src="Hud.uss" />
     <!-- Gameplay HUD. Everything picks nothing (picking-mode Ignore): the HUD must never eat a
          click meant for the world. Layout mirrors the old HudRoot prefab: FPS top right,
-         timer top centre, inventory bottom right, "Saved" toast above it. Visibility of the
+         timer top centre, inventory bottom right, "Saved" toast above it. The tutorial
+         hint line sits bottom centre (TutorialHintView fills and fades it). Visibility of the
          whole Gameplay layer is driven by Hud.SetGameplayVisible. -->
     <ui:VisualElement name="Hud" class="screen" picking-mode="Ignore">
         <ui:VisualElement name="Gameplay" class="hud-layer" picking-mode="Ignore">
@@ -13,6 +14,9 @@
                 <ui:Label name="InventoryCount" text="0/1" class="hud-inventory-count outline" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Label name="SaveToast" text="Saved" class="hud-save-toast outline" picking-mode="Ignore" />
+            <ui:VisualElement name="TutorialHint" class="hud-tutorial" picking-mode="Ignore">
+                <ui:VisualElement name="TutorialHintPanel" class="hud-tutorial-panel" picking-mode="Ignore" />
+            </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

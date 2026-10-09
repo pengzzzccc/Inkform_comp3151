@@ -7,9 +7,9 @@ namespace Inkform.Player
     /// The player's kinematics: velocity, jump, non-linear gravity, dash and knockback move lockout.
     /// The second layer split from PlayerHandler — touches only the rigidbody, neither animation nor items.
     ///
-    /// All [SerializeField] defaults are written as Player.prefab's actual values rather than the old
-    /// code defaults: Unity does not migrate serialized data when splitting components, and a wrong
-    /// default silently changes the feel (e.g. speed 10 back to 7).
+    /// Tuning lives on Player.prefab: several [SerializeField] defaults here (gravity, coyoteTime,
+    /// fallGravityMultiplier, attackTime) differ from the prefab's values, so read the prefab, not
+    /// these initializers, for the shipped feel.
     /// No own Update; PlayerHandler calls Tick() in order.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
@@ -25,7 +25,6 @@ namespace Inkform.Player
 
         [Header("Jump feel")]
         [SerializeField] private float coyoteTime = 0.1f;          // grace after walking off a ledge: the unused ground jump survives this long
-        [SerializeField] private float apexSpeedThreshold = 3f;    // |vy| below this while holding jump → half gravity (apex float)
 
         [Header("Gravity")]
         [SerializeField] private float gravity = 3f;
@@ -60,7 +59,6 @@ namespace Inkform.Player
         private int jumpLeft;
         private float requestTime = -999f;
         private bool jumpCutQueued;
-        private bool jumpHeld;          // live jump button state — drives the apex half-gravity float
 
         // Dash direction captured at Dash() (unit vector, free angle). StepDash rewrites it into the
         // rigidbody every frame of the dash, so the trajectory stays fixed for the whole duration
@@ -229,10 +227,6 @@ namespace Inkform.Player
         /// <summary>Jump released: cuts a chunk of the upward velocity, holding longer jumps higher.</summary>
         public void CutJump() => jumpCutQueued = true;
 
-        /// <summary>Jump button state, wired from PlayerHandler.JumpPressed / JumpReleased: holding
-        /// through the jump apex halves gravity there so the peak lingers (Celeste's apex float).</summary>
-        public void SetJumpHeld(bool held) => jumpHeld = held;
-
         /// <summary>Attack dash: locks velocity to dir (a unit vector, free angle) for attackTime
         /// seconds — fixed direction, gravity-free, full speed then a linear decay to zero (see
         /// StepDash) — and locks move input for the duration.</summary>
@@ -282,7 +276,6 @@ namespace Inkform.Player
             knockbackTimer.Clear();
             updateBuffer.Clear();
             coyoteTimer.Clear();
-            jumpHeld = false;
             grappleLocked = false;
             groundPlatform = null;
             groundPrevPos = Vector2.zero;
@@ -319,12 +312,6 @@ namespace Inkform.Player
             else if (wallSliding)                                   {body.gravityScale = gravity * onWallGravityMultiplier;}    // wall slide slowdown
             else if (body.linearVelocityY < 0f)                     {body.gravityScale = gravity * fallGravityMultiplier;}      // falling acceleration, snappier feel
             else                                                    {body.gravityScale = gravity;}
-
-            // Apex float (Celeste's jump peak in half gravity): near the top of a held jump the
-            // player lingers. The gravityScale > 0 guard keeps the ceiling stick's -5 (upward
-            // gravity) from being weakened into a slower stick
-            if (jumpHeld && body.gravityScale > 0f && Mathf.Abs(body.linearVelocityY) < apexSpeedThreshold)
-                body.gravityScale *= 0.5f;
 
             // Symmetric speed cap on Y. Downward: a long fall caps here instead of accelerating
             // forever (tunnel-through risk on thin floors, unreadably harsh landings). Upward:

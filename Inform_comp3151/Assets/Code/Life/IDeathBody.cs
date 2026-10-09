@@ -22,9 +22,6 @@ namespace Inkform.Life
         /// unsubscribing the buses, and "respawn" would never arrive. Disabling rendering suffices.</summary>
         void Hide();
 
-        /// <summary>Shows the body back on respawn.</summary>
-        void Show();
-
         /// <summary>
         /// Flattens the body in place (crush death): the visible body squashes by scaleMultiplier
         /// over duration — x widens, y flattens — and stays visible. No shards, no hide. Implementors
