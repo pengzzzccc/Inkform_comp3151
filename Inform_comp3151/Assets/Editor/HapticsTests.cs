@@ -203,10 +203,34 @@ namespace Inkform.Tests
         {
             Assert.AreEqual(RumbleLevel.Off, SettingsStore.MigrateRumbleLevel(false, 0, true, 0));
             Assert.AreEqual(RumbleLevel.High, SettingsStore.MigrateRumbleLevel(false, 0, true, 1));
-            Assert.AreEqual(RumbleLevel.High, SettingsStore.MigrateRumbleLevel(false, 0, false, 0), "fresh install");
+            Assert.AreEqual(SettingsStore.DefaultLevel, SettingsStore.MigrateRumbleLevel(false, 0, false, 0), "fresh install");
             Assert.AreEqual(RumbleLevel.Medium, SettingsStore.MigrateRumbleLevel(true, (int)RumbleLevel.Medium, true, 1),
                 "the levels key wins over the old switch");
             Assert.AreEqual(RumbleLevel.High, SettingsStore.MigrateRumbleLevel(true, 99, false, 0), "out of range clamps");
+        }
+
+        [Test]
+        public void TriggerEffect_ScalesWithTheTriggerLevel()
+        {
+            TriggerEffect bow = TriggerEffect.Bow(2, 5, 6, 5);
+
+            TriggerEffect low = bow.Scaled(0.35f);
+            Assert.AreEqual(TriggerEffect.Kind.Bow, low.kind);
+            Assert.AreEqual(bow.start, low.start, "zones stay where they are");
+            Assert.AreEqual(bow.end, low.end);
+            Assert.AreEqual(2, low.strength);
+            Assert.AreEqual(2, low.snapForce);
+
+            TriggerEffect medium = bow.Scaled(0.65f);
+            Assert.AreEqual(4, medium.strength);
+            Assert.AreEqual(3, medium.snapForce);
+
+            Assert.IsTrue(bow.Scaled(1f).Equals(bow), "High is the tuned feel as it is");
+
+            TriggerEffect buzz = TriggerEffect.Vibration(0, 1, 160).Scaled(0.35f);
+            Assert.AreEqual(1, buzz.strength, "a felt effect gets lighter, never gone");
+            Assert.AreEqual(160, buzz.frequency, "the buzz keeps its pitch");
+            Assert.IsTrue(TriggerEffect.Off.Scaled(0.35f).IsOff);
         }
 
         // ---- Generic pad shake ----

@@ -1,18 +1,20 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <Style src="Settings.uss" />
-    <!-- Settings shell on the page frame: kicker + title top left (a category page shows
-         "OPTIONS" above its own name), the page mount as the centred content column, prompts
-         bottom right. Each sub-page (ROOT category list / AUDIO / VIDEO / CONTROLS) is its own
-         UXML/USS/Page triple, instantiated by SettingsPanel into #Pages and display-toggled by
-         its router. Row styles cascade from this sheet to every mounted page. -->
+    <!-- Settings, one page on the page frame: the title top left, then a single scrolling list
+         on a plate in the centred content column — AUDIO, VIDEO and CONTROLS one after another,
+         each a section title followed by its rows (label left, value / bar / key icons right).
+         SettingsPanel's sections build the rows into #Rows; prompts bottom right. -->
     <ui:VisualElement name="Settings" class="screen dim frame">
         <ui:VisualElement class="frame-header" picking-mode="Ignore">
-            <ui:Label name="Kicker" text="OPTIONS" class="page-kicker outline" picking-mode="Ignore" />
-            <ui:Label name="Title" text="OPTIONS" class="page-title header-outline" picking-mode="Ignore" />
+            <ui:Label name="Title" text="OPTIONS" class="page-title title-font header-outline" picking-mode="Ignore" />
         </ui:VisualElement>
 
-        <ui:VisualElement class="frame-content">
-            <ui:VisualElement name="Pages" class="content-column settings-pages" />
+        <ui:VisualElement class="frame-content" picking-mode="Ignore">
+            <ui:VisualElement class="content-column settings-column plate">
+                <ui:ScrollView name="Scroll" class="settings-scroll" horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Auto">
+                    <ui:VisualElement name="Rows" class="settings-rows" />
+                </ui:ScrollView>
+            </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement class="frame-footer" picking-mode="Ignore">

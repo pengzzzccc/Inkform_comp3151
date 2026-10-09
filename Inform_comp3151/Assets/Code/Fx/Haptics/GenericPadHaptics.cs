@@ -18,6 +18,9 @@ namespace Inkform.Fx.Haptics
     /// documented example, SetMotorSpeeds(0.25f, 0.75f), at High; Medium and Low scale it down in
     /// the DualSense's proportions. Hits that land during a shake extend it rather than stacking.
     ///
+    /// The menus get one short shake of their own: a value pushed past its end in the settings
+    /// (UiBus.Bumped). Unlike the gameplay shake it plays in the menus and through a pause.
+    ///
     /// Lives on the GameManager next to HapticsDirector, which drives the DualSense only.
     /// </summary>
     public class GenericPadHaptics : MonoBehaviour
@@ -30,6 +33,8 @@ namespace Inkform.Fx.Haptics
         [Tooltip("Share of the shake above at Low / Medium / High")]
         [SerializeField] private float[] levelScales = { 0.35f, 0.65f, 1f };
         [SerializeField] private float shakeSeconds = 0.15f;
+        [Tooltip("Menus: a value pushed past its end")]
+        [SerializeField] private float bumpSeconds = 0.1f;
 
         [Header("Contact")]
         [Tooltip("Touches slower than this (into the surface) do not rumble: sliding along a wall, a small step")]
@@ -43,6 +48,7 @@ namespace Inkform.Fx.Haptics
 
         private Gamepad target;
         private float shakeUntil = float.NegativeInfinity;
+        private float bumpUntil = float.NegativeInfinity;
         private float sentLow, sentHigh;
         private bool hasFocus = true;
 
@@ -50,12 +56,14 @@ namespace Inkform.Fx.Haptics
         {
             PlayerBus.Contacted += OnContact;
             RopeGunBus.Fired += OnRopeFired;
+            UiBus.Bumped += OnBumped;
         }
 
         void OnDisable()
         {
             PlayerBus.Contacted -= OnContact;
             RopeGunBus.Fired -= OnRopeFired;
+            UiBus.Bumped -= OnBumped;
             StopAll();
         }
 
@@ -84,6 +92,9 @@ namespace Inkform.Fx.Haptics
             shakeUntil = Mathf.Max(shakeUntil, Time.unscaledTime + shakeSeconds);
         }
 
+        // Menu feedback: any game state (main menu, pause), so no Playing check
+        private void OnBumped() => bumpUntil = Mathf.Max(bumpUntil, Time.unscaledTime + bumpSeconds);
+
         // ---- Per frame ----
 
         void Update()
@@ -101,11 +112,12 @@ namespace Inkform.Fx.Haptics
             debugPad = target != null ? $"{target.displayName} ({target.layout})" : "(none)";
             if (target == null) return;
 
-            // Pause, menus, transitions: stop at once, and drop the shake in flight
+            // Pause, menus, transitions: stop the gameplay shake at once (the menus' bump plays on)
             if (!Playing) shakeUntil = float.NegativeInfinity;
 
+            float now = Time.unscaledTime;
             float low = 0f, high = 0f;
-            if (Time.unscaledTime < shakeUntil)
+            if (now < shakeUntil || now < bumpUntil)
                 Speeds(SettingsStore.RumbleLevel, lowSpeed, highSpeed, levelScales, out low, out high);
             Write(low, high);
         }
@@ -124,6 +136,7 @@ namespace Inkform.Fx.Haptics
         private void StopAll()
         {
             shakeUntil = float.NegativeInfinity;
+            bumpUntil = float.NegativeInfinity;
             Write(0f, 0f);
         }
 

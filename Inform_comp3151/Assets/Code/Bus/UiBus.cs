@@ -39,15 +39,21 @@ namespace Inkform.Bus
 
         /// <summary>An option row's value was stepped or the row was confirmed; the argument picks
         /// the cue — true for a right step / click ("on"), false for a left step ("off"). Raised
-        /// only for genuine user input: the pages write values back through OptionRow.Value
-        /// (SettingsSubPage.Refresh), which raises nothing, so re-opening a page stays silent.</summary>
+        /// only for genuine user input: the sections write values back through OptionRow.Refresh
+        /// (SettingsSection.Refresh), which raises nothing, so re-opening the sheet stays silent.</summary>
         public static event Action<bool> Toggled;
+
+        /// <summary>A value was pushed past its end (an option row at its first / last choice, a
+        /// slider at 0 / full): the row shakes, and the pad in hand gives a short bump.</summary>
+        public static event Action Bumped;
 
         public static void RaiseHovered() => Hovered?.Invoke();
 
         public static void RaiseClicked() => Clicked?.Invoke();
 
         public static void RaiseToggled(bool on) => Toggled?.Invoke(on);
+
+        public static void RaiseBumped() => Bumped?.Invoke();
 
         /// <summary>A tutorial zone wants its hint on screen. The owner (the zone) is the key the
         /// matching TutorialHidden uses; maxSeconds &gt; 0 caps how long the hint stays up while the
@@ -71,6 +77,7 @@ namespace Inkform.Bus
             Hovered = null;
             Clicked = null;
             Toggled = null;
+            Bumped = null;
             TutorialShown = null;
             TutorialHidden = null;
         }

@@ -11,7 +11,7 @@ namespace Inkform.UI
 {
     /// <summary>
     /// Save menu sheet, Celeste OuiFileSelect styling: three postcard slots that slide in from
-    /// the right with a small cascade, black text on cream cards. Behaviour: a tap continues
+    /// the right with a small cascade, ink text on the saveslot plates. Behaviour: a tap continues
     /// (an empty slot starts a new one); the overwrite offer is a one-second hold on the
     /// focused slot — Ctrl (keyboard), the pad's North button, or the card itself with the
     /// mouse — shown as a green fill creeping across the card; a tap then confirms.
@@ -36,7 +36,10 @@ namespace Inkform.UI
         private readonly Button[] slots;
         private readonly Label[] slotTitles;
         private readonly Label[] slotLevels;
-        private readonly Label[] slotInfos;
+        private readonly VisualElement[] slotStats;   // [clock] time  [skull] deaths
+        private readonly Label[] slotTimes;
+        private readonly Label[] slotDeaths;
+        private readonly Label[] slotNotes;           // save date, or the confirm prompt
         private readonly VisualElement[] holdFills;
 
         private int confirmSlot = -1;     // the slot currently offering to be overwritten; -1 = none
@@ -55,7 +58,10 @@ namespace Inkform.UI
             slots = new Button[count];
             slotTitles = new Label[count];
             slotLevels = new Label[count];
-            slotInfos = new Label[count];
+            slotStats = new VisualElement[count];
+            slotTimes = new Label[count];
+            slotDeaths = new Label[count];
+            slotNotes = new Label[count];
             holdFills = new VisualElement[count];
 
             for (int i = 0; i < count; i++)
@@ -65,7 +71,10 @@ namespace Inkform.UI
                 slots[i] = Q<Button>($"Slot{i}");
                 slotTitles[i] = Q<Label>($"SlotTitle{i}");
                 slotLevels[i] = Q<Label>($"SlotLevel{i}");
-                slotInfos[i] = Q<Label>($"SlotInfo{i}");
+                slotStats[i] = Q<VisualElement>($"SlotStats{i}");
+                slotTimes[i] = Q<Label>($"SlotTime{i}");
+                slotDeaths[i] = Q<Label>($"SlotDeaths{i}");
+                slotNotes[i] = Q<Label>($"SlotNote{i}");
                 holdFills[i] = Q<VisualElement>($"HoldFill{i}");
 
                 if (slots[i] == null)
@@ -260,27 +269,33 @@ namespace Inkform.UI
                 Caption caption = CaptionFor(i);
                 if (slotTitles[i] != null) slotTitles[i].text = caption.slot;
                 if (slotLevels[i] != null) slotLevels[i].text = caption.level;
-                if (slotInfos[i] != null) slotInfos[i].text = caption.details;
+                if (slotStats[i] != null) slotStats[i].style.display = caption.time != null ? DisplayStyle.Flex : DisplayStyle.None;
+                if (slotTimes[i] != null) slotTimes[i].text = caption.time ?? string.Empty;
+                if (slotDeaths[i] != null) slotDeaths[i].text = caption.deaths ?? string.Empty;
+                if (slotNotes[i] != null) slotNotes[i].text = caption.note;
             }
         }
 
-        /// <summary>One card's text: slot number and level on the left, the run's details in the
-        /// bottom-right corner.</summary>
+        /// <summary>One card's text: slot number and level on the left; on the plate's line at the
+        /// right, the run's time and deaths (beside the clock and skull icons — null hides that
+        /// row) over a note (the save date, or the confirm prompt).</summary>
         private struct Caption
         {
             public string slot;
             public string level;
-            public string details;
+            public string time;
+            public string deaths;
+            public string note;
         }
 
         private Caption CaptionFor(int slot)
         {
-            var caption = new Caption { slot = $"SLOT {slot + 1}", details = string.Empty };
+            var caption = new Caption { slot = $"SLOT {slot + 1}", note = string.Empty };
 
             if (confirmSlot == slot)
             {
                 caption.level = "Overwrite with a new game?";
-                caption.details = "Tap again to confirm";
+                caption.note = "Tap again to confirm";
                 return caption;
             }
 
@@ -294,18 +309,10 @@ namespace Inkform.UI
             caption.level = UIManager.Instance != null
                 ? UIManager.Instance.LevelDisplayName(data.sceneName)
                 : data.sceneName;
-            caption.details = $"{FormatDuration(data.playSeconds)}   {data.deaths} deaths\n{FormatSavedAt(data.savedAtUtc)}";
+            caption.time = RunTimeFormat.Format(data.playSeconds);
+            caption.deaths = data.deaths.ToString();
+            caption.note = FormatSavedAt(data.savedAtUtc);
             return caption;
-        }
-
-        /// <summary>Shared with EndPanel: one duration format across every sheet that shows a
-        /// run's elapsed time (H:MM:SS past an hour, M:SS below it).</summary>
-        internal static string FormatDuration(float seconds)
-        {
-            TimeSpan t = TimeSpan.FromSeconds(Mathf.Max(0f, seconds));
-            return t.TotalHours >= 1.0
-                ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}"
-                : $"{t.Minutes}:{t.Seconds:00}";
         }
 
         // Stored as a round-trip UTC string (JsonUtility cannot serialize DateTime); shown in

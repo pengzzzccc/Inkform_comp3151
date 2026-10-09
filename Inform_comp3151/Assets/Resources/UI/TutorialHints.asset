@@ -27,8 +27,8 @@ MonoBehaviour:
     keyboardText: Hook on Bomb, Press {SpitBomb} to throw a bomb at the reticle
     gamepadText: Hook on Bomb, Press {SpitBomb} to throw a bomb at the reticle
   - hint: 4
-    keyboardText: Hook on Bomb, Aim with {Aim}, Press {Dash} to dash toward the reticle
-    gamepadText: Hook on Bomb, Aim with {Aim}, Press {Dash} to dash toward the reticle
+    keyboardText: Grap a Bomb, Press {Dash} to dash toward the reticle
+    gamepadText: Grap a Bomb, Press {Dash} to dash toward the reticle
   - hint: 5
     keyboardText: Jump {Jump} to briefly move along the ceiling
     gamepadText: Jump {Jump} to briefly move along the ceiling
@@ -90,5 +90,5 @@ MonoBehaviour:
   - control: start
     xbox: {fileID: -8589205210176932790, guid: c761534b32dabc84c8329223cd9343f1, type: 3}
     playStation: {fileID: -8589205210176932790, guid: c761534b32dabc84c8329223cd9343f1, type: 3}
-  mouseLeft: {fileID: 0}
-  mouseRight: {fileID: 0}
+  mouseLeft: {fileID: 7393499047454288295, guid: ab31eece9e458e047a645b7a44d23903, type: 3}
+  mouseRight: {fileID: -5116198927626267380, guid: 1caf2f9351ba9284ab5c47024ef499dd, type: 3}
