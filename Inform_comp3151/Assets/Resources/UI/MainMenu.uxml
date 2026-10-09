@@ -1,21 +1,23 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <Style src="MainMenu.uss" />
-    <!-- Celeste OuiMainMenu: title + menu column on the left, Confirm/Back hint bottom right.
-         Styling comes from the panel theme (RuntimeTheme.tss -> Theme.uss); no per-sheet <Style>.
-         The version label's text is filled in by MainMenuPanel (Application.version). -->
-    <ui:VisualElement name="MainMenu" class="screen">
-        <ui:VisualElement name="TitleBlock" class="menu-title-block">
-            <ui:Label name="TitleLabel" text="BOMB SLIME" class="menu-title header-outline" picking-mode="Ignore" />
+    <!-- Main menu, page frame (Theme.uss .frame): title top left on the safe margin, the menu
+         list left-aligned under it, version bottom left, device-aware prompts bottom right.
+         The version text is filled in by MainMenuPanel (Application.version); the prompts by
+         its DefinePrompts. -->
+    <ui:VisualElement name="MainMenu" class="screen frame">
+        <ui:VisualElement name="TitleBlock" class="frame-header" picking-mode="Ignore">
+            <ui:Label name="TitleLabel" text="BOMB SLIME" class="page-title header-outline" picking-mode="Ignore" />
         </ui:VisualElement>
-        <ui:VisualElement name="MenuColumn" class="menu-column">
-            <ui:Button name="Btn_Begin" text="BEGIN" class="menu-item menu-begin floaty outline" />
-            <ui:Button name="Btn_Settings" text="OPTIONS" class="menu-item floaty outline" />
-            <ui:Button name="Btn_Exit" text="EXIT" class="menu-item floaty outline" />
+        <ui:VisualElement class="frame-content main-menu-content">
+            <ui:VisualElement name="MenuColumn" class="menu-list">
+                <ui:Button name="Btn_Begin" text="BEGIN" class="menu-item menu-begin floaty outline" />
+                <ui:Button name="Btn_Settings" text="OPTIONS" class="menu-item floaty outline" />
+                <ui:Button name="Btn_Exit" text="EXIT" class="menu-item floaty outline" />
+            </ui:VisualElement>
         </ui:VisualElement>
-        <ui:Label name="Lbl_Version" class="version-label outline" picking-mode="Ignore" />
-        <ui:VisualElement class="confirm-hint" picking-mode="Ignore">
-            <ui:Label text="Confirm - Enter" class="corner outline" picking-mode="Ignore" />
-            <ui:Label text="Back - Esc" class="corner outline" picking-mode="Ignore" />
+        <ui:VisualElement class="frame-footer" picking-mode="Ignore">
+            <ui:Label name="Lbl_Version" class="version-label outline" picking-mode="Ignore" />
+            <ui:VisualElement name="PromptBar" class="prompt-bar" picking-mode="Ignore" />
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

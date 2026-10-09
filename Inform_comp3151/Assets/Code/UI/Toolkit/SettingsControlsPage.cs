@@ -7,9 +7,11 @@ using UnityEngine.UIElements;
 namespace Inkform.UI
 {
     /// <summary>
-    /// The CONTROLS settings page: input device, rumble, the two sensitivities, the per-device
-    /// rebind tables (switched by the Device row), Unstuck, Reset Bindings — and the GRAPPING
-    /// HOOK section: the rope gun's snap options the RopeGun reads live from SettingsStore.
+    /// The CONTROLS settings page, in sections: DEVICE (input device, rumble), SENSITIVITY,
+    /// KEY BINDINGS (the active device's rebind table only, each key drawn as its button icon),
+    /// GRAPPLING HOOK (the rope gun's snap options the RopeGun reads live from SettingsStore) and
+    /// MAINTENANCE last (Unstuck, Reset Bindings — out of the way of a stray press). The page
+    /// follows a live device switch while it is open: touching a pad swaps table and icons.
     /// </summary>
     public class SettingsControlsPage : SettingsSubPage
     {
@@ -61,7 +63,13 @@ namespace Inkform.UI
         private Slider mouseSlider, stickSlider;
         private Label mouseLabel, stickLabel;
         private VisualElement kbmSection, padSection;
-        private Label[] kbmKeyLabels, padKeyLabels;
+        private VisualElement[] kbmKeySlots, padKeySlots;
+        private Label bindingsHeader;
+        private readonly TutorialHintSet glyphSet = TutorialHintSet.Load();
+
+        // What the device content was last drawn for: Tick redraws when either changes
+        private SettingsStore.InputDevice shownDevice;
+        private PromptScheme shownScheme;
 
         private OptionRow ropeWallSnapRow, ropeBombSnapRow, ropeAdaptiveRow;
         private Slider deadZoneSlider;
@@ -69,6 +77,7 @@ namespace Inkform.UI
 
         public SettingsControlsPage(SettingsPanel owner) : base(owner, "UI/SettingsControls")
         {
+            AddSubHeader("DEVICE");
             deviceRow = AddOptionRow("Device", DeviceText(SettingsStore.Device));
             deviceRow.Stepped += dir =>
             {
@@ -77,11 +86,12 @@ namespace Inkform.UI
                 i = (i + dir + values.Length) % values.Length;
                 SettingsStore.SetDevice(values[i]);
                 deviceRow.Value = DeviceText(values[i]);
-                ShowDeviceContent();
+                RefreshDeviceContent();
             };
 
             rumbleRow = AddOnOffRow("Rumble", () => SettingsStore.Rumble, SettingsStore.SetRumble);
 
+            AddSubHeader("SENSITIVITY");
             mouseLabel = AddSliderRow("Mouse Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out mouseSlider);
             stickLabel = AddSliderRow("Controller Sensitivity", SettingsStore.MinSensitivity, SettingsStore.MaxSensitivity, out stickSlider);
             mouseSlider.RegisterValueChangedCallback(e =>
@@ -95,21 +105,16 @@ namespace Inkform.UI
                 stickLabel.text = SensText(e.newValue);
             });
 
-            // The rebind tables switch with the device row, like the old Dpd_Device did.
+            // The rebind tables switch with the device, like the old Dpd_Device did.
+            bindingsHeader = AddSubHeader("KEY BINDINGS");
             kbmSection = AddSection();
             padSection = AddSection();
-            kbmKeyLabels = new Label[KbmRows.Length];
-            padKeyLabels = new Label[GamepadRows.Length];
-            BuildRebindTable(kbmSection, KbmRows, kbmKeyLabels, BindingTools.KbmGroup, BindingTools.GamepadGroup);
-            BuildRebindTable(padSection, GamepadRows, padKeyLabels, BindingTools.GamepadGroup, BindingTools.KbmGroup);
+            kbmKeySlots = new VisualElement[KbmRows.Length];
+            padKeySlots = new VisualElement[GamepadRows.Length];
+            BuildRebindTable(kbmSection, KbmRows, kbmKeySlots, BindingTools.KbmGroup, BindingTools.GamepadGroup);
+            BuildRebindTable(padSection, GamepadRows, padKeySlots, BindingTools.GamepadGroup, BindingTools.KbmGroup);
 
-            unstuckRow = AddActionRow("Unstuck");
-            unstuckRow.Confirmed += () => UI.Unstuck();
-
-            resetBindingsRow = AddActionRow("Reset Bindings");
-            resetBindingsRow.Confirmed += OnResetBindings;
-
-            AddSubHeader("GRAPPING HOOK");
+            AddSubHeader("GRAPPLING HOOK");
 
             ropeWallSnapRow = AddOnOffRow("Wall Snap", () => SettingsStore.RopeWallSnap, SettingsStore.SetRopeWallSnap);
             ropeBombSnapRow = AddOnOffRow("Bomb Snap", () => SettingsStore.RopeBombSnap, SettingsStore.SetRopeBombSnap);
@@ -122,11 +127,17 @@ namespace Inkform.UI
             });
 
             ropeAdaptiveRow = AddOnOffRow("Adaptive Speed", () => SettingsStore.RopeAdaptiveSpeed, SettingsStore.SetRopeAdaptiveSpeed);
+
+            AddSubHeader("MAINTENANCE");
+            unstuckRow = AddActionRow("Unstuck");
+            unstuckRow.Confirmed += () => UI.Unstuck();
+
+            resetBindingsRow = AddActionRow("Reset Bindings");
+            resetBindingsRow.Confirmed += OnResetBindings;
         }
 
         public override void Refresh()
         {
-            deviceRow.Value = DeviceText(SettingsStore.Device);
             rumbleRow.Value = OnOffText(SettingsStore.Rumble);
             SetSlider(mouseSlider, SettingsStore.MouseSensitivity, mouseLabel, SensText);
             SetSlider(stickSlider, SettingsStore.StickSensitivity, stickLabel, SensText);
@@ -139,18 +150,33 @@ namespace Inkform.UI
             // Nothing to un-stick in the menu scene — there is no player there
             unstuckRow.SetEnabled(!UI.IsInMainMenu);
 
-            ShowDeviceContent();
-            for (int i = 0; i < KbmRows.Length; i++)
-                RefreshBindingRow(i, KbmRows, kbmKeyLabels[i], BindingTools.KbmGroup);
-            for (int i = 0; i < GamepadRows.Length; i++)
-                RefreshBindingRow(i, GamepadRows, padKeyLabels[i], BindingTools.GamepadGroup);
+            RefreshDeviceContent();
         }
 
-        private void ShowDeviceContent()
+        // InputHandler / UIManager switch the device on live input: follow it while on stage
+        public override void Tick()
         {
-            bool kbm = SettingsStore.Device == SettingsStore.InputDevice.KeyboardMouse;
+            if (SettingsStore.Device != shownDevice || InteractPromptIcons.DetectCurrent() != shownScheme)
+                RefreshDeviceContent();
+        }
+
+        /// <summary>Device row, which table is shown, and every key icon (the pad face may have
+        /// changed too — PlayStation and Xbox draw different buttons).</summary>
+        private void RefreshDeviceContent()
+        {
+            shownDevice = SettingsStore.Device;
+            shownScheme = InteractPromptIcons.DetectCurrent();
+
+            bool kbm = shownDevice == SettingsStore.InputDevice.KeyboardMouse;
+            deviceRow.Value = DeviceText(shownDevice);
+            if (bindingsHeader != null) bindingsHeader.text = kbm ? "KEY BINDINGS (KEYBOARD)" : "KEY BINDINGS (GAMEPAD)";
             if (kbmSection != null) kbmSection.style.display = kbm ? DisplayStyle.Flex : DisplayStyle.None;
             if (padSection != null) padSection.style.display = kbm ? DisplayStyle.None : DisplayStyle.Flex;
+
+            for (int i = 0; i < KbmRows.Length; i++)
+                RefreshBindingRow(i, KbmRows, kbmKeySlots[i], BindingTools.KbmGroup);
+            for (int i = 0; i < GamepadRows.Length; i++)
+                RefreshBindingRow(i, GamepadRows, padKeySlots[i], BindingTools.GamepadGroup);
         }
 
         private void OnResetBindings()
@@ -161,8 +187,8 @@ namespace Inkform.UI
 
         /// <summary>Builds one rebind table: a plain row per action, whole row is the button.
         /// Non-rebindable rows (Aim / the sticks) go inert instead of hidden, so the table
-        /// layout never reflows. Fills <paramref name="keyLabels"/> with each row's key readout.</summary>
-        private void BuildRebindTable(VisualElement section, BindingRow[] table, Label[] keyLabels,
+        /// layout never reflows. Fills <paramref name="keySlots"/> with each row's icon holder.</summary>
+        private void BuildRebindTable(VisualElement section, BindingRow[] table, VisualElement[] keySlots,
             string group, string excludeGroup)
         {
             for (int i = 0; i < table.Length; i++)
@@ -179,14 +205,12 @@ namespace Inkform.UI
                 action.pickingMode = PickingMode.Ignore;
                 button.Add(action);
 
-                var key = new Label();
-                key.AddToClassList("row-value");
-                key.AddToClassList("outline");
-                key.pickingMode = PickingMode.Ignore;
+                var key = new VisualElement { pickingMode = PickingMode.Ignore };
+                key.AddToClassList("row-glyphs");
                 button.Add(key);
 
                 section.Add(button);
-                keyLabels[i] = key;
+                keySlots[i] = key;
 
                 if (!table[i].rebindable)
                 {
@@ -204,7 +228,7 @@ namespace Inkform.UI
             }
         }
 
-        private void OnRebindPressed(int row, BindingRow[] table, Label keyLabel, string group, string excludeGroup)
+        private void OnRebindPressed(int row, BindingRow[] table, VisualElement keySlot, string group, string excludeGroup)
         {
             BindingRow cfg = table[row];
             InputAction action = GetAction(cfg.actionName);
@@ -213,19 +237,30 @@ namespace Inkform.UI
             int index = BindingTools.FindBindingIndex(action, group, cfg.compositePart);
             if (index < 0) return;
 
-            BindingTools.StartRebind(action, index, excludeGroup, () => RefreshBindingRow(row, table, keyLabel, group));
+            BindingTools.StartRebind(action, index, excludeGroup, () => RefreshBindingRow(row, table, keySlot, group));
         }
 
-        private void RefreshBindingRow(int row, BindingRow[] table, Label keyLabel, string group)
+        /// <summary>Draws the row's current binding as its button icon (keycap for keys, pad art
+        /// for the active face), from the live effective path so a rebind shows at once.</summary>
+        private void RefreshBindingRow(int row, BindingRow[] table, VisualElement keySlot, string group)
         {
-            if (keyLabel == null) return;
+            if (keySlot == null) return;
+            keySlot.Clear();
 
             BindingRow cfg = table[row];
             InputAction action = GetAction(cfg.actionName);
-            if (action == null) { keyLabel.text = "-"; return; }
+            int index = action != null ? BindingTools.FindBindingIndex(action, group, cfg.compositePart) : -1;
+            if (index < 0)
+            {
+                keySlot.Add(GlyphElements.Create(new InputGlyphs.Glyph { label = "-" }));
+                return;
+            }
 
-            int index = BindingTools.FindBindingIndex(action, group, cfg.compositePart);
-            keyLabel.text = index >= 0 ? BindingTools.GetDisplay(action, index) : "-";
+            // The pad table follows the pad in hand; with the keyboard active it shows Xbox faces
+            PromptScheme scheme = group == BindingTools.KbmGroup ? PromptScheme.KeyboardMouse
+                : shownScheme != PromptScheme.KeyboardMouse ? shownScheme : PromptScheme.Xbox;
+            keySlot.Add(GlyphElements.Create(InputGlyphs.ResolvePath(
+                action.bindings[index].effectivePath, BindingTools.GetDisplay(action, index), scheme, glyphSet)));
         }
 
         private static InputAction GetAction(string actionName)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Inkform.Fx;
+using Inkform.Input;
 using Inkform.Tool;
 using Inkform.UI;
 using UnityEngine;
@@ -10,9 +11,10 @@ namespace Inkform.Interactable.Parts
     /// <summary>
     /// Interaction prompt (reusable): while the player overlaps this Interactable's trigger, the
     /// object's silhouette gets an outline glow and a small confirm-key icon floats above it — both
-    /// fading in/out smoothly. The icon follows the live input scheme (keyboard keycap / PlayStation
-    /// triangle / Xbox Y), so the same prompt works on every supported device without per-device
-    /// setups. Purely presentational: it never claims contacts (HandleContact always returns false)
+    /// fading in/out smoothly. The icon is the Interact action's live binding drawn the same way as
+    /// every other button in the game (InputGlyphs + the ConIcon sheet via TutorialHintSet): the
+    /// pad's own north button art (Y / △), or a keycap with the key's name on keyboard. It follows
+    /// a device switch and a rebind, so the same prompt works everywhere without per-device setups. Purely presentational: it never claims contacts (HandleContact always returns false)
     /// and knows nothing about what the confirm key DOES — pair it with a consumer part (e.g.
     /// AbilityPickupPart) on the same node; both read the same trigger independently.
     ///
@@ -45,14 +47,10 @@ namespace Inkform.Interactable.Parts
         [Tooltip("Extra local offset from the sprite's top edge (auto-anchored each build).")]
         [SerializeField] private Vector2 promptOffset = new Vector2(0f, 0.18f);
 
-        [Tooltip("Keycap/button background colour (dark, both device families).")]
+        [Tooltip("Keyboard keycap background colour (pad buttons use the ConIcon art as-is).")]
         [SerializeField] private Color keycapColor = new Color(0.05f, 0.06f, 0.10f, 0.85f);
-        [Tooltip("Keyboard letter colour.")]
+        [Tooltip("Keyboard key name colour.")]
         [SerializeField] private Color glyphColor = Color.white;
-        [Tooltip("PlayStation triangle colour (their north button is a green triangle).")]
-        [SerializeField] private Color playStationTint = new Color(0.35f, 0.85f, 0.45f, 1f);
-        [Tooltip("Xbox Y letter colour.")]
-        [SerializeField] private Color xboxTint = new Color(0.95f, 0.8f, 0.25f, 1f);
 
         private Interactable root;
         private readonly HashSet<Collider2D> players = new HashSet<Collider2D>();
@@ -65,7 +63,10 @@ namespace Inkform.Interactable.Parts
         private CanvasGroup canvasGroup;
         private RectTransform glyphRect;
         private Vector2 glyphBasePosition;
-        private PromptScheme scheme;
+        private bool glyphBuilt;
+        private InputGlyphs.Glyph shownGlyph;
+        private readonly List<InputGlyphs.Glyph> glyphBuffer = new List<InputGlyphs.Glyph>();
+        private static TutorialHintSet iconSet;
 
         private float fade;
         private bool suppressed;
@@ -152,8 +153,9 @@ namespace Inkform.Interactable.Parts
 
             canvasGroup.alpha = fade;
 
-            PromptScheme live = InteractPromptIcons.DetectCurrent();
-            if (live != scheme) BuildGlyph(live);
+            // Device switch or rebind: the resolved glyph changes, the icon is rebuilt
+            InputGlyphs.Glyph live = ResolveGlyph();
+            if (!glyphBuilt || live.sprite != shownGlyph.sprite || live.label != shownGlyph.label) BuildGlyph(live);
 
             float bob = 4f * Mathf.Sin(Time.time * 3f);   // a few canvas px of float, ~4% of icon size
             if (glyphRect != null) glyphRect.anchoredPosition = glyphBasePosition + Vector2.up * bob;
@@ -204,51 +206,67 @@ namespace Inkform.Interactable.Parts
             Image background = backgroundObject.AddComponent<Image>();
             background.raycastTarget = false;
             background.color = keycapColor;
-            background.sprite = InteractPromptIcons.KeycapSprite;   // replaced per scheme in BuildGlyph
+            background.sprite = InteractPromptIcons.KeycapSprite;   // shown for keyboard keys only (BuildGlyph)
 
-            BuildGlyph(InteractPromptIcons.DetectCurrent());
+            BuildGlyph(ResolveGlyph());
         }
 
-        /// <summary>Swaps background shape + glyph for the live scheme. Destructive rebuild — it runs
-        /// only on scheme change and once at build, never per frame.</summary>
-        private void BuildGlyph(PromptScheme live)
+        /// <summary>The Interact action's current binding as an icon, for the device in hand.
+        /// Falls back to the default keys when the action or the icon table is missing.</summary>
+        private InputGlyphs.Glyph ResolveGlyph()
         {
-            scheme = live;
+            if (iconSet == null) iconSet = TutorialHintSet.Load();
+            PromptScheme live = InteractPromptIcons.DetectCurrent();
+
+            glyphBuffer.Clear();
+            InputGlyphs.Resolve(InputActions.Wrapper.Player.Interact, live, iconSet, glyphBuffer);
+            if (glyphBuffer.Count > 0) return glyphBuffer[0];
+            return new InputGlyphs.Glyph
+            {
+                label = live == PromptScheme.KeyboardMouse ? InteractPromptIcons.KeyboardGlyph : InteractPromptIcons.XboxGlyph
+            };
+        }
+
+        /// <summary>Pad art fills the icon on its own (the ConIcon button carries its own dark
+        /// face); a keyboard key gets the dark keycap with its name on top. Destructive rebuild —
+        /// it runs only when the glyph changes and once at build, never per frame.</summary>
+        private void BuildGlyph(InputGlyphs.Glyph glyph)
+        {
+            glyphBuilt = true;
+            shownGlyph = glyph;
+            bool art = glyph.sprite != null;
 
             Image background = promptRoot.GetComponentInChildren<Image>();
-            if (background != null)
-            {
-                background.sprite = live == PromptScheme.KeyboardMouse
-                    ? InteractPromptIcons.KeycapSprite
-                    : InteractPromptIcons.ButtonSprite;
-            }
+            if (background != null) background.enabled = !art;
 
             if (glyphRect != null) Destroy(glyphRect.gameObject);
 
-            var glyphObject = new GameObject(live.ToString(), typeof(RectTransform));
+            var glyphObject = new GameObject(art ? glyph.sprite.name : "Key", typeof(RectTransform));
             glyphObject.transform.SetParent(promptRoot, false);
             glyphRect = (RectTransform)glyphObject.transform;
-            glyphRect.sizeDelta = new Vector2(64f, 64f);
+            glyphRect.sizeDelta = art ? new Vector2(100f, 100f) : new Vector2(90f, 64f);
             glyphBasePosition = Vector2.zero;
             glyphRect.anchoredPosition = glyphBasePosition;
 
-            if (live == PromptScheme.PlayStation)
+            if (art)
             {
-                Image triangle = glyphObject.AddComponent<Image>();
-                triangle.sprite = InteractPromptIcons.TriangleSprite;
-                triangle.color = playStationTint;
-                triangle.raycastTarget = false;
+                Image icon = glyphObject.AddComponent<Image>();
+                icon.sprite = glyph.sprite;
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
                 return;
             }
 
             Text label = glyphObject.AddComponent<Text>();
             label.font = UiFonts.Primary;
+            label.fontStyle = FontStyle.Bold;
             label.fontSize = 44;
+            label.resizeTextForBestFit = true;   // "Space" / "Shift" shrink to fit the keycap
+            label.resizeTextMinSize = 16;
+            label.resizeTextMaxSize = 44;
             label.alignment = TextAnchor.MiddleCenter;
-            label.color = live == PromptScheme.Xbox ? xboxTint : glyphColor;
-            label.text = live == PromptScheme.Xbox
-                ? InteractPromptIcons.XboxGlyph
-                : InteractPromptIcons.KeyboardGlyph;
+            label.color = glyphColor;
+            label.text = glyph.label;
             label.raycastTarget = false;
         }
 

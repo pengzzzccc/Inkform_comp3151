@@ -40,11 +40,19 @@ namespace Inkform.UI
         /// <summary>Sheets always leave to the left, whichever side they came in from.</summary>
         protected float ExitToX => -EnterFromX;
 
+        /// <summary>The sheet's bottom-right prompt row (#PromptBar in its UXML), or null when the
+        /// sheet has none. Filled by DefinePrompts on the first open.</summary>
+        protected PromptBar Prompts { get; }
+        private bool promptsDefined;
+
         protected ToolkitPanel(VisualElement root, UIManager ui)
         {
             Root = root;
             UI = ui;
             Root.style.display = DisplayStyle.None;
+
+            VisualElement promptHost = root.Q("PromptBar");
+            if (promptHost != null) Prompts = new PromptBar(promptHost);
         }
 
         public void Open()
@@ -55,6 +63,13 @@ namespace Inkform.UI
             if (IsOpen) return;
 
             IsOpen = true;
+            // Deferred to the first open: the subclass constructor has finished by then, so its
+            // prompts may point at anything it set up
+            if (!promptsDefined && Prompts != null)
+            {
+                promptsDefined = true;
+                DefinePrompts(Prompts);
+            }
             Root.style.display = DisplayStyle.Flex;
             Root.BringToFront();
             OnOpen();
@@ -84,6 +99,10 @@ namespace Inkform.UI
         /// spot where a MonoBehaviour's OnDestroy used to release static-event subscriptions and
         /// scoped locks that must not outlive their owner.</summary>
         protected internal virtual void Teardown() { }
+
+        /// <summary>Declares the sheet's prompt row ("Confirm", "Back"...), once, on first open.
+        /// Give Back the same action Esc / pad B takes in UIManager, so a click matches the key.</summary>
+        protected virtual void DefinePrompts(PromptBar bar) { }
 
         /// <summary>Hook after the panel becomes visible (before the slide-in starts).</summary>
         protected virtual void OnOpen() { }

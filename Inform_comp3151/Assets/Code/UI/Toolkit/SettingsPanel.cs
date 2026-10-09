@@ -15,13 +15,14 @@ namespace Inkform.UI
     /// here into #Pages and routed by ShowTab; the shared row vocabulary lives on the
     /// SettingsSubPage base and the row styles cascade from this shell's Settings.uss.
     ///
-    /// Esc/BACK back out one level (HandleBack answers the UIManager's escape stack), and
+    /// Esc / the Back prompt back out one level (HandleBack answers the UIManager's escape stack), and
     /// opening the sheet always lands on ROOT. RESET ALL (ROOT page) funnels through ResetAll:
     /// store defaults + binding reset + every page refreshed.
     /// </summary>
     public class SettingsPanel : ToolkitPanel
     {
         private readonly Label title;
+        private readonly Label kicker;
         private readonly SettingsSubPage[] pages;
         private SettingsTab tab;
 
@@ -32,6 +33,7 @@ namespace Inkform.UI
         public SettingsPanel(VisualElement root, UIManager ui) : base(root, ui)
         {
             title = Q<Label>("Title");
+            kicker = Q<Label>("Kicker");
 
             pages = new SettingsSubPage[]
             {
@@ -43,8 +45,6 @@ namespace Inkform.UI
 
             VisualElement mount = Q("Pages");
             foreach (SettingsSubPage page in pages) mount?.Add(page.Root);
-
-            Bind(Q<Button>("Btn_Back"), "Btn_Back", OnBack);
 
             ShowTab(SettingsTab.Root);
         }
@@ -66,12 +66,36 @@ namespace Inkform.UI
                 }
             }
 
+            // A category page reads "OPTIONS / AUDIO": the kicker names the level above. Hidden,
+            // not removed, on ROOT so the title never jumps between levels
+            if (kicker != null)
+                kicker.style.visibility = value == SettingsTab.Root ? Visibility.Hidden : Visibility.Visible;
+            UpdatePrompts();
+
             // Refocus for gamepad/keyboard: FocusFirst skips hidden pages, so this lands on the
             // freshly shown page's first live control.
             FocusFirst();
         }
 
-        /// <summary>Esc / the BACK button: back out one level. True = consumed internally (a
+        protected override void DefinePrompts(PromptBar bar) => UpdatePrompts();
+
+        // Only the page on stage ticks (CONTROLS follows a live device switch)
+        protected internal override void Tick(float unscaledDelta)
+        {
+            if (IsOpen) pages[(int)tab].Tick();
+        }
+
+        // ROOT is a plain list; category pages add the left/right value stepping
+        private void UpdatePrompts()
+        {
+            if (Prompts == null) return;
+            Prompts.Clear();
+            if (tab != SettingsTab.Root) Prompts.Add(PromptBar.Key.Change, "Change");
+            Prompts.Add(PromptBar.Key.Confirm, "Confirm")
+                   .Add(PromptBar.Key.Back, "Back", OnBack);
+        }
+
+        /// <summary>Esc / the Back prompt: back out one level. True = consumed internally (a
         /// category page returned to ROOT); false = already at ROOT, the caller closes the sheet.
         /// The UIManager's escape stack routes through here.</summary>
         public bool HandleBack()

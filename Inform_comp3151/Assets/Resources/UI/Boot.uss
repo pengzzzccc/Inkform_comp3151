@@ -44,8 +44,8 @@
 
 .boot-skip {
     position: absolute;
-    right: 44px;
-    bottom: 34px;
+    right: var(--safe-x);
+    bottom: var(--safe-y);
     font-size: 22px;
     color: rgb(150, 150, 150);
     opacity: 0;

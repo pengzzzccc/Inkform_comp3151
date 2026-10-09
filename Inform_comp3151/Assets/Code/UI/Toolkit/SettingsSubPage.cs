@@ -67,15 +67,19 @@ namespace Inkform.UI
         /// <summary>Pull SettingsStore's current values into this page's live controls.</summary>
         public virtual void Refresh() { }
 
+        /// <summary>Per-frame while this page is on stage (unscaled, from the shell).</summary>
+        public virtual void Tick() { }
+
         // ---- Shared row vocabulary (identical to the old single-panel factories) ----
 
-        protected void AddSubHeader(string text)
+        protected Label AddSubHeader(string text)
         {
             var header = new Label(text);
             header.AddToClassList("subheader");
             header.AddToClassList("outline");
             header.pickingMode = PickingMode.Ignore;
             rows?.Add(header);
+            return header;
         }
 
         protected OptionRow AddOptionRow(string labelText, string initial)

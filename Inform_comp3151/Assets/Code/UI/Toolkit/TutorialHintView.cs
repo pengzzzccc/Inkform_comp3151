@@ -22,7 +22,6 @@ namespace Inkform.UI
     {
         private const float FadeSeconds = 0.35f;
         private const float RisePixels = 6f;   // fading in drifts the line up into place
-        private const float IconHeight = 40f;  // pad button art; keycaps match it in Hud.uss
 
         private struct Request
         {
@@ -185,27 +184,7 @@ namespace Inkform.UI
             panel.Add(label);
         }
 
-        private void AddGlyph(InputGlyphs.Glyph glyph)
-        {
-            if (glyph.sprite != null)
-            {
-                var icon = new VisualElement { pickingMode = PickingMode.Ignore };
-                icon.AddToClassList("hud-tutorial-icon");
-                icon.style.backgroundImage = new StyleBackground(glyph.sprite);
-                // Keep the sprite's aspect: shoulder and stick icons are wider than they are tall
-                Rect r = glyph.sprite.rect;
-                icon.style.height = IconHeight;
-                icon.style.width = r.height > 0f ? IconHeight * r.width / r.height : IconHeight;
-                panel.Add(icon);
-                return;
-            }
-
-            var key = new VisualElement { pickingMode = PickingMode.Ignore };
-            key.AddToClassList("hud-tutorial-key");
-            var name = new Label(glyph.label) { pickingMode = PickingMode.Ignore };
-            name.AddToClassList("hud-tutorial-key-label");
-            key.Add(name);
-            panel.Add(key);
-        }
+        // Same icon / keycap look as the menu prompts and the rebind table (Theme.uss .key-*)
+        private void AddGlyph(InputGlyphs.Glyph glyph) => panel.Add(GlyphElements.Create(glyph));
     }
 }
