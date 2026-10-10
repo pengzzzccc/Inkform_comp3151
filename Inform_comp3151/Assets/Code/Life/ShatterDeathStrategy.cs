@@ -29,7 +29,7 @@ namespace Inkform.Life
         // factor would be 1
         [Header("Screen FX")]
         [SerializeField] private float trauma = 0.7f;
-        [SerializeField] private float hitStop = 0.12f;     // ScreenFx.maxHitStop is 0.25, do not exceed
+        [SerializeField] private float hitStop = 0.12f;     // GameTimeController.maxHitStop caps it (0.25)
         [SerializeField] private float zoom = -0.5f;        // negative = push in
         [SerializeField] private float zoomTime = 0.4f;
         [SerializeField] private float punch = 0.8f;        // vignette strength increment; only death uses post-processing at all
@@ -55,10 +55,9 @@ namespace Inkform.Life
             if (zoom != 0f) FxBus.RaiseZoom(zoom, zoomTime);
             if (punch > 0f) FxBus.RaisePunch(punch, punchTime);
 
-            // No position passed: death always happens on the player ≈ camera center, the attenuation
-            // factor is necessarily near 1. Empty slots or no AudioManager in the scene both skip silently
-            if (deathCue != null && AudioManager.Instance != null)
-                AudioManager.Instance.Play(deathCue);
+            // No position passed: death always happens on the player ≈ camera center. Empty slots
+            // or no AudioService in the scene both skip silently
+            AudioService.Play(deathCue);
         }
     }
 }

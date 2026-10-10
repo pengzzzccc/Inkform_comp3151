@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 5108392746215038473}
   - component: {fileID: 5108392746215038474}
   - component: {fileID: 5108392746215038475}
-  m_Layer: 0
+  m_Layer: 14
   m_Name: Checkpoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -44,10 +44,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f244e862675e264bb5eafdd5d797b45, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Checkpoint
   isStartPoint: 0
   spawnOffset: {x: 0, y: 0.5}
+  spawnId: 
   frames:
   - {fileID: -5827963998548881495, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   - {fileID: -1248754081186967259, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
@@ -57,7 +58,6 @@ MonoBehaviour:
   - {fileID: -8157192857874580397, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   - {fileID: 4920298330140517438, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}
   framesPerSecond: 12
-  deniedCue: {fileID: 11400000, guid: f0bc49645f4da13ef9922fe7dbef111b, type: 2}
 --- !u!61 &5108392746215038474
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -149,8 +149,8 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
+  m_SortingLayerID: 1806310747
+  m_SortingLayer: 1
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Sprite: {fileID: -5827963998548881495, guid: 270f604b4fafd8a4490181de493e3c38, type: 3}

@@ -5,10 +5,11 @@ using UnityEngine;
 
 namespace Inkform.Item
 {
-    /// <summary>FIFO, data-backed inventory with a persistent, upgradeable capacity.</summary>
+    /// <summary>FIFO, data-backed inventory with a persistent, upgradeable capacity. A new run starts
+    /// with no slots at all: every slot is a capacity crystal the player has found.</summary>
     public static class InventoryStore
     {
-        public const int InitialCapacity = 1;
+        public const int InitialCapacity = 0;
 
         public static event Action Changed;
 
@@ -22,7 +23,6 @@ namespace Inkform.Item
         public static IReadOnlyList<InventoryItemDefinition> Items => items;
         public static int Count => items.Count;
         public static int Capacity => capacity;
-        public static IReadOnlyCollection<string> CollectedCapacityPickupIds => collectedCapacityPickupIds;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -83,6 +83,26 @@ namespace Inkform.Item
             capacity += capacityIncrease;
             Notify();
             return true;
+        }
+
+#if UNITY_EDITOR
+        /// <summary>Editor cheat: raw capacity bump, no pickup-id bookkeeping. Persists and
+        /// notifies like a real capacity pickup, so the HUD and the active save slot follow.</summary>
+        public static void AddCapacityForCheat(int increase)
+        {
+            if (increase <= 0 || capacity > int.MaxValue - increase) return;
+            capacity += increase;
+            Notify();
+        }
+#endif
+
+        /// <summary>Empties the backpack but keeps what the crystals earned — the capacity and the
+        /// collected pickup ids are permanent. Saved like any other change (the player's death).</summary>
+        public static void ClearItems()
+        {
+            if (items.Count == 0) return;
+            items.Clear();
+            Notify();
         }
 
         public static void Clear() => ClearInternal(true);

@@ -12,14 +12,10 @@ namespace Inkform.Player
     /// derivation), PlayerInventory (carrying). The rope gun (RopeGun) is an optional fifth component:
     /// the game plays fine without it; with it, wiring happens via TryGetComponent.
     ///
-    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly:
-    /// ① InputHandler.player is wired in the GameManager prefab's scene instance override; changing
-    ///    the **class name** would silently break the link (it is a field reference serialized by
-    ///    component type); the input entries below are plain C# calls, renaming them just requires
-    ///    changing both sides and the compiler catches it;
-    /// ② the subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
-    ///    Update order among components on one object — a single driver must order it explicitly, and
-    ///    that is this class.
+    /// Why keep this class instead of having InputHandler talk to PlayerMotor directly: the
+    /// subsystems' Update order must be "sense → move → animate", and Unity does not guarantee
+    /// Update order among components on one object — a single driver must order it explicitly, and
+    /// that is this class. InputHandler finds it through PlayerBus.Player.
     /// </summary>
     // Rigidbody2D needs no declaration here: PlayerMotor already RequiresComponent on it
     [RequireComponent(typeof(ContactSensor))]
@@ -29,13 +25,14 @@ namespace Inkform.Player
     {
         private ContactSensor contact;
         private PlayerMotor motor;
+        private readonly ContactEdges contactEdges = new ContactEdges();
+        private static readonly System.Action<ContactSide, float> RaiseContact = PlayerBus.RaiseContact;
         private AnimStateResolver anim;
         private PlayerInventory inventory; // may be null: levels without item gameplay need not attach it
         private RopeGun ropeGun;        // may be null: levels without the rope gun play fine
 
         private Vector2 lastMoveInput;  // latest frame's move input (WASD / left stick): fallback direction for spitting without a rope gun
 
-        public PlayerInventory Inventory => inventory;
 
         void Awake()
         {
@@ -79,9 +76,14 @@ namespace Inkform.Player
             // Order must not move: animation reads contact and velocity from this same frame,
             // otherwise it lags a frame and flashes the wrong animation on landing/jumping moments
             contact.Tick();
+            // "Just touched" moments for haptics, judged against last frame's velocity
+            contactEdges.Detect(contact.OnGround, contact.OnCeiling, contact.OnLeftWall, contact.OnRightWall, RaiseContact);
             motor.Tick();
+            contactEdges.RememberVelocity(new Vector2(motor.VelocityX, motor.VelocityY));
             if (motor.ConsumeJumpStarted()) anim.OnJumpStarted();
             anim.Tick();
+            // Dash smashing lives in DashBreaker's own Update (RopeGun-style independent loop):
+            // it must survive anything this chain throws before it
         }
 
         // ---- Input entries. Names match the actions in the InputSystem_Actions asset one-to-one;
@@ -121,7 +123,11 @@ namespace Inkform.Player
             motor.CutJump();
         }
 
-        /// <summary>Dash action (LeftShift / X).</summary>
+        /// <summary>Dash action (LeftShift / LB). Direction = the aim direction (the rope gun's
+        /// reticle; on a pad that is the right stick's last pushed direction), SNAPPED to 8
+        /// directions — never a free angle — falling back to the 8-way move input, then to the
+        /// facing. The dash itself is fixed-direction and gravity-free for its whole duration,
+        /// decaying to a stop at the end (see PlayerMotor).</summary>
         public void Dash()
         {
             if (LifeBus.IsDead) return;
@@ -129,8 +135,20 @@ namespace Inkform.Player
             bool succeeded = inventory != null && inventory.TryConsumeDashFuel();
             if (succeeded)
             {
-                float dir = PlayerBus.Face == FaceDirection.R ? 1f : -1f;
+                Vector2 dir;
+                if (ropeGun != null)
+                    dir = Dir8.Snap(ropeGun.EffectiveFireDir);
+                else if (lastMoveInput.sqrMagnitude > 0.0001f)
+                    dir = Dir8.Snap(lastMoveInput);
+                else
+                    dir = PlayerBus.Face == FaceDirection.R ? Vector2.right : Vector2.left;
+
+                // The dash takes over motion: release any active rope (mid-pull or miss dangle)
+                // first, or the pull's per-physics-step velocity writes would fight the dash
+                if (ropeGun != null) ropeGun.Cancel();
+
                 motor.Dash(dir);
+                anim.SetFace(dir.x >= 0f ? FaceDirection.R : FaceDirection.L);
             }
 
             PlayerBus.RaiseDashAttempted(transform.position, succeeded);
@@ -141,14 +159,14 @@ namespace Inkform.Player
         /// <summary>Aim action (mouse delta / right stick): drives the rope gun's reticle.</summary>
         public void Aim(Vector2 delta, bool pixelDelta) => ropeGun?.Aim(delta, pixelDelta);
 
-        /// <summary>RopeFire action (left mouse / RB): fire the rope; pressing again cancels.</summary>
+        /// <summary>RopeFire action (left mouse / right trigger): fire the rope; pressing again cancels.</summary>
         public void RopeFire()
         {
             if (LifeBus.IsDead) return;
             ropeGun?.TryFire();
         }
 
-        /// <summary>SpitBomb action (Q / right trigger): spits the bomb, direction = the rope gun's
+        /// <summary>SpitBomb action (Q / right shoulder): spits the bomb, direction = the rope gun's
         /// effective fire direction (always exactly toward the reticle); without a rope gun falls back
         /// to the 8-way move input, then to the facing.</summary>
         public void SpitBomb()
@@ -205,6 +223,7 @@ namespace Inkform.Player
             // counts as "just landed" and plays a Land animation and landing sound for nothing
             contact.Tick();
             anim.SyncContactBaseline();
+            contactEdges.SyncBaseline(contact.OnGround, contact.OnCeiling, contact.OnLeftWall, contact.OnRightWall);
         }
     }
 }

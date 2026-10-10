@@ -7,7 +7,7 @@ using UnityEngine;
 namespace Inkform.Interactable.Parts
 {
     /// <summary>
-    /// The whole explosive in one part: the blast itself plus the two ways it is set off.
+    /// The whole explosive in one part: the blast itself plus the four ways it is set off.
     ///
     /// Detonation paths (deliberately just these — the old speed-threshold part read the
     /// post-solve velocity in the collision callback, where a head-on hit has its normal component
@@ -16,19 +16,20 @@ namespace Inkform.Interactable.Parts
     /// 2. Hazard contact: touching a hazardDetonatorMask layer (spikes) detonates, armed or not —
     ///    an explosive does not survive resting on spikes;
     /// 3. Contact while armed: a spat/thrown bomb (CarriablePart.Release fires IOnSpit) detonates
-    ///    on contact with anything else — terrain, walls, breakables. Unarmed bombs ignore world
-    ///    contact, which is what lets spawner bombs lie on the ground waiting for the player;
+    ///    on contact with a worldDetonatorMask layer (Terrain | Breakable by default). Unarmed bombs
+    ///    ignore world contact, which is what lets spawner bombs lie on the ground waiting for the
+    ///    player; the mask is what keeps an armed bomb from popping on pickups, checkpoints and
+    ///    doors — the old maskless version detonated on every Interactable it brushed past;
     /// 4. Chain: caught in another explosion (HazardBus.Exploded, claimed via the victim) it
     ///    detonates after chainDelay, so a row of bombs blows in sequence instead of one frame.
     ///
     /// Blast propagation runs entirely through HazardBus: RaiseExploded per victim (BreakablePart
     /// shatters, PlayerHandler gets knocked back, other explosives chain) + one RaiseBlast overall
-    /// (screen shake / sound / rope cutting) — all listeners already on the bus, zero changes.
+    /// (screen shake / sound / rumble) — all listeners already on the bus, zero changes.
     ///
     /// Proximity warning animation: with triggerFrames + proximityRadius configured, the frame
     /// sequence advances as the player approaches (closer = later frame, 0 = normal), raising Ticked
-    /// on change (AudioDirector plays the tick sound) — same origin as the former Bomb's proximity logic,
-    /// distance-driven branch only.
+    /// on change (AudioDirector plays the tick sound).
     /// </summary>
     public class ExplodePart : MonoBehaviour, IInteractablePart, IRestorablePart, IOnSpit
     {
@@ -42,9 +43,13 @@ namespace Inkform.Interactable.Parts
         [Header("Detonation")]
         [Tooltip("Who detonates it by touch, armed or not. CompareTag never errors on a wrong string, it just never matches — use the Tags constants")]
         [SerializeField] private string targetTag = Tags.Player;
-        [Tooltip("Once spat out (armed), contact with anything other than the target detonates too." +
+        [Tooltip("Once spat out (armed), contact with a worldDetonatorMask layer detonates too." +
             " Off restores pure target-touch behavior")]
         [SerializeField] private bool explodeOnWorldContactWhenArmed = true;
+        [Tooltip("Armed world-contact detonates only against these layers — the same Terrain|Breakable" +
+            " convention as RopeGun.hitMask / ContactSensor.terrainMask. Without this filter an armed" +
+            " bomb pops on pickups, checkpoints, doors, every Interactable it brushes past")]
+        [SerializeField] private LayerMask worldDetonatorMask = (1 << 6) | (1 << 11);
         [Tooltip("Contact with these layers detonates regardless of arming — spikes and other" +
             " hazards. Defaults to the Hazard layer; existing prefabs take it via this default")]
         [SerializeField] private LayerMask hazardDetonatorMask = 1 << 13;
@@ -72,7 +77,7 @@ namespace Inkform.Interactable.Parts
 
         // All explosives share one player reference. After the player is destroyed or the scene
         // changes it becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics
-        // needed (same as the former Bomb monolith)
+        // needed
         private static Transform playerCache;
 
         private static Transform Player
@@ -127,7 +132,8 @@ namespace Inkform.Interactable.Parts
                 Explode();      // spikes and kin: an explosive does not survive resting on them
                 return true;
             }
-            if (armed && explodeOnWorldContactWhenArmed)
+            if (armed && explodeOnWorldContactWhenArmed
+                && (worldDetonatorMask.value & (1 << other.gameObject.layer)) != 0)
             {
                 Explode();
                 return true;
@@ -212,7 +218,6 @@ namespace Inkform.Interactable.Parts
             // Restorable items are not destroyed — the part hides them and respawn brings them back.
             // Everything else hides before the shards render (Destroy only applies at frame end, so
             // without hiding the body overlaps the shards for one frame), then is destroyed outright
-            // (same as the former Bomb monolith)
             bool restorable = root.TryGetPart(out RestorablePart restore);
 
             if (restorable)
@@ -227,7 +232,7 @@ namespace Inkform.Interactable.Parts
             // destroyed is no reason to skip the visual
             Shatter.Burst(breakCue, bounds, center, blastForce);
 
-            // Explosives are unrecoverable (same as the former Bomb monolith): shattered and destroyed outright.
+            // Explosives are unrecoverable: shattered and destroyed outright.
             // The EditMode branch exists so tests can drive Explode() — Destroy is refused outside play mode
             if (!restorable)
             {

@@ -1,0 +1,4 @@
+/* Pause sheet — layout comes from the shared overlay frame (Theme.uss). The list sits on a
+   plate a little narrower than the overlay column. */
+
+.pause-list { max-width: 560px; padding: 20px 32px; }

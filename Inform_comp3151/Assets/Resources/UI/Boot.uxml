@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Boot.uss" />
+    <!-- Boot sequence: one black card with the studio logo slot. The card's opacity is driven
+         by BootPanel (fade in / hold / fade out); then the black sheet dissolves into the main
+         menu's title screen. A missing sprite swaps the image element for its placeholder label.
+         No floaty items — this sheet never takes focus, any input skips it. -->
+    <ui:VisualElement name="Boot" class="boot-screen">
+        <ui:VisualElement name="StudioCard" class="boot-card" picking-mode="Ignore">
+            <ui:VisualElement name="StudioImage" class="boot-logo" picking-mode="Ignore" />
+            <ui:Label name="StudioPlaceholder" text="STUDIO LOGO" class="boot-placeholder outline" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

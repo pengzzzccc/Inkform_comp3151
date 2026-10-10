@@ -5,33 +5,51 @@ using UnityEngine;
 namespace Inkform.Level
 {
     /// <summary>
-    /// Level exit: the trigger that completes a level. When the player enters it, LevelBus.Completed is
-    /// raised with this trigger's exitId; SceneDirector then resolves where that exit leads through the
-    /// level graph. The trigger itself knows nothing about the next level — it only names the exit, so
-    /// the graph stays in the text file and the scene stays dumb.
+    /// Level exit: the door. When the player enters it, LevelBus.ExitReached is raised with the
+    /// door's own destination — a direct RoomDefinition reference plus the id of the checkpoint to
+    /// arrive at. The topology lives on the doors themselves (WorldDefinition only holds
+    /// menu/entry/registry), so a door is two Inspector references instead of the old five-way
+    /// string contract between the text graph, exitIds, Spawn_ object names and Build Settings.
     ///
-    /// exitId must match an edge in the current scene's topology exactly (the same "two places, one
-    /// string" contract as Tags, but per-level); by convention it defaults to the target scene's name.
-    /// `destination` is display-only info written by the level graph tools: the scene this door leads
-    /// to, so the Scene-view gizmo can say it outright instead of making you cross-reference the graph
-    /// window. A level with one exit can leave exitId "".
+    /// targetSpawnId "" arrives at the room's isStartPoint checkpoint. Convention carried over from
+    /// the Spawn_&lt;source scene&gt; days: a door names the checkpoint beside the door it pairs
+    /// with in the destination room, so walking back lands you next to where you came in.
     /// Needs an Is-Trigger collider.
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
     public class LevelExit : MonoBehaviour
     {
         [Header("Level exit")]
-        [Tooltip("Matches an edge in this scene's level-graph topology. Empty is fine for single-exit levels")]
-        [SerializeField] private string exitId = "";
+        [Tooltip("The room this door leads to")]
+        [SerializeField] private RoomDefinition destination;
 
-        [Tooltip("Display only, written by the level graph tools: the scene this door leads to. Shown in the Scene-view gizmo")]
-        [SerializeField] private string destination = "";
+        [Tooltip("Id of the arrival checkpoint (Checkpoint.spawnId) in the destination room. Empty = the room's start point")]
+        [SerializeField] private string targetSpawnId = "";
+
+        // The pre-migration exit id: FormerlySerializedAs keeps the old serialized values readable so
+        // the one-time migration tool can resolve them into destination/targetSpawnId. It clears the
+        // field as it rewires each door; once no scene carries a value, the field can be deleted.
+        [SerializeField, UnityEngine.Serialization.FormerlySerializedAs("exitId"), HideInInspector]
+        private string legacyExitId = "";
+
+        // Read side for the World validator and tests
+        public RoomDefinition Destination => destination;
+        public string TargetSpawnId => targetSpawnId;
+        public string LegacyExitId => legacyExitId;
 
         void OnTriggerEnter2D(Collider2D other)
         {
             if (!other.CompareTag(Tags.Player)) return;
 
-            LevelBus.RaiseCompleted(exitId);
+            if (destination == null)
+            {
+                // A door to nowhere is content the World validator flags; ignoring it here keeps a
+                // wiring mistake from stranding the player mid-run
+                Debug.LogWarning($"{name}: LevelExit has no destination assigned — ignoring", this);
+                return;
+            }
+
+            LevelBus.RaiseExitReached(destination, targetSpawnId);
         }
 
         // OnDrawGizmos (not ...Selected) like Checkpoint: while placing levels you must be able to scan
@@ -55,15 +73,12 @@ namespace Inkform.Level
             Gizmos.DrawLine(p + Vector2.up * 0.6f, p + Vector2.up * 0.45f + Vector2.right * 0.15f);
 
 #if UNITY_EDITOR
-            // The label says where this door leads. `destination` is the tools' answer; when it is
-            // empty (older scenes, hand-placed doors) the exitId is the fallback — with the default
-            // id convention they are the same string anyway.
-            string target = string.IsNullOrEmpty(destination) ? exitId : destination;
-            if (!string.IsNullOrEmpty(target))
-            {
-                UnityEditor.Handles.color = c;
-                UnityEditor.Handles.Label(p + Vector2.up * 0.8f, $"→ {target}");
-            }
+            // The label says where this door leads and where it drops the player
+            UnityEditor.Handles.color = c;
+            string label = destination != null
+                ? $"→ {destination.DisplayName} ({(string.IsNullOrEmpty(targetSpawnId) ? "start" : targetSpawnId)})"
+                : "→ <no destination>";
+            UnityEditor.Handles.Label(p + Vector2.up * 0.8f, label);
 #endif
         }
     }

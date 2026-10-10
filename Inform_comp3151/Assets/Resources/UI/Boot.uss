@@ -1,0 +1,39 @@
+/* Boot sequence: the whole sheet is the black card the studio logo plays on. Deliberately shares
+   nothing with the menu look — no panel chrome, no floaty items, no focus. Opacities are
+   runtime-driven by BootPanel (UiFx.Tween); USS only lays out the geometry. */
+
+.boot-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(0, 0, 0);
+}
+
+.boot-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+}
+
+/* The studio logo's box: the art is fitted inside it (contain) */
+.boot-logo {
+    width: 1280px;
+    height: 720px;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+
+.boot-placeholder {
+    display: none;
+    font-size: 54px;
+    color: rgb(225, 225, 225);
+    -unity-text-align: middle-center;
+}

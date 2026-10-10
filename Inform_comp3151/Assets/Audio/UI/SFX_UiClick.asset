@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: SFX_UiClick
   m_EditorClassIdentifier: Assembly-CSharp::Inkform.Audio.SoundCue
   clips:
-  - {fileID: 8300000, guid: 5583bd921b4eec544a228c1e305f4203, type: 3}
+  - {fileID: 8300000, guid: 049a48844a7a0eb4d81f328523d7e999, type: 3}
   output: {fileID: 0}
   volume: 0.8
   category: 0
@@ -22,6 +22,7 @@ MonoBehaviour:
   ignoreListenerPause: 1
   cooldown: 0.03
   maxConcurrent: 3
+  priority: 128
   spatial: 0
   falloffRange: 20
   minVolume: 0.15

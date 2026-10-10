@@ -1,4 +1,5 @@
 using Inkform.Life;
+using Inkform.Tool;
 using System;
 using UnityEngine;
 
@@ -8,8 +9,8 @@ namespace Inkform.Bus
     /// Life bus: death / respawn / checkpoints. Death is an instantaneous signal, while death count and
     /// "currently dead?" are persistent state — so it raises events and stores snapshots — like PlayerBus,
     /// the bus itself handles dedup.
-    /// The deceased claims itself via ctx.Victim; the publisher (Spike) never needs to know the player,
-    /// and the player never needs to know the Spike.
+    /// The deceased claims itself via ctx.Victim; the publisher (HarmOnTouch) never needs to know the
+    /// player, and the player never needs to know the hazard.
     /// </summary>
     public static class LifeBus
     {
@@ -33,9 +34,14 @@ namespace Inkform.Bus
 
         public static void RaiseDied(in DeathContext ctx)
         {
+#if UNITY_EDITOR
+            // F3 invincibility: the hit, knockback and explosion all still happen — the death
+            // itself never does. Single choke point; no hazard needs to know the cheat exists
+            if (DebugCheats.Invincible) return;
+#endif
             // Dedup: several spikes may hit the player in the same frame; without this, the count
-            // doubles and fragments spawn double (same reason as HazardBus.Exploded — that one guards
-            // against being called twice, this one against multiple sources)
+            // doubles and fragments spawn double (same reason as HazardBus.Exploded — that one
+            // guards against being called twice, this one against multiple sources)
             if (IsDead) return;
             IsDead = true;
             DeathCount++;

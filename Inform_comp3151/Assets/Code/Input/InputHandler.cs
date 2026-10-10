@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Inkform.Bus;
+using Inkform.Fx.Haptics;
 using Inkform.Player;
 using Inkform.Settings;
 
@@ -34,12 +36,14 @@ namespace Inkform.Input
         private InputAction spitBomb;
         private InputAction interact;
         private bool actionsInitialized;
+        private readonly HashSet<Object> gameplayInputLockOwners = new HashSet<Object>();
 
         // Held-button actions feeding the device auto-detection (a held button = deliberate input)
         private InputAction[] pressButtons;
 
-        // Get player
-        [SerializeField] private PlayerHandler player;
+        // The current scene's player, rebound from PlayerBus (never serialized: the persistent
+        // GameManager outlives every scene's player)
+        private PlayerHandler player;
 
         // A keyboard is discrete 0/±1; here we synthesize analog stick strength from press duration:
         // the longer a key is held the closer to full strength (rampUpTime), recentering on release
@@ -61,13 +65,13 @@ namespace Inkform.Input
         {
             EnsureActionsInitialized();
 
-            // The serialized reference (scene instance override on the GameManager prefab) only points
-            // at the scene the GameManager was spawned in. The GameManager itself survives scene
-            // switches via AudioManager's DontDestroyOnLoad, so after a change the old player becomes a
-            // Unity fake-null that `?.` cannot intercept — re-bind to the current scene's player.
+            // The GameManager survives scene switches via PersistentGameRoot's DontDestroyOnLoad, so a
+            // held player reference goes stale after a change (a Unity fake-null that `?.` cannot
+            // intercept) — always bind to the current scene's player.
             ResolvePlayer();
-            if (player == null)
-                Debug.LogWarning($"InputHandler's player is not wired (scene instance override on the GameManager prefab)", this);
+            // No warning when this leaves player null: the boot scene (the menu) legitimately has
+            // none, and rooms with a runtime-spawned player bind later — sceneLoaded re-resolves,
+            // and Update re-reads the bus every frame until the reference sticks
         }
 
         /// <summary>
@@ -95,15 +99,18 @@ namespace Inkform.Input
         void OnDestroy()
         {
             // No Dispose here: the wrapper is the shared InputActions instance, releasing it would
-            // kill the asset under UIManager's UI module too. It is static and ends with play mode.
+            // kill it under every other consumer. It is static and ends with play mode.
+            gameplayInputLockOwners.Clear();
         }
 
-        // The persistent GameManager survives scene switches (AudioManager calls DontDestroyOnLoad on
-        // its own host), so the serialized player reference goes stale the moment the scene changes —
+        // The persistent GameManager survives scene switches (PersistentGameRoot calls DontDestroyOnLoad
+        // on its host), so a held player reference goes stale the moment the scene changes —
         // a destroyed UnityEngine.Object reads non-null to C# `?.`, letting the call chain run all the
         // way into a dead PlayerHandler/RopeGun (MissingReferenceException). sceneLoaded fires after the
         // new scene's objects are all instantiated, so re-binding here always finds the live player.
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => ResolvePlayer();
+
+        private void OnPlayerRegistered(PlayerHandler registered) => player = registered;
 
         private void ResolvePlayer()
         {
@@ -114,12 +121,23 @@ namespace Inkform.Input
 
         void Update()
         {
+            // Scoped presentation owners normally release explicitly. Prune Unity fake-null entries
+            // as a final guard so a destroyed map/cutscene can never lock gameplay permanently.
+            if (gameplayInputLockOwners.RemoveWhere(owner => owner == null) > 0)
+                ApplyActionState();
+
             AutoSwitchDevice();   // before filtering: the active family follows whichever device produced input
 
             // Paused (UIManager disabled the actions): stop forwarding entirely — the menu is in
             // charge, and ReadValue on a disabled action returns default which would push a stale
             // "no input" into PlayerHandler every frame.
-            if (!actionsEnabled || player == null) return;
+            if (!actionsEnabled) return;
+
+            // Runtime-spawned players bind here: PlayerBus.Player is only filled once RoomIntro's
+            // entrance instantiates the cast, which can be seconds after sceneLoaded's one-shot
+            // re-bind — so the reference is re-read until it sticks instead of staying null forever
+            if (player == null) player = PlayerBus.Player;
+            if (player == null) return;
 
             // Device filter: the Controls tab picks one input family; the other family's controls are
             // ignored so a gamepad left in the drawer cannot drive the player (and vice versa). The
@@ -176,6 +194,8 @@ namespace Inkform.Input
 
         private static void SwitchTo(InputDevice device)
         {
+            // The pad that just moved is the one haptics go to (only one pad ever rumbles)
+            ActivePadTracker.Note(device);
             SettingsStore.InputDevice expected = device is Gamepad
                 ? SettingsStore.InputDevice.Gamepad
                 : SettingsStore.InputDevice.KeyboardMouse;
@@ -243,18 +263,20 @@ namespace Inkform.Input
         void OnEnable()
         {
             // Re-resolve the player after every scene change: the persistent GameManager (kept alive by
-            // AudioManager's DontDestroyOnLoad) must keep routing input to the current scene's player,
-            // not the destroyed one from the scene it spawned in
+            // PersistentGameRoot's DontDestroyOnLoad) must keep routing input to the current scene's
+            // player, not the destroyed one from the scene it spawned in
             SceneManager.sceneLoaded += OnSceneLoaded;
             SettingsStore.Changed += OnSettingsChanged;
+            PlayerBus.PlayerRegistered += OnPlayerRegistered;
 
-            if (wantsActionsEnabled) EnableActions();
+            ApplyActionState();
         }
 
         void OnDisable()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SettingsStore.Changed -= OnSettingsChanged;
+            PlayerBus.PlayerRegistered -= OnPlayerRegistered;
 
             DisableActions();
         }
@@ -276,9 +298,30 @@ namespace Inkform.Input
         public void SetPlaying(bool playing)
         {
             wantsActionsEnabled = playing;
-            if (!isActiveAndEnabled) return;
+            ApplyActionState();
+        }
 
-            if (playing) EnableActions();
+        /// <summary>
+        /// Adds or removes a scoped gameplay-input lock without changing the flow layer's desired
+        /// playing state. Locks stack by owner, so resuming a pause menu cannot unlock an active
+        /// wall-map inspection; removing the final lock reapplies the latest SetPlaying request.
+        /// </summary>
+        public void SetGameplayInputLocked(Object owner, bool locked)
+        {
+            // ReferenceEquals lets an owner's OnDestroy remove its entry even after Unity has begun
+            // reporting that object as fake-null.
+            if (ReferenceEquals(owner, null)) return;
+
+            bool changed = locked
+                ? gameplayInputLockOwners.Add(owner)
+                : gameplayInputLockOwners.Remove(owner);
+            if (changed) ApplyActionState();
+        }
+
+        private void ApplyActionState()
+        {
+            if (!isActiveAndEnabled) return;
+            if (wantsActionsEnabled && gameplayInputLockOwners.Count == 0) EnableActions();
             else DisableActions();
         }
 

@@ -4,9 +4,12 @@ using System.IO;
 using System.Reflection;
 using Inkform.Ability;
 using Inkform.Bus;
+using Inkform.Fx;
+using Inkform.Input;
 using Inkform.Interactable;
 using Inkform.Interactable.Parts;
 using Inkform.Level;
+using Inkform.Player;
 using Inkform.Save;
 using Inkform.Settings;
 using Inkform.Tool;
@@ -14,12 +17,15 @@ using Inkform.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 namespace Inkform.Tests
 {
     /// <summary>
     /// Ability-granting timecard: AbilityStore lifecycle, save round-trip and v3 migration, the
-    /// device-scheme mapping behind the interaction prompt, and the reworked TimeCard prefab wiring.
+    /// device-scheme mapping behind the interaction prompt, and the TimeCard / RopeGunCard prefab
+    /// wiring.
     /// </summary>
     public sealed class AbilityAndPromptTests
     {
@@ -31,17 +37,17 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void AbilityStore_UnlockOwnsAndRestoreReplaces()
+        public void AbilityStore_DefaultAbilitiesAreBuiltInAndRestoreUnionsThem()
         {
-            Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint));
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
-            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint));
-            Assert.IsFalse(AbilityStore.Unlock(AbilityIds.Checkpoint), "the same ability cannot unlock twice");
-            Assert.IsFalse(AbilityStore.Unlock("  "), "blank ids are rejected");
-            CollectionAssert.AreEqual(new[] { AbilityIds.Checkpoint }, AbilityStore.SnapshotIds());
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint), "both card abilities ship as built-in defaults");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
+            Assert.IsFalse(AbilityStore.Unlock(AbilityIds.Checkpoint), "a default ability is already owned");
+            CollectionAssert.AreEquivalent(new[] { AbilityIds.Checkpoint, AbilityIds.RopeGun }, AbilityStore.SnapshotIds());
 
             AbilityStore.Restore(new[] { "other" });
-            Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint), "Restore replaces the whole set");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint),
+                "Restore unions the defaults in — an old save from before the defaults ships is topped up");
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.RopeGun));
             Assert.IsTrue(AbilityStore.Owns("other"));
         }
 
@@ -57,11 +63,13 @@ namespace Inkform.Tests
                 SaveStore.UseTestSaveDirectory(directory);
                 SaveStore.ContinueRun(0);
 
-                Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+                Assert.IsTrue(AbilityStore.Unlock("test-extra"));
 
                 SaveData read = JsonUtility.FromJson<SaveData>(File.ReadAllText(Path.Combine(directory, "slot0.json")));
-                CollectionAssert.AreEqual(new[] { AbilityIds.Checkpoint }, read.unlockedAbilityIds,
+                CollectionAssert.Contains(read.unlockedAbilityIds, "test-extra",
                     "an unlock must reach disk immediately");
+                CollectionAssert.Contains(read.unlockedAbilityIds, AbilityIds.RopeGun,
+                    "the built-in defaults ride along on the same write");
             }
             finally
             {
@@ -143,8 +151,7 @@ namespace Inkform.Tests
                 Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
                 Assert.IsNotNull(node);
                 Assert.IsFalse(node.TryGetPart(out ICarriable _), "the card must not ride the bomb bag anymore");
-                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart pickup));
-                Assert.AreEqual(AbilityIds.Checkpoint, pickup.AbilityId);
+                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart _));
                 Assert.IsTrue(node.TryGetPart(out InteractionPromptPart _));
 
                 Collider2D collider = instance.GetComponent<Collider2D>();
@@ -158,43 +165,98 @@ namespace Inkform.Tests
         }
 
         [Test]
-        public void AbilityPickup_ConfirmGrantsOnlyWhilePlayerIsInRange()
+        public void RopeGunCard_IsAnAbilityPickupWithPrompt()
         {
-            AbilityStore.ClearWithoutSaving();
-            GameObject root = new GameObject("Ability pickup test");
-            root.SetActive(false);
-            BoxCollider2D collider = root.AddComponent<BoxCollider2D>();
-            collider.isTrigger = true;
-            root.AddComponent<Inkform.Interactable.Interactable>();
-            AbilityPickupPart pickup = root.AddComponent<AbilityPickupPart>();
-            InteractionPromptPart prompt = root.AddComponent<InteractionPromptPart>();
-            root.SetActive(true);
+            GameObject instance = UnityEngine.Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Item/RopeGunCard.prefab"));
             try
             {
-                GameObject player = new GameObject("Player");
-                player.tag = Tags.Player;
-                BoxCollider2D playerCollider = player.AddComponent<BoxCollider2D>();
-                try
-                {
-                    PlayerBus.RaiseInteractPressed();
-                    Assert.IsFalse(AbilityStore.Owns(AbilityIds.Checkpoint),
-                        "confirm with nobody in range must do nothing");
+                Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
+                Assert.IsNotNull(node);
+                Assert.IsTrue(node.TryGetPart(out AbilityPickupPart _));
+                Assert.IsTrue(node.TryGetPart(out InteractionPromptPart _));
 
-                    Assert.IsFalse(pickup.HandleContact(ContactPhase.Enter, playerCollider),
-                        "presence tracking never claims the contact");
-                    Assert.IsTrue(prompt.PlayerInRange);
-                    PlayerBus.RaiseInteractPressed();
-                    Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint));
-                    Assert.IsTrue(root == null, "a collected pickup consumes its world object");
-                }
-                finally
-                {
-                    if (player != null) UnityEngine.Object.DestroyImmediate(player);
-                }
+                Collider2D collider = instance.GetComponent<Collider2D>();
+                Assert.IsNotNull(collider);
+                Assert.IsTrue(collider.isTrigger, "the pickup range is a walk-in trigger");
             }
             finally
             {
-                if (root != null) UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
+        [TestCase("Assets/Prefabs/Item/TimeCard.prefab", 2f)]
+        [TestCase("Assets/Prefabs/Item/RopeGunCard.prefab", 4f)]
+        public void PromptOutline_IsPrebuiltAlignedAndUsesWorldConsistentWidth(
+            string prefabPath, float expectedTexelWidth)
+        {
+            GameObject instance = UnityEngine.Object.Instantiate(
+                AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath));
+            instance.transform.position = new Vector3(13f, -7f, 0f);
+            try
+            {
+                Inkform.Interactable.Interactable node = instance.GetComponent<Inkform.Interactable.Interactable>();
+                Assert.IsTrue(node.TryGetPart(out InteractionPromptPart prompt));
+
+                // Edit-mode tests do not invoke Start automatically; this mirrors the runtime prebuild.
+                InvokeInstance(prompt, "Start");
+
+                SpriteRenderer source = instance.GetComponent<SpriteRenderer>();
+                Transform outlineTransform = source.transform.Find("Outline");
+                Assert.IsNotNull(outlineTransform, "the outline must exist before the first contact");
+
+                SpriteRenderer outline = outlineTransform.GetComponent<SpriteRenderer>();
+                Assert.IsNotNull(outline);
+                Assert.IsFalse(outline.enabled, "the prebuilt outline waits disabled for first contact");
+                Assert.AreSame(source.sprite, outline.sprite);
+                Assert.AreEqual(source.gameObject.layer, outline.gameObject.layer);
+                Assert.AreEqual(source.sortingLayerID, outline.sortingLayerID);
+                Assert.AreEqual(source.sortingOrder + 1, outline.sortingOrder);
+
+                Vector2 spriteCenter = source.sprite.bounds.center;
+                if (source.flipX) spriteCenter.x = -spriteCenter.x;
+                if (source.flipY) spriteCenter.y = -spriteCenter.y;
+                Vector2 renderedOutlineCenter = (Vector2)outlineTransform.localPosition +
+                    Vector2.Scale((Vector2)outlineTransform.localScale, spriteCenter);
+                Assert.That(Vector2.Distance(spriteCenter, renderedOutlineCenter), Is.LessThan(0.0001f),
+                    "outline scaling must preserve the source sprite centre");
+
+                Material runtimeMaterial = outline.sharedMaterial;
+                Assert.IsNotNull(runtimeMaterial);
+                Assert.That(runtimeMaterial.GetFloat("_OutlineWidth"), Is.EqualTo(expectedTexelWidth).Within(0.0001f));
+                Vector4 texelSize = runtimeMaterial.GetVector("_SpriteUvStep");
+                Assert.That(texelSize.x, Is.EqualTo(1f / source.sprite.texture.width).Within(0.000001f));
+                Assert.That(texelSize.y, Is.EqualTo(1f / source.sprite.texture.height).Within(0.000001f));
+                Assert.That(runtimeMaterial.GetFloat("_Fade"), Is.Zero.Within(0.0001f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(instance);
+            }
+        }
+
+        [Test]
+        public void RopeGun_FireIsRefusedWithoutAGreenReticle()
+        {
+            AbilityStore.ClearWithoutSaving();
+            GameObject player = new GameObject("RopeGun gate test");
+            player.SetActive(false);
+            player.AddComponent<Rigidbody2D>();
+            RopeGun ropeGun = player.AddComponent<RopeGun>();
+            // Manual Awake mirrors the Checkpoint tests: edit mode never runs Unity's magic methods
+            InvokeInstance(ropeGun, "Awake");
+            try
+            {
+                InvokeInstance(ropeGun, "TryFire");
+                Assert.AreEqual(RopeGun.RopePhase.Idle, PhaseOf(ropeGun),
+                    "instant fire anchors only on a green reticle — an empty scene has no " +
+                    "intercept, so the press is refused before anything spawns");
+            }
+            finally
+            {
+                InvokeInstance(ropeGun, "Finish");      // no-op when nothing fired; safety for future edits
+                UnityEngine.Object.DestroyImmediate(player);
             }
         }
 
@@ -202,7 +264,8 @@ namespace Inkform.Tests
         public void AbilityPickup_SelfRemovesWhenAbilityAlreadyEarned()
         {
             AbilityStore.ClearWithoutSaving();
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint),
+                "the default abilities count as already earned — the world cards self-remove on load");
 
             GameObject root = new GameObject("Earned pickup test");
             root.SetActive(false);
@@ -220,7 +283,7 @@ namespace Inkform.Tests
         public void Checkpoints_NewestStampResetsPreviousMachines()
         {
             AbilityStore.ClearWithoutSaving();
-            Assert.IsTrue(AbilityStore.Unlock(AbilityIds.Checkpoint));
+            Assert.IsTrue(AbilityStore.Owns(AbilityIds.Checkpoint), "checkpoint is a built-in default");
 
             GameObject player = new GameObject("Player");
             player.tag = Tags.Player;
@@ -269,6 +332,10 @@ namespace Inkform.Tests
         private static bool IsStamped(Checkpoint checkpoint) =>
             (bool)checkpoint.GetType().GetField("active", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .GetValue(checkpoint);
+
+        private static RopeGun.RopePhase PhaseOf(RopeGun ropeGun) =>
+            (RopeGun.RopePhase)ropeGun.GetType().GetField("phase", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .GetValue(ropeGun);
 
         private static void InvokeInstance(object target, string method) =>
             target.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(target, null);

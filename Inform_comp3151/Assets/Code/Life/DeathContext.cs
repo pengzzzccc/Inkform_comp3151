@@ -11,7 +11,7 @@ namespace Inkform.Life
     /// </summary>
     public readonly struct DeathContext
     {
-        /// <summary>The deceased. Subscribers claim themselves by it — the publisher (Spike) never needs to know the player.</summary>
+        /// <summary>The deceased. Subscribers claim themselves by it — the publisher (HarmOnTouch) never needs to know the player.</summary>
         public readonly GameObject Victim;
 
         /// <summary>Kill point. Shards burst outward from here, so it must be the true contact point,

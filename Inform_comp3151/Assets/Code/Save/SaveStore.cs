@@ -10,7 +10,8 @@ using UnityEngine;
 
 namespace Inkform.Save
 {
-    /// <summary>Three transactional, atomically-written save slots.</summary>
+    /// <summary>Three transactional, atomically-written save slots, stored in a Saves folder beside
+    /// the game itself (the executable's directory in a build, the project root in the editor).</summary>
     public static class SaveStore
     {
         public const int SlotCount = 3;
@@ -19,15 +20,23 @@ namespace Inkform.Save
         public static int ActiveSlot { get; private set; } = -1;
         public static event Action Changed;
 
+        /// <summary>Raised only after a slot file has actually been written to disk — the
+        /// "your progress is safe" signal for the HUD's "Saved" toast (Hud.ShowToast). Changed also
+        /// fires for in-memory updates (BeginNewRun, restore paths) that write nothing.</summary>
+        public static event Action Saved;
+
         private static SaveData[] slots;
         private static float runPlayBase;
-        private static float runStartRealtime;
+        private static float runActiveSeconds;   // played since the run (re)started: see AdvancePlayTime
         private static int runDeathBase;
         private static int runDeathSessionBase;
 
         // An overwrite remains reversible until the entry scene records its first valid position.
         private static int pendingNewSlot = -1;
         private static SaveData pendingPrevious;
+
+        // Guards the one-time copy from the old per-user AppData folder (see MigrateFromAppDataOnce)
+        private static bool migratedFromAppData;
 #if UNITY_INCLUDE_TESTS
         private static string testSavesDirectory;
 #endif
@@ -36,14 +45,16 @@ namespace Inkform.Save
         private static void ResetStatics()
         {
             Changed = null;
+            Saved = null;
             ActiveSlot = -1;
             slots = null;
             runPlayBase = 0f;
-            runStartRealtime = 0f;
+            runActiveSeconds = 0f;
             runDeathBase = 0;
             runDeathSessionBase = 0;
             pendingNewSlot = -1;
             pendingPrevious = null;
+            migratedFromAppData = false;
 #if UNITY_INCLUDE_TESTS
             testSavesDirectory = null;
 #endif
@@ -52,6 +63,7 @@ namespace Inkform.Save
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void LoadAll()
         {
+            MigrateFromAppDataOnce();
             slots = new SaveData[SlotCount];
             for (int i = 0; i < SlotCount; i++) slots[i] = ReadSlot(i);
         }
@@ -61,6 +73,34 @@ namespace Inkform.Save
             if (slots == null) LoadAll();
         }
 
+        // One-time move from when the save folder lived in per-user AppData (persistentDataPath):
+        // copy whatever the old install left there so existing runs do not vanish from the slot
+        // menu. Only runs while the new folder does not exist — the copy itself creates it, so this
+        // never fires twice — and never in edit mode (tests) or under a redirected test directory.
+        private static void MigrateFromAppDataOnce()
+        {
+#if UNITY_INCLUDE_TESTS
+            if (!string.IsNullOrEmpty(testSavesDirectory)) return;
+#endif
+            if (!Application.isPlaying || migratedFromAppData) return;
+            migratedFromAppData = true;
+
+            try
+            {
+                string legacy = Path.Combine(Application.persistentDataPath, SavesFolder);
+                if (Directory.Exists(SavesDir) || !Directory.Exists(legacy)) return;
+
+                Directory.CreateDirectory(SavesDir);
+                foreach (string file in Directory.GetFiles(legacy))
+                    File.Copy(file, Path.Combine(SavesDir, Path.GetFileName(file)), false);
+                Debug.Log($"SaveStore: moved legacy saves from '{legacy}' to '{SavesDir}'");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"SaveStore: could not move legacy saves ({e.Message}) — starting fresh in '{SavesDir}'");
+            }
+        }
+
         public static SaveData Get(int slot)
         {
             EnsureLoaded();
@@ -68,6 +108,24 @@ namespace Inkform.Save
         }
 
         public static bool HasSave(int slot) => !Get(slot).IsEmpty;
+
+        // ---- The run's clock and death count: one number everywhere ----
+
+        /// <summary>The run's play time — what the HUD timer shows, the slot stores and the end
+        /// sheet reports. It only advances while the player is actually playing (AdvancePlayTime);
+        /// a continued run picks up from the slot's stored time.</summary>
+        public static float PlaySeconds => runPlayBase + runActiveSeconds;
+
+        /// <summary>The run's deaths: the slot's stored count plus this session's.</summary>
+        public static int RunDeaths => runDeathBase + Mathf.Max(0, LifeBus.DeathCount - runDeathSessionBase);
+
+        /// <summary>Adds played time. Called by the HUD every frame the game is in play (in a level,
+        /// state Playing, no scene transition) — pause, menus and transitions do not count. Runs
+        /// with no active slot too (a session started straight in a level), so the timer moves.</summary>
+        public static void AdvancePlayTime(float deltaTime)
+        {
+            if (deltaTime > 0f) runActiveSeconds += deltaTime;
+        }
 
         public static void BeginNewRun(int slot)
         {
@@ -115,7 +173,7 @@ namespace Inkform.Save
         {
             ActiveSlot = slot;
             runPlayBase = playBase;
-            runStartRealtime = Time.realtimeSinceStartup;
+            runActiveSeconds = 0f;
             runDeathBase = deathBase;
             runDeathSessionBase = LifeBus.DeathCount;
         }
@@ -131,7 +189,7 @@ namespace Inkform.Save
             CaptureInventory(data);
             Stamp(data);
 
-            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            if (WriteSlot(ActiveSlot, data)) { CommitPendingIfNeeded(ActiveSlot); Saved?.Invoke(); }
             Changed?.Invoke();
         }
 
@@ -147,7 +205,7 @@ namespace Inkform.Save
             if (data.IsEmpty) return;
 
             Stamp(data);
-            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            if (WriteSlot(ActiveSlot, data)) { CommitPendingIfNeeded(ActiveSlot); Saved?.Invoke(); }
             Changed?.Invoke();
         }
 
@@ -162,7 +220,7 @@ namespace Inkform.Save
             if (data.IsEmpty) return;
 
             Stamp(data);
-            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            if (WriteSlot(ActiveSlot, data)) { CommitPendingIfNeeded(ActiveSlot); Saved?.Invoke(); }
             Changed?.Invoke();
         }
 
@@ -174,7 +232,7 @@ namespace Inkform.Save
 
             CaptureInventory(data);
             Stamp(data);
-            if (WriteSlot(ActiveSlot, data)) CommitPendingIfNeeded(ActiveSlot);
+            if (WriteSlot(ActiveSlot, data)) { CommitPendingIfNeeded(ActiveSlot); Saved?.Invoke(); }
             Changed?.Invoke();
         }
 
@@ -194,24 +252,6 @@ namespace Inkform.Save
                 SaveNow();
             }
             ActiveSlot = -1;
-        }
-
-        public static void Delete(int slot)
-        {
-            EnsureLoaded();
-            if (!IsValidSlot(slot)) return;
-
-            bool deletedActiveRun = ActiveSlot == slot;
-            slots[slot] = new SaveData();
-            DeleteFiles(slot);
-            if (deletedActiveRun)
-            {
-                ActiveSlot = -1;
-                InventoryStore.ClearWithoutSaving();
-                AbilityStore.ClearWithoutSaving();
-            }
-            if (pendingNewSlot == slot) ClearPending();
-            Changed?.Invoke();
         }
 
         private static void CaptureInventory(SaveData data)
@@ -234,8 +274,8 @@ namespace Inkform.Save
         private static void Stamp(SaveData data)
         {
             data.version = SaveData.CurrentVersion;
-            data.playSeconds = runPlayBase + Mathf.Max(0f, Time.realtimeSinceStartup - runStartRealtime);
-            data.deaths = runDeathBase + Mathf.Max(0, LifeBus.DeathCount - runDeathSessionBase);
+            data.playSeconds = PlaySeconds;
+            data.deaths = RunDeaths;
             data.savedAtUtc = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
         }
 
@@ -252,6 +292,9 @@ namespace Inkform.Save
 
         private static bool IsValidSlot(int slot) => slot >= 0 && slot < SlotCount;
 
+        // The game's own folder: the executable's directory in a build (the parent of <product>_Data),
+        // the project root in the editor (the parent of Assets) — a portable save that travels with
+        // the game instead of hiding in per-user AppData.
         private static string SavesDir
         {
             get
@@ -259,7 +302,8 @@ namespace Inkform.Save
 #if UNITY_INCLUDE_TESTS
                 if (!string.IsNullOrEmpty(testSavesDirectory)) return testSavesDirectory;
 #endif
-                return Path.Combine(Application.persistentDataPath, SavesFolder);
+                string appDir = Directory.GetParent(Application.dataPath)?.FullName ?? Application.dataPath;
+                return Path.Combine(appDir, SavesFolder);
             }
         }
 
@@ -363,6 +407,11 @@ namespace Inkform.Save
                     stream.Flush(true);
                 }
 
+                // Read-back verification (Celeste's write-verify-copy, minus the copy step):
+                // the primary is only ever replaced by a file the loader accepts. FromJson throws on
+                // malformed text, which the catch below turns into a failed write.
+                JsonUtility.FromJson<SaveData>(File.ReadAllText(temp));
+
                 if (File.Exists(primary))
                     File.Replace(temp, primary, backup, true);
                 else
@@ -373,21 +422,6 @@ namespace Inkform.Save
             {
                 Debug.LogWarning($"SaveStore: could not atomically write slot {slot} ({e.Message})");
                 return false;
-            }
-        }
-
-        private static void DeleteFiles(int slot)
-        {
-            foreach (string path in new[] { PathFor(slot), TempPathFor(slot), BackupPathFor(slot) })
-            {
-                try
-                {
-                    if (File.Exists(path)) File.Delete(path);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"SaveStore: could not delete '{path}' ({e.Message})");
-                }
             }
         }
 

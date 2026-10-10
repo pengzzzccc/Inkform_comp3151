@@ -6,13 +6,18 @@ namespace Inkform.Player
 {
     public class AniHandler : MonoBehaviour
     {
-        [SerializeField] private Animator animations;
-        [SerializeField] private SpriteRenderer sprite;
+        // Runtime caches of the live player's components, rebound by Refresh on every change
+        private Animator animations;
+        private SpriteRenderer sprite;
 
         void OnEnable()
         {
             PlayerBus.StateChanged += OnState;
             PlayerBus.FaceChanged += OnFace;
+            // A runtime-spawned player registers long after sceneLoaded's refresh, and its initial
+            // Idle/R can match the deduped snapshot exactly — the registration event is the one
+            // broadcast guaranteed to reach us for every newcomer
+            PlayerBus.PlayerRegistered += OnPlayerRegistered;
             // Rebind on every scene load: the persistent GameManager hosting this survives scene
             // switches, and the bus snapshot (deduped to change-only broadcasts) may not fire for the
             // new scene's player — Refresh here guarantees the animation targets the live player
@@ -24,19 +29,19 @@ namespace Inkform.Player
         {
             PlayerBus.StateChanged -= OnState;
             PlayerBus.FaceChanged -= OnFace;
+            PlayerBus.PlayerRegistered -= OnPlayerRegistered;
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
         private void OnState(PlayerState state) => Refresh();
         private void OnFace(FaceDirection face) => Refresh();
+        private void OnPlayerRegistered(PlayerHandler player) => Refresh();
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => Refresh();
 
         private void Refresh()
         {
-            // Always rebind from the bus's live player: a serialized Animator (GameManager.prefab
-            // carries a stale reference into Player.prefab's internal Animator that resolves to a
-            // non-instance object == null cannot catch) must never be used — the live player's
-            // Animator is the only valid target across scene switches
+            // Always rebind from the bus's live player: the persistent GameManager outlives every
+            // scene's player, so the live player's Animator is the only valid target
             PlayerHandler player = PlayerBus.Player;
             if (player == null) return;
             animations = player.GetComponent<Animator>();
@@ -46,7 +51,7 @@ namespace Inkform.Player
             bool faceL = PlayerBus.Face == FaceDirection.L;
 
             // selfDirectional: the state name carries its direction (which wall the player faces was
-            // already chosen by PlayerHandler), no suffix or flip
+            // already chosen by AnimStateResolver), no suffix or flip
             (string baseName, bool selfDirectional) = PlayerBus.State switch
             {
                 PlayerState.Idle         => ("Idle",          false),

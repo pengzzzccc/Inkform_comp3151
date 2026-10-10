@@ -24,7 +24,7 @@ namespace Inkform.Save
 
         public int version = CurrentVersion;
 
-        /// <summary>The room to load, matching a scene name in LevelGraph.txt. Empty = this slot holds
+        /// <summary>The room to load, matching a room registered in the WorldDefinition asset. Empty = this slot holds
         /// nothing; it is also the one field IsEmpty tests, so it must be written last-ish, never
         /// speculatively.</summary>
         public string sceneName;
@@ -41,7 +41,7 @@ namespace Inkform.Save
         /// <summary>Stable InventoryItemDefinition ids, in FIFO order.</summary>
         public string[] inventoryItemIds = Array.Empty<string>();
 
-        public int inventoryCapacity = 1;
+        public int inventoryCapacity = 0;   // InventoryStore.InitialCapacity: a new run has no slots
 
         /// <summary>Stable scene pickup ids already consumed by this save slot.</summary>
         public string[] collectedInventoryCapacityPickupIds = Array.Empty<string>();

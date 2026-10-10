@@ -90,3 +90,6 @@ crashlytics-build.properties
 # Performance recorder output (local play-session traces)
 /[Ll]og/
 Docs/PerfLogs/
+
+# Player save slots (the game writes them beside the project root in the editor)
+/[Ss]aves/

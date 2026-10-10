@@ -1,6 +1,7 @@
 using Inkform.Bus;
 using Inkform.Fx;
 using Inkform.Life;
+using Inkform.Player;
 using Inkform.Save;
 using Inkform.Tool;
 using UnityEngine;
@@ -9,10 +10,10 @@ using UnityEngine.SceneManagement;
 namespace Inkform.Level
 {
     /// <summary>
-    /// Respawn director: remembers the current checkpoint, and after death pauses briefly before
-    /// putting the deceased back. Teleports only, never reloads the scene — so it does not depend on
-    /// Build Settings, and cross-scene singletons like AudioManager never need rebuilding.
-    /// Attach to GameManager (already the host of InputHandler / AudioDirector / AudioManager).
+    /// Respawn director: creates a missing scene player at the resolved arrival point, remembers the
+    /// current checkpoint, and after death pauses briefly before putting the deceased back. It never
+    /// reloads for a respawn, so cross-scene singletons like AudioService never need rebuilding.
+    /// Attach to GameManager (already the host of InputHandler / AudioDirector / AudioService).
     /// </summary>
     public class RespawnDirector : MonoBehaviour
     {
@@ -22,6 +23,12 @@ namespace Inkform.Level
         // death method (falling should respawn faster than being spiked), not of the respawn system
         [SerializeField] private float fallbackDelay = 0.9f;     // death-to-respawn pause; Celeste is about 1 second
 
+        [Header("Player")]
+        // Rooms graduated to runtime spawning carry no placed Player: when a scene has none, this
+        // prefab is instantiated at its start point instead. Rooms that still hold a placed Player
+        // keep working untouched — the instance is found and reused (see InitForScene).
+        [SerializeField] private PlayerHandler playerPrefab;
+
         private Vector2 checkpoint;
         private GameObject pending;         // the deceased waiting to respawn, null = nobody waiting
 
@@ -30,7 +37,7 @@ namespace Inkform.Level
         // waiting forever
         private float respawnRemaining;
 
-        // Same lazy cache as PlayerBus.Player / AudioManager.Listener: after a scene change the old
+        // Same lazy cache as PlayerBus.Player: after a scene change the old
         // reference becomes a Unity fake-null and is re-looked-up on next use, so no ResetStatics needed
         private DeathDirector deathCache;
 
@@ -48,6 +55,7 @@ namespace Inkform.Level
 
         // Set by sceneLoaded, consumed one frame later in Update. See OnSceneLoaded for why.
         private bool sceneInitPending;
+        private bool sceneInitHeld;
 
         void OnEnable()
         {
@@ -63,11 +71,11 @@ namespace Inkform.Level
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        // The GameManager hosting this survives scene switches (AudioManager calls DontDestroyOnLoad on
-        // its own host), so Start() only ever ran against the *first* scene. Booting straight into a
-        // level hid that, but the menu flow made MainMenu the first scene: no player was found there,
-        // Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying in a level before
-        // touching any checkpoint teleported the player to the world origin.
+        // The GameManager hosting this survives scene switches (PersistentGameRoot calls
+        // DontDestroyOnLoad on its host), so Start() only ever ran against the *first* scene. Booting
+        // straight into a level hid that, but the menu flow made MainMenu the first scene: no player
+        // was found there, Start() bailed out, and `checkpoint` stayed at its default (0,0) — dying
+        // in a level before touching any checkpoint teleported the player to the world origin.
         //
         // Deferred by a frame rather than run here: sceneLoaded fires before the new scene's Start()
         // methods, and the init below actually teleports the player and snaps the camera — doing that
@@ -76,13 +84,13 @@ namespace Inkform.Level
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => sceneInitPending = true;
 
         // sceneLoaded never fires for the startup scene, so the first scene is initialized here
-        void Start() => InitForScene();
+        void Start()
+        {
+            if (!sceneInitHeld) InitForScene();
+        }
 
         private void InitForScene()
         {
-            GameObject player = GameObject.FindGameObjectWithTag(Tags.Player);
-            if (player == null) return;
-
             // Loaded save: the coordinate the save recorded outranks every spawn point in the scene —
             // it is the whole point of continuing a run. Checked first so neither the door-side spawn
             // nor the start point can win, and consumed here so it applies to this scene only.
@@ -90,7 +98,7 @@ namespace Inkform.Level
             if (loaded.HasValue)
             {
                 checkpoint = loaded.Value;
-                PlaceAndRecord(player);
+                PlaceInitialPlayer(checkpoint, true);
                 return;
             }
 
@@ -99,32 +107,94 @@ namespace Inkform.Level
             // player was placed in the scene"
             Checkpoint start = FindStartPoint();
 
-            // Door-side spawn: entering from another room puts the player beside that room's door in
-            // this scene (SceneDirector records the source scene on LevelBus.Completed) rather than
-            // the level start point, so direction stays intuitive across level transitions
-            string from = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnFrom() : null;
-            Checkpoint spawn = from != null ? FindDoorSpawn(from) : null;
+            // Door-side spawn: the door the player walked through names the arrival checkpoint
+            // (Checkpoint.spawnId) rather than the level start point, so they land beside where they
+            // came in and direction stays intuitive across level transitions
+            string spawnId = SceneDirector.Instance != null ? SceneDirector.Instance.ConsumePendingSpawnId() : null;
+            Checkpoint spawn = !string.IsNullOrEmpty(spawnId) ? FindSpawnPoint(spawnId) : null;
             if (spawn == null) spawn = start;
 
             if (spawn == null)
             {
-                checkpoint = player.transform.position;
+                PlayerHandler existing = FindAnyObjectByType<PlayerHandler>(FindObjectsInactive.Include);
+                if (existing == null) return; // menu or a non-gameplay scene
+                checkpoint = existing.transform.position;
                 RecordSave();   // still a new room, still where the run now is — see RecordSave
                 return;
             }
 
             checkpoint = spawn.SpawnPos;
-            PlaceAndRecord(player);
+            PlaceInitialPlayer(checkpoint, true);
         }
 
-        // Teleport + camera snap + autosave, shared by both of InitForScene's placing branches.
-        // RaiseRespawned rather than moving the transform here: reuse the same respawn path instead of
-        // a second teleport implementation.
-        private void PlaceAndRecord(GameObject player)
+        /// <summary>Prevents the deferred scene initializer from creating the player while a room
+        /// intro is presenting its empty establishing shot.</summary>
+        public void HoldSceneInitialization()
         {
-            LifeBus.RaiseRespawned(player, checkpoint);
-            FxBus.RaiseSnap();
+            sceneInitHeld = true;
+        }
+
+        /// <summary>Clears a cinematic hold without forcing initialization during scene teardown.
+        /// The next sceneLoaded callback will schedule its own normal initialization.</summary>
+        public void ReleaseSceneInitialization()
+        {
+            sceneInitHeld = false;
+        }
+
+        /// <summary>Instantiates (or reuses) the player at this scene's authored start checkpoint.
+        /// A fresh instance is created at its final position and deliberately does not raise the
+        /// death-respawn event, so a new-game entrance does not play the respawn sound.</summary>
+        public PlayerHandler SpawnPlayerAtSceneStart()
+        {
+            Checkpoint start = FindStartPoint();
+            sceneInitHeld = false;
+            sceneInitPending = false;
+
+            if (start == null)
+            {
+                Debug.LogError("RespawnDirector: RoomIntro needs a start Checkpoint, but none is configured", this);
+                return null;
+            }
+
+            checkpoint = start.SpawnPos;
+            return PlaceInitialPlayer(checkpoint, false);   // RoomIntro stages the camera itself
+        }
+
+        /// <summary>Returns the scene's Player — found, reactivated or freshly instantiated at the
+        /// requested position. The strongly typed prefab slot cannot accept a sensor child by mistake.</summary>
+        private PlayerHandler AcquirePlayer(Vector2 position, out bool created)
+        {
+            created = false;
+            PlayerHandler existing = FindAnyObjectByType<PlayerHandler>(FindObjectsInactive.Include);
+            if (existing != null)
+            {
+                if (!existing.gameObject.activeSelf) existing.gameObject.SetActive(true);
+                return existing;
+            }
+            if (playerPrefab == null)
+            {
+                Debug.LogError("RespawnDirector: no Player in the scene and no PlayerHandler prefab to instantiate", this);
+                return null;
+            }
+
+            created = true;
+            return Instantiate(playerPrefab, position, Quaternion.identity);
+        }
+
+        /// <summary>
+        /// Establishes the initial player for a scene. Existing scene instances still receive the
+        /// respawn placement event so their transient state is reset; a new instance already ran its
+        /// clean Awake at the final position and must not masquerade as a death respawn.
+        /// </summary>
+        private PlayerHandler PlaceInitialPlayer(Vector2 position, bool snapCamera)
+        {
+            PlayerHandler player = AcquirePlayer(position, out bool created);
+            if (player == null) return null;
+
+            if (!created) LifeBus.RaiseRespawned(player.gameObject, position);
+            if (snapCamera) FxBus.RaiseSnap();
             RecordSave();
+            return player;
         }
 
         /// <summary>
@@ -146,7 +216,7 @@ namespace Inkform.Level
         {
             // Runs before the respawn pump: a scene switch invalidates `checkpoint`, and a death
             // pending from the previous scene must never be resurrected against the new one
-            if (sceneInitPending)
+            if (sceneInitPending && !sceneInitHeld)
             {
                 sceneInitPending = false;
                 pending = null;
@@ -206,8 +276,8 @@ namespace Inkform.Level
         }
 
         // The no-sort-parameter overload is the current recommended API: the FindObjectsSortMode
-        // version is deprecated in Unity 6000.4, for the same reason as AudioManager — instance ID
-        // ordering was never stable, and order does not matter here
+        // version is deprecated in Unity 6000.4 — instance ID ordering was never stable, and order
+        // does not matter here
         private Checkpoint FindStartPoint()
         {
             Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
@@ -218,16 +288,14 @@ namespace Inkform.Level
             return null;
         }
 
-        // The door-side spawn point maintained by Level Graph as "Spawn_<sceneName>" (a Checkpoint
-        // beside the door whose exitId is that scene); matching by name keeps it a pure editor-side
-        // convention — no new component, no scene wiring
-        private Checkpoint FindDoorSpawn(string fromScene)
+        // Arrival checkpoints are keyed by Checkpoint.spawnId — a serialized field the door's
+        // targetSpawnId must match, replacing the old Spawn_<sceneName> object-name convention
+        private Checkpoint FindSpawnPoint(string spawnId)
         {
-            string want = $"Spawn_{fromScene}";
             Checkpoint[] all = Object.FindObjectsByType<Checkpoint>();
             foreach (Checkpoint c in all)
             {
-                if (c.gameObject.name == want) return c;
+                if (c.SpawnId == spawnId) return c;
             }
             return null;
         }

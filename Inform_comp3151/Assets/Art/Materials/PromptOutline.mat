@@ -30,6 +30,7 @@ Material:
     m_Ints: []
     m_Floats:
     - _Fade: 0
+    - _GlowIntensity: 4
     - _OutlineWidth: 4
     - _SpriteScale: 1
     m_Colors:

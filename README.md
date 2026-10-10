@@ -25,14 +25,14 @@ COMP3151 course project.
 |---|---|---|
 | Move | WASD / Arrow keys | Left stick |
 | Aim | Mouse | Right stick |
-| Jump | Space | Right trigger |
-| Dash | Left Shift | X (west button) |
-| Rope fire | Left mouse button | Left trigger |
-| Spit bomb | Q | Right stick press |
+| Jump | Space | A (south button) |
+| Dash | Left Shift | RB (right shoulder) — dashes along the aim direction, gravity-free |
+| Rope fire | Left mouse button | Right trigger |
+| Spit bomb | Q | X (west button) |
 | Pause / menu | Esc | — |
 
 All bindings can be remapped in-game from the pause menu → **Settings → Controls**.
-With a gamepad, menus are driven by a virtual cursor — the left stick moves it and the X (west)
+With a gamepad, menus are driven by a virtual cursor — the left stick moves it and the A (south)
 button clicks.
 
 ## Requirements
@@ -83,6 +83,30 @@ Key architecture pieces in `Assets/Code/`:
   (explode, break, restore, carry, patrol, spin, …) used to build every hazard and destructible.
 - **LevelMemento** — captures and restores the state of every restorable object on checkpoint/death,
   which is what makes shattered walls come back after respawn.
+
+## Audio
+
+Audio runs on Unity's own pipeline and only uses what the WebGL backend supports, so desktop and
+WebGL builds sound the same: `AudioSource` volume/pitch/3D linear rolloff, `AudioMixer` group
+volumes, and `AudioListener` pause/volume. No audio filters, mixer effects or `panStereo`.
+
+- **`AudioService`** (on the GameManager) is the front door: `AudioService.Play(cue, position)`
+  for one-shots, `PlayMusic` / `StopMusic` for the crossfading music bed. All entry points are
+  null-safe. One-shots use a fixed set of voices; each `SoundCue` has a cooldown and a
+  concurrency cap, and when every voice is busy a post takes over the oldest voice of the same or
+  a less important `priority` lane, or is dropped.
+- **Mixer** — `Assets/Audio/Inkform.mixer`: `Master` → `Music`, `Sfx`. The settings sliders drive
+  its exposed `MasterVolume` / `MusicVolume` / `SfxVolume`. A Cue plays through its own `Output`
+  group, or the group its `Category` maps to.
+- **Spatial Cues** use Unity's 3D audio. Emitters sit on the world plane (z = 0), the
+  AudioListener rides the camera at z = -10, so a sideways offset pans naturally; the linear
+  rolloff is set so the sound is full under the camera and silent exactly at the Cue's
+  `falloffRange` on the plane (`AudioSpatial`).
+- Looping world sounds are **`AmbientSource`** (cue + optional offset), which owns its own
+  `AudioSource`; out-of-range loops are virtualized by Unity. A `TimedVisibility` hazard can gate
+  it by toggling its enabled state, so the loop is audible exactly while the hazard is visible.
+- **WebGL caveat:** browsers block audio until the first click or key press, so anything posted
+  before that (the boot sting) is not heard; music starts once the page has been interacted with.
 
 ## Scenes
 
